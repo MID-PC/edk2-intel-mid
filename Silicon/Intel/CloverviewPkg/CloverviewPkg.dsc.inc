@@ -56,15 +56,15 @@
   # "ProcessorModel" is the Atom Z2500-series family name.
   #
 !if $(SOC_VARIANT) == SOC_VARIANT_Z2520
-  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor Z2520"
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"Intel Atom Z2520"
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz|1200
 !elseif $(SOC_VARIANT) == SOC_VARIANT_Z2560
-  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor Z2560"
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"Intel Atom Z2560"
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz|1600
 !elseif $(SOC_VARIANT) == SOC_VARIANT_Z2580
-  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor Z2580"
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"Intel Atom Z2580"
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz|2000
 !else

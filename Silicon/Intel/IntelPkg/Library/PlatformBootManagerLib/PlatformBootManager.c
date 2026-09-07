@@ -12,14 +12,16 @@
       console-input handles is stable and reconnects each one once ConIn is
       populated.
     - Real boot options (removable media, OS loaders) always win.
-    - The built-in UEFI Shell is registered as boot option #0000 (and is thus
-      the default) only when no real boot option exists.
-    - UiApp is never registered as a boot option and is never used as the
-      unable-to-boot fallback; it stays reachable through the Boot Manager
-      menu only. The boot manager menu option that BdsDxe auto-creates is
-      explicitly excluded from the "real boot option" count, otherwise the
-      Shell would never be registered and BdsDxe would fall back to booting
-      UiApp.
+    - The built-in UEFI Shell is always registered as a boot option at the end
+      of BootOrder (OVMF style): it shows up in the UiApp Boot Manager and
+      remains the fallback when no real boot option boots.
+    - UiApp is never registered as a boot option and is never used as a
+      default or unable-to-boot fallback. The boot manager menu option BdsDxe
+      auto-creates carries LOAD_OPTION_HIDDEN (BmRegisterBootManagerMenu), so
+      BDS never auto-boots it and the UiApp Boot Manager never lists it; its
+      only entry points are the ESC hotkey and EFI_OS_INDICATIONS_BOOT_TO_FW_UI.
+    - ESC during the boot timeout jumps into the Boot Manager Menu (UiApp),
+      in the same style as OVMF; the progress bar labels that hint.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -51,53 +53,12 @@ STATIC CONST EFI_GUID  mShellFileGuid = {
   0x7C04A583, 0x9E3E, 0x4F1C, { 0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }
 };
 
-//
-// FILE_GUID of MdeModulePkg/Application/UiApp/UiApp.inf (the boot manager
-// menu). Options pointing at it are not treated as real boot options.
-//
-STATIC CONST EFI_GUID  mUiAppFileGuid = {
-  0x462CAA21, 0x7614, 0x4503, { 0x83, 0x6E, 0x8A, 0xB6, 0xF4, 0x66, 0x23, 0x31 }
-};
-
 #pragma pack(1)
 typedef struct {
   MEDIA_FW_VOL_FILEPATH_DEVICE_PATH    File;
   EFI_DEVICE_PATH_PROTOCOL             End;
 } FV_FILE_DEVICE_PATH;
 #pragma pack()
-
-/**
-  Check whether a device path refers to the given firmware volume file.
-**/
-STATIC
-BOOLEAN
-IsFvFileDevicePath (
-  IN EFI_DEVICE_PATH_PROTOCOL  *DevicePath,
-  IN CONST EFI_GUID            *FileGuid
-  )
-{
-  EFI_DEVICE_PATH_PROTOCOL  *Node;
-
-  if (DevicePath == NULL) {
-    return FALSE;
-  }
-
-  for (Node = DevicePath; !IsDevicePathEnd (Node); Node = NextDevicePathNode (Node)) {
-    if ((DevicePathType (Node) == MEDIA_DEVICE_PATH) &&
-        (DevicePathSubType (Node) == MEDIA_PIWG_FW_FILE_DP))
-    {
-      if (CompareGuid (
-            &((MEDIA_FW_VOL_FILEPATH_DEVICE_PATH *)Node)->FvFileName,
-            FileGuid
-            ))
-      {
-        return TRUE;
-      }
-    }
-  }
-
-  return FALSE;
-}
 
 /**
   Register (or look up) a boot option pointing at an application stored in a
@@ -361,13 +322,6 @@ PlatformBootManagerAfterConsole (
   VOID
   )
 {
-  EFI_BOOT_MANAGER_LOAD_OPTION  *BootOptions;
-  UINTN                         BootOptionCount;
-  UINTN                         Index;
-  UINTN                         RealOptionCount;
-
-  RealOptionCount = 0;
-
   DEBUG ((DEBUG_INFO, "PlatformBds: AfterConsole\n"));
 
   DEBUG ((
@@ -409,39 +363,60 @@ PlatformBootManagerAfterConsole (
   EfiBootManagerRefreshAllBootOption ();
 
   //
-  // Policy: the built-in UEFI Shell is the default boot option, and it is only
-  // registered when no other (real) boot option is present. UiApp / the boot
-  // manager menu option does not count as a real boot option.
+  // Register the built-in UEFI Shell as a persistent boot option, in the same
+  // style as OVMF, so it always shows up in the UiApp Boot Manager. It is
+  // appended at the end of BootOrder: BootOrder therefore stays
+  // [real boot options..., UEFI Shell], real options are attempted first and
+  // the Shell remains the fallback when none of them boots. The Boot Manager
+  // Menu that BdsDxe auto-created in BootOrder carries LOAD_OPTION_HIDDEN
+  // (BmRegisterBootManagerMenu), so neither the BDS boot loop nor the UiApp
+  // Boot Manager sees it.
   //
-  BootOptions = EfiBootManagerGetLoadOptions (&BootOptionCount, LoadOptionTypeBoot);
+  RegisterFvBootOption (&mShellFileGuid, L"UEFI Shell", (UINTN)-1);
 
-  for (Index = 0; Index < BootOptionCount; Index++) {
-    if ((BootOptions[Index].Attributes & LOAD_OPTION_ACTIVE) == 0) {
-      continue;
-    }
+  //
+  // Register ESC as a hotkey that jumps into the Boot Manager Menu (UiApp)
+  // during the boot timeout, in the same style as OVMF. The menu popup that
+  // BdsDxe auto-creates is reachable this way; UiApp itself is never listed
+  // in boot options.
+  //
+  // Note: BdsDxe only arms the hotkey service when PcdConInConnectOnDemand is
+  // FALSE, which this platform guarantees. EfiBootManagerAddKeyOptionVariable
+  // re-processes the key right away (BmHotkey.c), so the ESC key is already
+  // live when the countdown shown in PlatformBootManagerWaitCallback starts.
+  //
+  {
+    EFI_BOOT_MANAGER_LOAD_OPTION  BootManagerMenu;
+    EFI_INPUT_KEY                 Esc;
+    EFI_STATUS                    Status;
 
-    if (IsFvFileDevicePath (BootOptions[Index].FilePath, &mUiAppFileGuid)) {
+    Esc.ScanCode    = SCAN_ESC;
+    Esc.UnicodeChar = CHAR_NULL;
+
+    Status = EfiBootManagerGetBootManagerMenu (&BootManagerMenu);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((
+        DEBUG_WARN,
+        "PlatformBds: cannot find Boot Manager Menu, ESC hotkey skipped (%r)\n",
+        Status
+        ));
+    } else {
+      Status = EfiBootManagerAddKeyOptionVariable (
+                 NULL,
+                 (UINT16)BootManagerMenu.OptionNumber,
+                 0,
+                 &Esc,
+                 NULL
+                 );
+      ASSERT (Status == EFI_SUCCESS || Status == EFI_ALREADY_STARTED);
       DEBUG ((
         DEBUG_INFO,
-        "PlatformBds: ignoring UiApp boot option Boot%04x\n",
-        (UINT32)BootOptions[Index].OptionNumber
+        "PlatformBds: ESC -> Boot Manager Menu Boot%04x (%r)\n",
+        BootManagerMenu.OptionNumber,
+        Status
         ));
-      continue;
+      EfiBootManagerFreeLoadOption (&BootManagerMenu);
     }
-
-    RealOptionCount++;
-  }
-
-  EfiBootManagerFreeLoadOptions (BootOptions, BootOptionCount);
-
-  DEBUG ((
-    DEBUG_INFO,
-    "PlatformBds: %u active boot option(s) found\n",
-    (UINT32)RealOptionCount
-    ));
-
-  if (RealOptionCount == 0) {
-    RegisterFvBootOption (&mShellFileGuid, L"UEFI Shell", 0);
   }
 }
 
@@ -486,7 +461,7 @@ PlatformBootManagerWaitCallback (
   BootLogoUpdateProgress (
     White.Pixel,
     Black.Pixel,
-    L"Start boot option",
+    L"Press ESC for boot menu",
     White.Pixel,
     (TimeoutInitial - TimeoutRemain) * 100 / TimeoutInitial,
     0
