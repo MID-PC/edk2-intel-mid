@@ -1,0 +1,36 @@
+## @file
+# Cloverview SCU IPC reset implementation for ResetSystemRuntimeDxe.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = ScuResetSystemLib
+  FILE_GUID                      = 9D143722-7B76-4C51-BD31-962C5C8F04B1
+  MODULE_TYPE                    = DXE_RUNTIME_DRIVER
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = ResetSystemLib
+  CONSTRUCTOR                    = ScuResetSystemLibConstructor
+
+[Sources]
+  ScuResetSystemLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  DebugLib
+  DxeServicesTableLib
+  IoLib
+  PcdLib
+  UefiBootServicesTableLib
+  UefiRuntimeLib
+
+[Guids]
+  gEfiEventVirtualAddressChangeGuid
+
+[FixedPcd]
+  gCloverviewTokenSpaceGuid.PcdScuIpcBase

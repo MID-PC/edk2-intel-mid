@@ -1,0 +1,74 @@
+## @file
+#  PlatformBootManagerLib for Intel MID platforms.
+#
+#  Connects every driver (including the fixed-mode GOP), registers the GOP as
+#  the console, registers the built-in Shell as the default boot option only
+#  when no real boot option exists, and lets the platform boot timeout drop
+#  into the Shell when nothing can be booted.
+#
+#  SoC/device-specific policy can override this implementation by re-mapping
+#  PlatformBootManagerLib in the SoC (CloverviewPkg.dsc.inc) or device
+#  (e.g. ducatiPkg.dsc) DSC.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PlatformBootManagerLib
+  FILE_GUID                      = A9A68994-CC38-454E-97A0-C3BC4D29DE19
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = PlatformBootManagerLib|DXE_DRIVER
+
+[Sources]
+  PlatformBootManager.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  ShellPkg/ShellPkg.dec
+  Silicon/Intel/IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  BootLogoLib
+  DebugLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+  UefiLib
+  UefiBootManagerLib
+  DevicePathLib
+  PcdLib
+  PrintLib
+  HobLib
+
+[Guids]
+  gEfiEndOfDxeEventGroupGuid
+  gEfiConsoleInDeviceGuid
+  gUefiShellFileGuid
+
+[Protocols]
+  gEfiGraphicsOutputProtocolGuid
+  gEfiLoadedImageProtocolGuid
+  gEfiSimpleTextInProtocolGuid
+  gEfiSimpleTextOutProtocolGuid
+  gEdkiiPlatformLogoProtocolGuid
+  gEfiBootLogoProtocolGuid
+  gEdkiiBootLogo2ProtocolGuid
+
+[FixedPcd]
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBase
+  gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
+  gIntelMidTokenSpaceGuid.PcdFrameBufferHeight
+  gIntelMidTokenSpaceGuid.PcdFrameBufferStride
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
+
+[Pcd]
+  gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow
+  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution
+  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution

@@ -1,0 +1,30 @@
+## @file
+#  SFI (Simple Firmware Interface) memory map discovery library.
+#
+#  Shared by all Intel Atom MID SoC generations (Menlow/Moorestown, Medfield,
+#  Cloverview, ...): discovers and decodes the SFI MMAP table the primary
+#  bootloader leaves in the legacy BIOS area and provides classification
+#  helpers for it. Consumes no PCDs, so it is fully firmware-independent.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SfiMemoryMapLib
+  FILE_GUID                      = A1B5532C-7B4A-4F9E-A2C3-D4E5F6071829
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = SfiMemoryMapLib
+
+[Sources]
+  SfiMemoryMapLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  Silicon/Intel/IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib

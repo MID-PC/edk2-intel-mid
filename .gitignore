@@ -1,0 +1,6 @@
+Build
+out
+Conf
+__pycache__
+*:Zone.Identifier
+.vscode

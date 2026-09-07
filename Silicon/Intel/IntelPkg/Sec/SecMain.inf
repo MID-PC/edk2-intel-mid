@@ -1,0 +1,57 @@
+## @file
+#  Generic Intel MID SEC / reset vector module, shared by all SoC generations.
+#
+#  The primary bootloader loads the whole firmware image at PcdFdBaseAddress
+#  and jumps to its very first byte in 32-bit protected mode. SecEntry.nasm
+#  sits at offset 0 of the produced binary, sets up a flat environment and a
+#  temporary stack, and then hands off to SecStartup(), which finds the PEI
+#  Core in the FV that follows in the same image.
+#
+#  SoC-specific pre-PEI work is NOT done here: it lives in the platform PEIM
+#  (e.g. Silicon/Intel/CloverviewPkg/PlatformPei), which dispatches first via
+#  its [Depex] TRUE.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SecMain
+  FILE_GUID                      = 5F2A6B7C-9D8E-4F01-A2B3-C4D5E6F70819
+  MODULE_TYPE                    = SEC
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = SecStartup
+
+[Sources]
+  SecMain.c
+  SecMain.h
+
+[Sources.IA32]
+  Ia32/SecEntry.nasm
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  Silicon/Intel/IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  SerialPortLib
+  PcdLib
+  PeCoffGetEntryPointLib
+
+[Ppis]
+  gEfiTemporaryRamSupportPpiGuid                ## PRODUCES
+
+[Pcd]
+  gIntelMidTokenSpaceGuid.PcdFdBaseAddress
+  gIntelMidTokenSpaceGuid.PcdFdSize
+  gUefiCpuPkgTokenSpaceGuid.PcdPeiTemporaryRamStackSize
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
+
+[FixedPcd]
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize

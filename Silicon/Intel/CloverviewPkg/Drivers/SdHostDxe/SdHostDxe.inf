@@ -1,0 +1,43 @@
+## @file
+#  Registers the Clover Trail+ SD host controller (mmc1 @ 0xFFA58000) as a
+#  non-discoverable SDHCI device for SdMmcPciHcDxe.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SdHostDxe
+  FILE_GUID                      = 3C1F6A28-9B44-4D71-9E2C-71A5D0C3E118
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = SdHostDxeEntryPoint
+
+[Sources]
+  SdHostDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  DebugLib
+  IoLib
+  TimerLib
+  PcdLib
+  NonDiscoverableDeviceRegistrationLib
+
+[Protocols]
+  gEdkiiSdMmcOverrideProtocolGuid               ## PRODUCES
+
+[FixedPcd]
+  gCloverviewTokenSpaceGuid.PcdSdHostBase
+  gCloverviewTokenSpaceGuid.PcdSdHostSize
+  gCloverviewTokenSpaceGuid.PcdScuIpcBase
+  gCloverviewTokenSpaceGuid.PcdGpioCoreBase
+
+[Depex]
+  TRUE

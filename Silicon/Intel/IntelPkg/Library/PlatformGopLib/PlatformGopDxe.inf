@@ -1,0 +1,49 @@
+## @file
+#  Fixed-mode GOP driver for Clover Trail+ (Atom Z25xx).
+#
+#  The panel is already lit and scanning out by the primary bootloader, so this
+#  driver only publishes a Graphics Output Protocol describing the existing
+#  framebuffer (0x3F000000, 544x960, 32bpp) on a new handle. No display
+#  hardware is touched.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PlatformGopDxe
+  FILE_GUID                      = 2A3B4C5D-6E7F-4081-9203-A4B5C6D7E8F9
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = PlatformGopEntryPoint
+
+[Sources]
+  PlatformGopDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  Silicon/Intel/IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  DebugLib
+  PcdLib
+  DevicePathLib
+
+[Protocols]
+  gEfiGraphicsOutputProtocolGuid                ## PRODUCES
+  gEfiDevicePathProtocolGuid                    ## PRODUCES
+
+[FixedPcd]
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBase
+  gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
+  gIntelMidTokenSpaceGuid.PcdFrameBufferStride
+  gIntelMidTokenSpaceGuid.PcdFrameBufferHeight
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
+
+[Depex]
+  TRUE

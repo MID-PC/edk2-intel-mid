@@ -1,0 +1,82 @@
+## @file
+#  IntelPkg - General Intel MID code
+#
+#  Shared by all Intel Atom MID SoC generations. Contains the framebuffer
+#  display setup (GOP and framebuffer serial console) and their associated PCDs.
+#
+#  Copyright (c) 2026, CloverTrailPkg contributors
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = IntelPkg
+  PACKAGE_GUID                   = 7D625A1C-3B4E-4C5D-9F0E-A1B2C3D4E5F6
+  PACKAGE_VERSION                = 0.1
+
+[Includes]
+  Include
+
+[Guids]
+  gIntelMidTokenSpaceGuid = { 0x8b0dd0b1, 0x2f24, 0x4a3c, { 0x9e, 0x11, 0x64, 0x2f, 0x77, 0x0a, 0x35, 0x21 } }
+
+[PcdsFixedAtBuild]
+  ## Fixed framebuffer used both for GOP and for the framebuffer "serial" log.
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBase|0x3F000000|UINT64|0x00000010
+  # Visible panel width in pixels. The scanout stride may be wider than the
+  # visible area, so it is a separate PCD below.
+  gIntelMidTokenSpaceGuid.PcdFrameBufferWidth|540|UINT32|0x00000011
+  # Scanline stride in PIXELS (must match hardware display pipe configuration).
+  gIntelMidTokenSpaceGuid.PcdFrameBufferStride|544|UINT32|0x00000028
+  gIntelMidTokenSpaceGuid.PcdFrameBufferHeight|960|UINT32|0x00000012
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp|4|UINT32|0x00000013
+
+  ## Framebuffer console log window (text is drawn top-left downwards).
+  gIntelMidTokenSpaceGuid.PcdFrameBufferLogFgColor|0x00FFFFFF|UINT32|0x00000014
+  gIntelMidTokenSpaceGuid.PcdFrameBufferLogBgColor|0x00000000|UINT32|0x00000015
+
+  ## Base address the primary bootloader jumps to (start of our binary image).
+  gIntelMidTokenSpaceGuid.PcdFdBaseAddress|0x01101000|UINT32|0x00000001
+  ## Total size of the produced flash image.
+  gIntelMidTokenSpaceGuid.PcdFdSize|0x00200000|UINT32|0x00000002
+
+  ## Temporary RAM (stack + heap) used by SEC before permanent memory is installed.
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000|UINT32|0x00000003
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize|0x00040000|UINT32|0x00000004
+
+  ## Base of the permanent memory window handed to the PEI Core. Placed above
+  #  the firmware image and the SEC/PEI temporary RAM yet below the reserved
+  #  hole; not part of the SFI memory map because it is a firmware placement
+  #  decision, not a board property.
+  gIntelMidTokenSpaceGuid.PcdPeiMemoryBase|0x02100000|UINT32|0x00000005
+
+  ## Legacy low RAM reported as system memory so the OS AP startup trampoline
+  #  has a usable real-mode window below 1 MiB (0x00000000-0x000FFFFF). The
+  #  IVT/BDA pages and the VGA/option-ROM/EBDA window inside it are carved out
+  #  with PcdLegacyReserved* / PcdLegacyTop*.
+  gIntelMidTokenSpaceGuid.PcdLegacyMemoryBase|0x00000000|UINT32|0x00000006
+  gIntelMidTokenSpaceGuid.PcdLegacyMemorySize|0x00100000|UINT32|0x00000007
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedBase|0x00000000|UINT32|0x00000008
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedSize|0x00004000|UINT32|0x00000009
+  gIntelMidTokenSpaceGuid.PcdLegacyTopBase|0x000A0000|UINT32|0x0000000A
+  gIntelMidTokenSpaceGuid.PcdLegacyTopSize|0x00060000|UINT32|0x0000000B
+
+  ## Shared framebuffer console-state page (one 4 KiB page, reserved so no
+  #  phase can allocate over the SEC/PEI/DXE/BDS serial-log cursor state).
+  gIntelMidTokenSpaceGuid.PcdConsoleStateBase|0x3EEFD000|UINT32|0x0000000C
+
+  ## SMBIOS System Information (Type 1). The device package (e.g.
+  #  Platforms/ducatiPkg/ducatiPkg.dsc) overrides these with the real device
+  #  identity; the generically-shared values here are the defaults.
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemManufacturer|"Not Specified"|VOID*|0x0000002D
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemModel|"Not Specified"|VOID*|0x0000002E
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailModel|"Not Specified"|VOID*|0x0000002F
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailSku|"Not Specified"|VOID*|0x00000030
+  ## SMBIOS Baseboard (Type 2) product.
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemBoardModel|"Not Specified"|VOID*|0x00000031
+  ## SMBIOS Processor (Type 4). The SoC generation package (e.g.
+  #  CloverviewPkg.dsc.inc) overrides these.
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Not Specified"|VOID*|0x00000032
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"Not Specified"|VOID*|0x00000033
+  ## SMBIOS Type 4 external/max clock in MHz (for ProcessorId/family display).
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz|0|UINT16|0x00000034

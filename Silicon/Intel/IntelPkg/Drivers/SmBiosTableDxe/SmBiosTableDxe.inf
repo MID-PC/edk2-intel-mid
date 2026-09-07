@@ -1,0 +1,60 @@
+## @file
+#  SMBIOS table platform driver for Intel MID platforms.
+#
+#  Publishes SMBIOS records (Type 0/1/2/3/4/16/17/19) through the SMBIOS
+#  protocol produced by MdeModulePkg/Universal/SmbiosDxe. Physical device
+#  identity comes from PcdSmbiosSystem* (set by the device DSC), CPU identity
+#  from the generation package PCDs, and the memory topology from the EFI
+#  memory map.
+#
+#  Copyright (c) 2026, CloverTrailPkg contributors
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SmBiosTableDxe
+  FILE_GUID                      = 6c3e2114-e95e-4a1b-a2df-04d45e388337
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = SmBiosTableDxeEntry
+
+[Sources]
+  SmBiosTable.c
+  TableDefinitions.c
+  SmBiosTable.h
+
+[Packages]
+  Silicon/Intel/IntelPkg/IntelPkg.dec
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  MemoryAllocationLib
+  PcdLib
+  PrintLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiSmbiosProtocolGuid          ## CONSUMES
+
+[FixedPcd]
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemManufacturer
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemModel
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailModel
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailSku
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemBoardModel
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz
+  gIntelMidTokenSpaceGuid.PcdFdSize
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
+  gEfiMdePkgTokenSpaceGuid.PcdFSBClock
+
+[Depex]
+  gEfiSmbiosProtocolGuid
