@@ -186,29 +186,6 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
 
 [PcdsFixedAtBuild]
-  #
-  # Windows' bootia32.efi changes memory attributes through the CPU arch
-  # protocol / DXE services. CpuDxe implements that by walking the page tables
-  # and asserts in GetPageTableEntry() (CpuPageTable.c:336) whenever the
-  # machine type is IA32 but PAE paging is not actually enabled. DxeIpl builds
-  # the IA32 PAE tables (and enables paging + XD) when IsEnableNonExecNeeded()
-  # returns TRUE, which it does as soon as any NX PCD is set AND the XD bit is
-  # actually available. The Cloverview platform PEIM clears IA32_MISC_ENABLE[34]
-  # (XD-disable) early, mirroring Linux' verify_cpu.S, so XD is real on
-  # Cloverview parts and DxeIpl builds the PAE+NX tables correctly before the
-  # hand-off.
-  #
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSetNxForStack|TRUE
-  #
-  # DXE memory protection: map non-Code memory types non-executable.
-  # 0x7FD5 = all memory types except the Code types (Loader/BootServices/
-  # Runtime-ServicesCode), the documented "all except Code" policy. This also
-  # keeps IsEnableNonExecNeeded() -> ToBuildPageTable() TRUE so the PAE+NX
-  # page tables are always built.
-  #
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeNxMemoryProtectionPolicy|0x0000000000007FD5
-  gEfiMdeModulePkgTokenSpaceGuid.PcdImageProtectionPolicy|0x00000003
-
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength|1000000
   gEfiMdePkgTokenSpaceGuid.PcdMaximumAsciiStringLength|1000000
   gEfiMdePkgTokenSpaceGuid.PcdMaximumLinkedListLength|1000000
@@ -242,6 +219,30 @@
   gEfiMdePkgTokenSpaceGuid.PcdSpinLockTimeout|10000000
 
   gEfiShellPkgTokenSpaceGuid.PcdShellLibAutoInitialize|FALSE
+
+#
+# IA32-only NX profile, kept explicit and separate so that a future X64
+# platform can add a [PcdsFixedAtBuild.X64] section with its own policy
+# without touching the IA32 values.
+#
+[PcdsFixedAtBuild.IA32]
+  #
+  # NX profile mirrors IA32 OVMF (OvmfPkgIa32.dsc on stable/202508): the
+  # per-memory-type NX sweep and NX-on-stack are left off for 32-bit because
+  # they are optional (Windows enables its own NX/DEP when it loads) and are
+  # what generated the CpuDxe "PageTable is 0!" debug spam on Cloverview when
+  # the DxeIpl page tables were not resident. Only image protection stays on
+  # (PcdImageProtectionPolicy BIT1 = images from firmware volume, the EDK2
+  # stock default). Note that upstream OVMF relies on the DEC defaults; we set
+  # the same values explicitly. Because PcdImageProtectionPolicy is nonzero and
+  # the XD bit is available (the Cloverview PlatformPeim clears
+  # IA32_MISC_ENABLE[34] XD-disable, mirroring Linux' verify_cpu.S),
+  # IsEnableNonExecNeeded() still returns TRUE and DxeIpl still builds the IA32
+  # PAE+NX tables and enables paging before the hand-off, same as OVMF IA32.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetNxForStack|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeNxMemoryProtectionPolicy|0x0000000000000000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdImageProtectionPolicy|0x00000002
 
 [PcdsPatchableInModule]
   #
