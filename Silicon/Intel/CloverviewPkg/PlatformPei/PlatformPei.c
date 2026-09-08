@@ -270,7 +270,7 @@ EnableExecuteDisable (
   if ((RegEdx & BIT9) != 0) {                       // have full leaf 1
     Family = (RegEax >> 8) & 0xF;                   // bits 11:8
     if (Family == 6) {
-      Model = ((RegEax >> 12) & 0xF) << 4 |         // extended model, bits 15:12
+      Model = ((RegEax >> 16) & 0xF) << 4 |         // extended model, bits 19:16
               ((RegEax >> 4) & 0xF);                //          model, bits 7:4
     }
 
