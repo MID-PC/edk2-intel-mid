@@ -71,6 +71,20 @@
   !error "SOC_VARIANT must be set to SOC_VARIANT_Z2520, SOC_VARIANT_Z2560 or SOC_VARIANT_Z2580"
 !endif
 
+[LibraryClasses.common.DXE_RUNTIME_DRIVER]
+  #
+  # Real reset/shutdown. The shared IntelPkg.dsc.inc maps ResetSystemLib to
+  # the BaseResetSystemLibNull no-op for every module; for runtime drivers the
+  # Null lib means gRT->ResetSystem returns without doing anything, so Windows
+  # "Shutdown" (Fast Startup writes the hiberfile, then the OS issues
+  # EfiResetShutdown) never powers the SoC off and the next boot "restores
+  # from the previous location". ScuResetSystemLib implements the Cloverview
+  # SCU IPC reset plus the real PMU S5 power-off (pm_cmd = S5_VALUE), so
+  # ResetSystemRuntimeDxe - the only runtime driver consuming ResetSystemLib -
+  # behaves correctly. Affects no other module.
+  #
+  ResetSystemLib|Silicon/Intel/CloverviewPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
+
 ################################################################################
 #
 # Components - the Cloverview SoC drivers. Placement/dispatch order lives in

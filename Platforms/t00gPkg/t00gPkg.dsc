@@ -93,20 +93,6 @@
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailSku|"A600CG"
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemBoardModel|"A600CG"
 
-[LibraryClasses.common.DXE_RUNTIME_DRIVER]
-  #
-  # Real reset/shutdown. The shared IntelPkg.dsc.inc maps ResetSystemLib to
-  # the BaseResetSystemLibNull no-op for every module; for runtime drivers the
-  # Null lib means gRT->ResetSystem returns without doing anything, so Windows
-  # "Shutdown" (Fast Startup writes the hiberfile, then the OS issues
-  # EfiResetShutdown) never powers the SoC off and the next boot "restores
-  # from the previous location". ScuResetSystemLib implements the Cloverview
-  # SCU IPC reset plus the real PMU S5 power-off (pm_cmd = S5_VALUE), so
-  # ResetSystemRuntimeDxe - the only runtime driver consuming ResetSystemLib -
-  # behaves correctly. Affects no other module.
-  #
-  ResetSystemLib|Silicon/Intel/CloverviewPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
-
 [PcdsPatchableInModule]
   gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution|720
   gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|1280
