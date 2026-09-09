@@ -38,15 +38,18 @@
     - All SIX \_SB.I2Cn (INT33B1) Designware I2C controllers declared (buses
       0 through 5 at 0xFF138000 + bus * 0x1000). GSIs confirmed against the
       board's own Linux IRQ map (interrupts.txt): I2C0 = 0x0A, I2C1 = 0x39,
-      I2C2 = 0x0C, I2C3 = 0x2C, I2C4 = 0x2D, I2C5 = 0x2E; _UID = bus + 1.
-_CRS is the PIO (RBUF) form only. The Z2760 FixedDMA (SBUF) descriptors
-       on GDMS (INTL0005) were tried for I2C0/1/2/4/5 and removed: the HAL
-       extension baked into this OS at first boot has no satisfiable GDMS DMA
-       engine, so handing inteli2c FixedDMA channels fails (Code 10) - Linux
-       likewise disables the Clovertrail DMA data path and runs these engines
-       in PIO. STEP still drives _HRV (= One, B0) for INF revision matching,
-       but no I2C or UART _CRS carries DMA descriptors.
-      Children: \_SB.I2C1.CODC (SPBT0001, CS42L73 codec @ 0x4A), \_SB.I2C2
+I2C2 = 0x0C, I2C3 = 0x2C, I2C4 = 0x2D, I2C5 = 0x2E; _UID = bus + 1.
+    - Like SPI and UART, I2C controllers now take the Z2760 SBUF (FixedDMA)
+      arm: I2C0/1/2/4/5 carry GDMS request lines (I2C3 is the one Z2760
+      controller with no DMA even on C0). The earlier "no satisfiable GDMS
+      DMA engine" Code 10 was observed WITHOUT the CSRT request-line map;
+      with CSRT published and the GDMS/UDMS HAL extensions bound, all three
+      serial families get real DMA. STEP drives _HRV (= One, B0); controllers
+      with a slave on them (I2C1 CODC, I2C2 CHGR/FGAS/TOUC, I2C5 ACC0) keep
+      their PIO fallback for STEP == 0.
+      Children: \_SB.I2C1.CODC (INTCFFD = "I2C CODEC Device Driver"
+              ssti2c.inf, the CS42L73 audio codec @ 0x4A with codec-int
+              GpioInt on GPO0 pin 0x20, docked via AUD1's _DEP), \_SB.I2C2
       CHGR/FGAS (SpbTestTool, smb347 @ 0x6A / max17047 @ 0x36) + TOUC (MSHW1003,
       FT6236 @ 0x38), \_SB.I2C5.ACC0 (BMA250E, bosch @ 0x18). Buses 0, 3 and 4
       are bare controllers (no subdevices yet; bus 4 holds the cameras on stock
@@ -55,16 +58,47 @@ _CRS is the PIO (RBUF) form only. The Z2760 FixedDMA (SBUF) descriptors
        for the Broadcom BCM4330 at 0xFFA48000 (PCI 00:04.1 [8086:08FA], mmc2),
        GSI 0x2A, _UID 0x03 (unique per _HID, not colliding with SDC0's 0x02),
        _DEP on PEP + GPO1. \_SB.SDC1._PS0 asserts GPO1.WLEN to power up the
-       WLAN chip; child \_SB.SDC1.BRCM (_ADR 1, _RMV = 0) is minimal (no
-       GpioInt, no _PRW). bcmdhd63.inf (Drivers/WIFI) binds function 1 via
+       WLAN chip; child \_SB.SDC1.BRCM (_ADR 1, _RMV = 0) has the WLAN OOB
+       host-interrupt GpioInt (\\_SB.GPO0 pin 0x02, "WLAN-interrupt") plus
+       _PRW/_S0W/_S4W and WLEN power methods, matching the Z2760 reference.
+       bcmdhd63.inf (Drivers/WIFI) binds function 1 via
        SD\VID_02D0&PID_4330&FN_1.
 
   Devices REMOVED in this revision (each carried _DEP on \_SB.PEP, directly
   or through a GPIO bank, i.e. they actually require the PEP to start):
-    AUD1 (SST audio engine), EMM0 (eMMC). They are dropped for now so the PEP
-    itself can be brought up and validated first; their MMIO stays covered by
-    SYSR so nothing else grabs it, and they can be layered back one group at a
-    time.
+    EMM0 (eMMC). Dropped for now so the PEP itself can be brought up and
+    validated first; its MMIO stays covered by SYSR so nothing else grabs it,
+    and it can be layered back later. AUD1 (SST audio engine) was RE-ADDED in
+    this revision - see the AUD1 block below - since the PEP is now known-good
+    on Windows (the reservation windows for the old MST/ASD do not overlap it).
+
+  Audio (\_SB.AUD1 + \_SB.I2C1.CODC)
+  -----------------------------------
+  The A502CG has the Intel SST (Smart Sound Technology) low-power audio
+  engine plus a Cirrus Logic CS42L73 codec on I2C bus 1 @ 0x4A (stock SFI
+  DEVS "cs42l73 @ 0x4A", dmesg-stock "Cirrus Logic CS42L73, Revision: B0").
+  SST is NOT HD Audio: the PCM path is DSP/SRAM (the "sst" MEG/AIO) driven
+  by the Windows isst.sys (isstrtc.inf/isst.inf), and the codec control is
+  I2C (ssti2c.sys, "I2C CODEC Device Driver", binds ACPI\INTCFFD), with the
+  codec interrupt on GPO0 pin 0x20 (SFI GPIO "gpio_codec_int" = pin 32).
+  TWO nodes are declared:
+   - \_SB.AUD1 _HID "INT33B3" (SST engine): the Cirrus isst.inf binds
+     ACPI\INT33B3 (ships + loads cirrus_fw_sst.bin); the Realtek isstrtc.inf
+     binds ACPI\INTC33B3 and the reference DSDT's Realtek board used that, so
+     we use INT33B3 to select the Cirrus lane for the CS42L73). MMIO/GSI from
+     this board's own
+     iomem + interrupts: the engine owns 0xFFAE8000/0x1000 (BAR1) and
+     0xFFFF1000/0x2000 (BAR2) plus the big DSP SRAM 0xFFB00000/0x80000
+     (BAR3) and 0xFFB80000/0x80000 (BAR4); IRQ 0x1E is the driver's own
+     "intel_sst_driver" (30); the i2s ssp ports are GSI 0x41/0x42 (65/66),
+     matching interrupts.txt "i2s ssp". The 0xFFA22000/0x400 BAR0 window is
+     the SST shim/PCP and is included as the reference does.
+   - \_SB.I2C1.CODC becomes the real codec (was SPBT0001 SpbTestTool
+     placeholder): _HID "INTCFFD" (+_CID) so ssti2c.sys binds, I2cSerialBus
+     0x4A on bus 1, and the codec-int GpioInt+GpioIo on GPO0 pin 0x20 like
+     the reference RTEK node (which used pin 0x33; this board wires the
+     codec int to AON pin 32). AUD1._DEP lists { PEP, I2C1.CODC } exactly
+     like the reference AUD1._DEP { PEP, I2C5.RTEK }.
 
   GPIO (\_SB.GPO0, \_SB.GPO1) and button array (\_SB.TBAD)
   --------------------------------------------------------
@@ -125,7 +159,10 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
     Name (\STEP, One)
     Name (\USBS, 0x00)
     Name (\UOFD, 0x00)
-    // (SPI FixedDMA/DMAS experiment reverted - see the SPI1/SPI2 comment.)
+    // SPD0/SPI1/SPI2: the earlier SPI FixedDMA experiment was reverted because
+    // the GDMS HAL extension had no satisfiable DMA engine without the CSRT;
+    // with the board-corrected CSRT installed those request lines are now
+    // serviced again (see the SPI1/SPI2 node comment).
 
     Scope (\_PR)
     {
@@ -188,7 +225,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 // the GPU can claim it if Windows assigns a BAR there; the firmware
                 // GOP keeps using it until an OS display driver takes over.
                 // 0x40000000+0x10000000 (GPU) is claimed by \_SB.PCI0.GFX0 instead
-                Memory32Fixed (ReadWrite, 0xDF800000, 0x00600000) // 0xDFE00000+ produced by PCI0 for GFX0
+                Memory32Fixed (ReadWrite, 0xDFC00000, 0x00200000) // unclaimed gap 0xDFC00000-0xDFDFFFFF
                 Memory32Fixed (ReadWrite, 0xFA000000, 0x04000000)
                 Memory32Fixed (ReadWrite, 0xFEC00000, 0x00001000) // IOAPIC 0
                 Memory32Fixed (ReadWrite, 0xFEC10000, 0x00001000) // IOAPIC 1
@@ -264,6 +301,104 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         }
 
         //
+        // Cloverview Low Power Audio Engine (Intel SST, NOT HD Audio).
+        // RE-ADDED this revision: PEP is now known-good on Windows, so the
+        // audio path the stock firmware ships can come back. The engine is the
+        // PCI 00:01.3 [8086:08E7] "Multimedia audio controller" the board's
+        // Linux boots (iomem.txt / dmesg-7.2.2) map with intel_sst_driver on
+        // these BARs:
+        //     BAR0 0xFFA22000/0x400   BAR1 0xFFAE8000/0x1000
+        //     BAR2 0xFFFF1000/0x2000  BAR3 0xFFB00000/0x80000
+        //     BAR4 0xFFB80000/0x80000
+        // and its own interrupt line is GSI 30 (0x1E) - interrupts.txt
+        // "intel_sst_driver"; interrupts.txt also shows the two I2S serial
+        // ports (the codec PCM / SSP lanes) on GSI 65/66 = 0x41/0x42.
+        // The codec is a Cirrus Logic CS42L73 on I2C bus 1 @ 0x4A (dmesg-stock
+        // "cs42l73 1-004a"), control plane over I2C, so the codec node is a
+        // child of \_SB.I2C1 (CODC below) and AUD1._DEP lists it like the
+        // reference AUD1._DEP { PEP, I2C5.RTEK }.
+        //
+        // Binding: _HID "INT33B3" matches isst.inf's IntelSSTAudio entry
+        // (the Cirrus lane, ships + loads cirrus_fw_sst.bin); the Realtek
+        // isstrtc.inf uses "INTC33B3". The reference DSDT used INTC33B3 (it
+        // was a Realtek RTEK board); we use the Cirrus ID so isst.inf wins.
+        // The codec _HID "INTCFFD" matches ssti2c.inf ("I2C CODEC Device
+        // Driver", the Cirrus codec function driver from the AudioCirrus
+        // tree). Codec interrupt: SFI GPIO "gpio_codec_int" = AON/CLV_GPIO_0
+        // pin 32 = 0x20 (not the reference's 0x33 which was a W511 board).
+        //
+        // _CRS mirrors the reference AUD1 layout: two register windows, the
+        // engine interrupt, the codec GpioInt, then the mailbox + the two DSP
+        // SRAM windows, then the i2s ssp port interrupts - addresses/GSIs are
+        // this board's own. Resources overlap the PNP0C02 SYSR reservation
+        // below, which "does not conflict" (see SDC0's note) - same story as
+        // the removed devices whose MMIO stayed inside the claims.
+        //
+        Device (AUD1)
+        {
+            Name (_ADR, Zero)
+            Name (_HID, "INT33B3")
+            Name (_CID, "INT33B3")
+            Name (_DDN, "Cloverview Low Power Audio Engine")
+            Name (_UID, 0x02)
+            Name (_DEP, Package (0x03)
+            {
+                \_SB.PEP,
+                \_SB.I2C1.CODC,
+                \_SB.GPO0
+            })
+            Method (_CRS, 0, NotSerialized)
+            {
+                Name (RBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFFA22000,         // BAR0: SST shim / registers
+                        0x00000400,
+                        )
+                    Memory32Fixed (ReadWrite,
+                        0xFFAE8000,         // BAR1
+                        0x00001000,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x0000001E,         // GSI 30 = intel_sst_driver
+                    }
+                    GpioInt (Edge, ActiveHigh, ExclusiveAndWake, PullNone, 0xEA60,
+                        "\\_SB.GPO0", 0x00, ResourceConsumer, ,
+                        )
+                        {   // gpio_codec_int (AON pin 32)
+                            0x00000020
+                        }
+                    Memory32Fixed (ReadWrite,
+                        0xFFFF1000,         // BAR2: mailbox / shared SRAM
+                        0x00002000,
+                        )
+                    Memory32Fixed (ReadWrite,
+                        0xFFB00000,         // BAR3: DSP SRAM
+                        0x00080000,
+                        )
+                    Memory32Fixed (ReadWrite,
+                        0xFFB80000,         // BAR4: DSP SRAM
+                        0x00080000,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x00000041,         // i2s ssp 0 (GSI 65)
+                    }
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x00000042,         // i2s ssp 1 (GSI 66)
+                    }
+                })
+                Return (RBUF)
+            }
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+        }
+
+        //
         // PCI root bridge + the two REAL PCI devices on this SoC.
         //
         // iomem.txt shows exactly two genuinely PCI-addressable functions on
@@ -273,18 +408,15 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         //   0000:00:02.0 - PowerVR SGX544MP GPU, owers 40000000-4fffffff,
         //                  dfec0000-dfefffff and dff00000-dfffffff (pvrsrvkm)
         //   0000:00:03.0 - Intel ISP 2300 camera, owns df800000-dfbfffff
-        // Exposing these under a PNP0A03/08 root lets Windows' pci.sys
-        // enumerate them by PCI VID/DID, matching Graphics/49889.inf
+        // Exposing these under a PNP0A03 root (matching the stock Z2760 PCI0;
+        // no PNP0A08, no _OSC) lets Windows' pci.sys enumerate them by PCI
+        // VID/DID, matching Graphics/49889.inf
         // (PCI\VEN_8086&DEV_08C7..) and Camera/camera.inf
         // (PCI\VEN_8086&DEV_08D0). The stock Z2760 DSDT and the working DSDT2
         // declare the GPU the same way (_ADR 0x00020000 under PCI0).
         //
         // Config space is reached through the legacy CF8/CFC ports - the same
         // path the firmware PCICFG probe uses successfully on this board.
-        // MCFG is intentionally NOT published: iomem.txt maps 0x3EF00000 as
-        // a single-bus MMCONFIG, and an earlier experiment publishing it over
-        // bus 0-255 reset the board exactly when setup.exe's full device-stack
-        // phase made pci.sys issue MMCONFIG reads. CF8/CFC avoids that.
         //
         // The ISP's _DEP on \_SB.PEP and _PR3 to \_SB.PEP.ID3C mirror the
         // stock Z2760 ISP0; GFX0 additionally matches the existing DSDT2
@@ -294,8 +426,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         //
         Device (PCI0)
         {
-            Name (_HID, EisaId ("PNP0A08"))
-            Name (_CID, EisaId ("PNP0A03"))
+            Name (_HID, EisaId ("PNP0A03"))
             Name (_ADR, Zero)
             Name (_BBN, Zero)
             Name (_UID, Zero)
@@ -348,23 +479,6 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                     NonCacheable, ReadWrite,
                     0x00000000, 0xDFE00000, 0xDFFFFFFF, 0x00000000, 0x00200000,,, )
             })
-            //
-            // Give the OS control over PCIe features (native hotplug/PME/AER),
-            // matching the native U-Boot southcluster.asl implementation.
-            //
-            Method (_OSC, 4, NotSerialized)
-            {
-                If (LEqual (Arg0, ToUUID ("33db4d5b-1ff7-401c-9657-7441c03dd766")))
-                {
-                    Return (Arg3)
-                }
-                Else
-                {
-                    CreateDWordField (Arg3, 0, CDW1)
-                    Or (CDW1, 4, CDW1)
-                    Return (Arg3)
-                }
-            }
             Method (_STA, 0, NotSerialized)
             {
                 Return (0x0F)
@@ -374,6 +488,45 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
             {
                 Name (_ADR, 0x00020000)
                 Name (_DDN, "PowerVR SGX544MP Graphics")
+                //
+                // Order the GPU start behind the PEP (clvpep.sys), mirroring the
+                // stock Z2760 GFX0._DEP. On a driver-less install the PEP may be
+                // the thing that keeps the bootloader-initialized DSI panel alive
+                // through Setup's PNP/graphics phase, so GFX0 must not be probed
+                // before it. (PCI0 already waits on \_SB.PEP; this also covers
+                // the device itself.)
+                //
+                Name (_DEP, Package (0x01)
+                {
+                    \_SB.PEP
+                })
+                //
+                // PCI config-space BAR access, ported from the stock Z2760 GFX0:
+                // these OperationRegions read (and _PS0 rewrites) the GPU's own
+                // config space. They do NOT claim resources - pci.sys takes the
+                // real BAR decode from config space and PCI0._CRS provides the
+                // producer windows (0x40000000-0x4FFFFFFF aperture, 0xDFE00000+
+                // for the control BARs). The SSID write matches the subsystem ID
+                // this board's driver package knows (Graphics/49889.inf entries
+                // PCI\VEN_8086&DEV_08C7..08CF&SUBSYS_074B1025).
+                //
+                OperationRegion (BAR0, PCI_Config, 0x10, 0x04)
+                OperationRegion (BAR1, PCI_Config, 0x14, 0x04)
+                OperationRegion (BAR2, PCI_Config, 0x18, 0x04)
+                OperationRegion (BAR3, PCI_Config, 0x1C, 0x04)
+                OperationRegion (DEV2, PCI_Config, Zero, 0xFF)
+                Field (DEV2, DWordAcc, NoLock, Preserve)
+                {
+                    Offset (0x2C),
+                    SSID,   32
+                }
+                Method (_PS0, 0, NotSerialized)
+                {
+                    SSID = 0x074B1025
+                }
+                Method (_PS3, 0, NotSerialized)
+                {
+                }
                 Method (_STA, 0, NotSerialized)
                 {
                     Return (0x0F)
@@ -472,8 +625,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         //
         // GPIO controllers (Langwell/Cloverview banks), ported from the
         // working DSDT2 (known-good GPIO + WLAN state for this board).
-        //   GPO0 = AON  bank, 0xFF119000, _UID 1, _HRV 0
-        //   GPO1 = CORE bank, 0xFF13F000, _UID 2, _HRV 0
+        //   GPO0 = AON  bank, 0xFF119000, _UID 1, _HRV 0 (REV_0000 = A0/B0 AON)
+        //   GPO1 = CORE bank, 0xFF13F000, _UID 2, _HRV 1 (REV_0001 = A0/B0 CORE)
         // _DEP on \_SB.PEP (not IPC): PEP gates the GPIO power island and
         // must attach before the controller can start. Both interrupts are
         // ActiveLow/Shared as the stock CLV kernel programs every pin.
@@ -498,7 +651,25 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
             Name (_CID, "INT33B2")
             Name (_DDN, "Cloverview AON General Purpose Input/Output (GPIO) controller")
             Name (_UID, One)
-            Name (_HRV, Zero)
+            //
+            // _HRV sets the GpioClv driver variant (REV_0000 = A0/B0 AON; this
+            // board is B0 STEP=1, matching the stock Z2760 GPO0 _HRV method).
+            //
+            Method (_HRV, 0, NotSerialized)
+            {
+                If (((STEP == One) || (STEP == Zero)))
+                {
+                    Return (Zero)
+                }
+                ElseIf ((STEP == 0x02))
+                {
+                    Return (0x02)
+                }
+                Else
+                {
+                    Return (0x04)
+                }
+            }
             Name (_DEP, Package (0x01) { \_SB.PEP })
             Method (_CRS, 0, NotSerialized)
             {
@@ -623,7 +794,31 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
             Name (_CID, "INT33B2")
             Name (_DDN, "Cloverview Corewell Powered General Purpose Input/Output (GPIO) controller")
             Name (_UID, 0x02)
-            Name (_HRV, Zero)
+            //
+            // _HRV selects the GpioClv driver variant. The INF has distinct
+            // entries for AON vs CORE banks: REV_0000 = A0/B0 AON, REV_0001 =
+            // A0/B0 CORE (this board is B0, STEP=1). Zero would bind BOTH banks
+            // to the AON variant, so GpioClv would resolve the WLEN write to pin
+            // 0x4A (CORE offset 74 = global 170, the WLAN-enable pad) against the
+            // wrong bank's layout and drive the wrong physical pad - WLAN_EN
+            // never asserted, radio stays off. Matches the stock Z2760 GPO1 _HRV.
+            // Use a method so it follows STEP like the reference does.
+            //
+            Method (_HRV, 0, NotSerialized)
+            {
+                If (((STEP == One) || (STEP == Zero)))
+                {
+                    Return (One)
+                }
+                ElseIf ((STEP == 0x02))
+                {
+                    Return (0x03)
+                }
+                Else
+                {
+                    Return (0x04)
+                }
+            }
             Name (_DEP, Package (0x01) { \_SB.PEP })
             Method (_CRS, 0, NotSerialized)
             {
@@ -673,11 +868,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // LpioDMA.dll (halextintclpiodma.inf, "Intel(R) Serial IO DMA Control-
         // ler") and ACPI\INTL0004 -> HalExtIntcUartDMA.dll (halextintcuartdma.
         // inf, "Intel(R) UART DMA" - both DLLs present in installed System32).
-        // Declaring them provides the FixedDMA request lines used by SPI1/SPI2
-        // (and by the Z2760 I2C/UART nodes) with a real provider, matching the
-        // ship BIOS exactly. STEP=One -> GDMS returns RBUF (GSI 0x71 variant
-        // is only for STEP == 0x02). Resource templates verbatim from the
-        // Z2760 reference DSDT (2760-acpi/DSDT.dsl:4503-4550).
+        // Declaring them provides the FixedDMA request lines used by SPI1/SPI2,
+        // UART0-2 (UDMS) and I2C0/1/2/4/5 (GDMS) with a real provider, matching
+        // the ship BIOS exactly. STEP=One -> GDMS returns RBUF
+        // (GSI 0x71 variant is only for STEP == 0x02). Resource templates
+        // verbatim from the Z2760 reference DSDT (2760-acpi/DSDT.dsl:4503-4550).
         //
         Device (GDMS)
         {
@@ -746,16 +941,18 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // 0xFFA28100/irq 61, hsu_debug_port_p @ 0xFFA28180/irq 62, all
         // matching the Z2760 reference DSDT (2760-acpi/DSDT.dsl:280-459).
         // Windows binds ACPI\INT33BC with the in-box HSU UART stack
-        // (Uart16550pc.sys, SerCx-based) and uses PIO - FixedDMA was tried
-        // (channels 0-5 on UDMS, serviced by the "Intel(R) UART DMA"
-        // HalExtIntcUartDMA ext) but every UART failed to start with Code 10
-        // "The requested operation was unsuccessful". This matches the HSU
-        // DMA data path being unreliable on Clovertrail: mainline Linux
-        // deliberately disables it ("RX data is never delivered", 8250_mid.c
-        // clv_board) and falls back to PIO (dma_index 0/1/2 confirms our
-        // Z2760 channel numbers were right - the silicon DMA path itself is
-        // what is broken). No _DEP on the DMA controllers - SPI regression
-        // lesson (dependent devices stopped enumerating).
+        // (Uart16550pc.sys, SerCx-based). FixedDMA was tried once (channels
+        // 0-5 on UDMS, serviced by the "Intel(R) UART DMA" HalExtIntcUartDMA
+        // ext) but every UART failed to start with Code 10 - however that run
+        // predates the CSRT table, so HalExtIntcUartDMA had no request-line
+        // map to drive the channels and broke exactly like SPI did pre-CSRT.
+        // With the CSRT UDMS group now installed (base req line 0x0, 10 ch)
+        // the reference Z2760 descriptors are reinstated verbatim: URT0
+        // (0x0000,0x0000)+(0x0001,0x0001), URT1 (0x0002,0x0002)+(0x0003,0x0003),
+        // URT2 (0x0004,0x0004)+(0x0005,0x0005), all Width8bit (2760-acpi/
+        // DSDT.dsl:280-459), matching the 8250_mid.c dma_index 0/1/2 layout.
+        // No _DEP on the DMA controllers - SPI regression lesson (dependent
+        // devices stopped enumerating).
         //
         Device (URT0)
         {
@@ -773,6 +970,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                     {
                         0x0000003C,
                     }
+                    FixedDMA (0x0000, 0x0000, Width8bit, )
+                    FixedDMA (0x0001, 0x0001, Width8bit, )
                 })
                 Return (RBUF) /* \_SB_.URT0._CRS.RBUF */
             }
@@ -842,6 +1041,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                     {
                         0x0000003D,
                     }
+                    FixedDMA (0x0002, 0x0002, Width8bit, )
+                    FixedDMA (0x0003, 0x0003, Width8bit, )
                 })
                 Return (RBUF) /* \_SB_.URT1._CRS.RBUF */
             }
@@ -867,6 +1068,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                     {
                         0x0000003E,
                     }
+                    FixedDMA (0x0004, 0x0004, Width8bit, )
+                    FixedDMA (0x0005, 0x0005, Width8bit, )
                 })
                 Return (RBUF) /* \_SB_.URT2._CRS.RBUF */
             }
@@ -877,36 +1080,65 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         }
 
         //
-        // SPI controllers (DesignWare SSC) - PCI 00:00.2 (SPI1) and
-        // 00:02.4 (SPI2). Windows binds the SPB Framework "spi.sys"
-        // (SpbCx-based) on ACPI\INT33B0. Bases/GSIs follow the stock SFI
-        // this board: dw_spi0@0xFF135000/GSI 9 and dw_spi1@0xFF136000/GSI 38
-        // (dmesg-stock.txt, iomem.txt:44-47).
+        // SPI controllers (Intel MID SPI, synopsys-designware "dw_spi"). Board
+        // resources confirmed from Linux (iomem.txt / interrupts.txt): SPI1 =
+        // dw_spi0 @ 0xFF135000, GSI 9; SPI2 = dw_spi1 @ 0xFF136000, GSI 0x26.
+        // The MMIO/IRQ windows here are byte-identical to the Z2760 reference
+        // DSDT (2760-acpi/DSDT.dsl:184-278), which is exactly how the shipped
+        // Windows 8.1 firmware described them.
         //
-        // DMAS experiment (Z2760 FixedDMA SBUF, _DEP on GDMS) is REVERTED:
-        // enabling it made SPI1/SPI2 vanish from Device Manager entirely even
-        // though GDMS/UDMS started OK. The Z2760 numbers are retained in git
-        // history; do not re-add _DEP (the dependent devices stop enumerating)
-        // and only retry FixedDMA once the enumeration regression is diagnosed.
-        // SPI must stay on the known-good PIO RBUF path.
+        // The _CRS methods reproduce the reference's STEP switch: STEP == 0
+        // (A0 silicon) gets RBUF without DMA, everything else gets SBUF with
+        // FixedDMA descriptors. On this B0 board (STEP = One) the SBUF arm is
+        // always taken, so both controllers carry their real hardware DMA
+        // request lines. Those request lines (0x0010..0x0013) are serviced by
+        // the GDMS engine (ACPI\INTL0005 -> HalExtIntcLpioDMA "Intel(R) Serial
+        // IO DMA Controller"), whose 8 channels (CHA0..CHA7, request lines
+        // 0x10-0x1F) are published by the board-corrected CSRT table
+        // (GDMS GSI 0x31). This is the DMA sanity test: with the CSRT in
+        // place the LpioDMA extension should claim GDMS and hand real DMA to
+        // these two SPI clients.
         //
         Device (SPI1)
         {
+            Name (_ADR, Zero)
             Name (_HID, "INT33B0")
             Name (_CID, "INT33B0")
-            Name (_DDN, "Cloverview SPI Controller")
             Name (_UID, One)
             Method (_CRS, 0, NotSerialized)
             {
                 Name (RBUF, ResourceTemplate ()
                 {
-                    Memory32Fixed (ReadWrite, 0xFF135000, 0x00000400)
+                    Memory32Fixed (ReadWrite,
+                        0xFF135000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
                         0x00000009,
                     }
                 })
-                Return (RBUF) /* \_SB_.SPI1._CRS.RBUF */
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF135000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x00000009,
+                    }
+                    FixedDMA (0x0011, 0x0006, Width32bit, )
+                    FixedDMA (0x0010, 0x0007, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF) /* \_SB_.SPI1._CRS.RBUF */
+                }
+                Else
+                {
+                    Return (SBUF) /* \_SB_.SPI1._CRS.SBUF */
+                }
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -916,21 +1148,44 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
 
         Device (SPI2)
         {
+            Name (_ADR, Zero)
             Name (_HID, "INT33B0")
             Name (_CID, "INT33B0")
-            Name (_DDN, "Cloverview SPI Controller")
             Name (_UID, 0x02)
             Method (_CRS, 0, NotSerialized)
             {
                 Name (RBUF, ResourceTemplate ()
                 {
-                    Memory32Fixed (ReadWrite, 0xFF136000, 0x00000400)
+                    Memory32Fixed (ReadWrite,
+                        0xFF136000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
                         0x00000026,
                     }
                 })
-                Return (RBUF) /* \_SB_.SPI2._CRS.RBUF */
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF136000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x00000026,
+                    }
+                    FixedDMA (0x0013, 0x0004, Width32bit, )
+                    FixedDMA (0x0012, 0x0005, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF) /* \_SB_.SPI2._CRS.RBUF */
+                }
+                Else
+                {
+                    Return (SBUF) /* \_SB_.SPI2._CRS.SBUF */
+                }
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -1010,7 +1265,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         //  - _UID 0x03 (unique, not colliding with SDC0's 0x02)
         //  - _DEP on PEP + GPO1 (must wait for GPO1 region handler for WLEN)
         //  - _PS0 asserts GPO1.WLEN to power up the WLAN chip
-        //  - BRCM child is minimal (_ADR + _RMV only, no GpioInt, no _PRW)
+        //  - BRCM child carries the WLAN OOB host-interrupt GpioInt on
+        //    \\_SB.GPO0 pin 0x02 (WLAN-interrupt, the dongle's only event
+        //    path), plus _PRW/_S0W/_S4W and WLEN power methods. Matching the
+        //    Z2760 reference; without the GpioInt, bcmdhd63.sys has no SDIO
+        //    event/interrupt line and scans silently (WiFi "on", no networks).
         //
         Device (SDC1)
         {
@@ -1055,9 +1314,45 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
             Device (BRCM)
             {
                 Name (_ADR, One)
+                Name (_DEP, Package (0x01) { \_SB.GPO1 })
                 Method (_RMV, 0, NotSerialized)
                 {
                     Return (Zero)
+                }
+                Name (_PRW, Package (0x02) { Zero, Zero })
+                Name (_S4W, 0x02)
+                Name (_S0W, 0x02)
+                Method (_CRS, 0, NotSerialized)
+                {
+                    Name (RBUF, ResourceTemplate ()
+                    {
+                        GpioInt (Edge, ActiveHigh, ExclusiveAndWake, PullNone, 0x0000,
+                            "\\_SB.GPO0", 0x00, ResourceConsumer, ,
+                            )
+                            {
+                                0x0002
+                            }
+                    })
+                    Return (RBUF)
+                }
+                Method (_PS3, 0, NotSerialized)
+                {
+                    If ((\_SB.GPO1.AVBL == One))
+                    {
+                        \_SB.GPO1.WLEN = Zero
+                        \_SB.SDC1.PSTS = Zero
+                    }
+                }
+                Method (_PS0, 0, NotSerialized)
+                {
+                    If ((\_SB.SDC1.PSTS == Zero))
+                    {
+                        If ((\_SB.GPO1.AVBL == One))
+                        {
+                            \_SB.GPO1.WLEN = One
+                            \_SB.SDC1.PSTS = One
+                        }
+                    }
                 }
             }
         }
@@ -1069,7 +1364,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // empty on the A1-830 (the Z2760 reference hosts its Atmel touch
         // @ 0x5B here, this board moved it to I2C2). Modeled on the stock
         // W511 (Z2760) \_SB.I2C0: _UID = bus + 1 = 1, _HRV = STEP, _DEP on
-        // PEP + IPC. PIO only (FixedDMA removed - see the I2C1 DMA note).
+        // PEP + IPC. The _CRS reproduces the reference STEP switch: STEP == 0
+        // (A0 silicon) gets RBUF (PIO), everything else gets SBUF with the
+        // FixedDMA descriptors serviced by the GDMS engine (INTL0005 ->
+        // HalExtIntcLpioDMA) via the CSRT table. On this B0 board (STEP =
+        // One) the SBUF arm is taken, as with SPI1/SPI2 and URT0-2.
         //
         Device (I2C0)
         {
@@ -1106,7 +1405,27 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000000A,
                     }
                 })
-                Return (RBUF)
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF138000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x0000000A,
+                    }
+                    FixedDMA (0x0017, 0x0000, Width32bit, )
+                    FixedDMA (0x0016, 0x0001, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
+                }
             }
         }
 
@@ -1128,11 +1447,12 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // I2C2 = 0x0C); 0x39 matches BOTH the stock W511 table and the
         // "real PCI IRQ line of the function owning 0xFF139000" comment in
         // the earlier working port. Level ActiveHigh. _HRV returns STEP
-        // (= One -> REV_0001, B0). PIO only: the Z2760 SBUF branch (FixedDMA
-        // 0x0019,0x0006 / 0x0018,0x0007 on GDMS) was tried and removed - the
-        // GDMS HAL extension (HalExtIntcLpioDMA) is not baked into this OS
-        // install, so handing inteli2c unresolvable DMA channels yields Code
-        // 10. RBUF (PIO) is the stable form Linux also uses.
+        // (= One -> REV_0001, B0). The _CRS STEP switch mirrors the Z2760
+        // SBUF branch (FixedDMA 0x0019,0x0006 / 0x0018,0x0007 on GDMS,
+        // serviced by HalExtIntcLpioDMA via the CSRT table); STEP == 0 (A0)
+        // falls back to RBUF (PIO). Earlier Code 10 was observed without the
+        // CSRT (no request-line map) - retested now that GDMS channels are
+        // published, like SPI1/SPI2 and URT0-2.
         //
         // _DEP on PEP + IPC matches stock W511 now that both load normally;
         // the PEP is what un-gates the I2C power island for D0 entry. If the
@@ -1168,7 +1488,27 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x00000039,
                     }
                 })
-                Return (RBUF)
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF139000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x00000039,
+                    }
+                    FixedDMA (0x0019, 0x0006, Width32bit, )
+                    FixedDMA (0x0018, 0x0007, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
+                }
             }
 
             Name (_DEP, Package (0x02)
@@ -1179,17 +1519,28 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
 
             //
             // Cirrus Logic CS42L73 audio codec @ 0x4A (stock SFI DEVS "cs42l73
-            // @ 0x4A" on bus 1), kept as the SpbTestTool target (_HID SPBT0001
-            // binds the WDK 8.1 SpbTestTool sample driver) so the bus can be
-            // exercised from userspace without a real function driver. The
-            // address is corrected to the board's real CS42L73 (the earlier
-            // RT5647 @ 0x1B from the EFI-era test was a different test board
-            // revision; stock Android enumerates cs42l73 at 0x4A here). 100 kHz.
+            // @ 0x4A" on bus 1). REVERSED from the SpbTestTool placeholder: it
+            // is the REAL codec now, _HID "INTCFFD" so ssti2c.inf's "I2C CODEC
+            // Device Driver" binds (the stock SFI DEVS table had "cs42l73" but
+            // no ACPI node for the real codec; the reference 2760 DSDT's codec
+            // RTEK showed the pattern: GpioInt + GpioIo on the codec-int GPIO,
+            // then the I2cSerialBusV2 connection). 100 kHz control bus.
+            //
+            // The codec interrupt is board "gpio_codec_int" = AON/CLV_GPIO_0
+            // pin 32 = 0x20 (SFI GPIO, dmesg-stock "pin = 32"), NOT the
+            // reference board's 0x33. Both AUD1 (above) and CODC declare it,
+            // mirroring the reference where AUD1 and RTEK shared the pin.
+            // _DEP on GPO0 so the GPIO controller is up before _CRS resolves.
             //
             Device (CODC)
             {
-                Name (_HID, "SPBT0001")
-                Name (_UID, One)
+                Name (_HID, "INTCFFD")
+                Name (_CID, "INTCFFD")
+                Name (_UID, 0x02)
+                Name (_DEP, Package (0x01)
+                {
+                    \_SB.GPO0
+                })
                 Method (_STA, 0, NotSerialized)
                 {
                     Return (0x0F)
@@ -1199,6 +1550,18 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 {
                     Name (RBUF, ResourceTemplate ()
                     {
+                        GpioInt (Edge, ActiveBoth, SharedAndWake, PullNone, 0x0000,
+                            "\\_SB.GPO0", 0x00, ResourceConsumer, ,
+                            )
+                            {   // gpio_codec_int (AON pin 32)
+                                0x00000020
+                            }
+                        GpioIo (Shared, PullDefault, 0x0000, 0x0000, IoRestrictionInputOnly,
+                            "\\_SB.GPO0", 0x00, ResourceConsumer, ,
+                            )
+                            {   // gpio_codec_int (AON pin 32)
+                                0x00000020
+                            }
                         I2cSerialBusV2 (0x004A, ControllerInitiated, 0x000186A0,
                             AddressingMode7Bit, "\\_SB.I2C1",
                             0x00, ResourceConsumer, , Exclusive,
@@ -1214,9 +1577,10 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // 0xFF138000 + bus * 0x1000; iomem: i2c-designware at 0xFF13A000).
         // Modeled on the stock W511 (Z2760) \_SB.I2C2: _UID = 3, GSI 0x0C,
         // Level ActiveHigh, _HRV = STEP. _DEP on PEP + IPC (the POWER island
-        // for this controller is PEP-gated like the others). PIO only, like
-        // every I2C controller here (the Z2760 SBUF FixedDMA branch on GDMS
-        // is removed - see the I2C1 DMA note).
+        // for this controller is PEP-gated like the others). The _CRS STEP
+        // switch mirrors the Z2760 SBUF branch (FixedDMA 0x001B,0x0006 /
+        // 0x001A,0x0007 on GDMS), taken on this B0 board (STEP = One); PIO
+        // (RBUF) remains the fallback for A0 silicon.
         //
         // Bus 2 is the bus the stock Android board uses for the battery and
         // charger and the FocalTech touchscreen (stock SFI DEVS + dmesg:
@@ -1265,7 +1629,27 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000000C,
                     }
                 })
-                Return (RBUF)
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13A000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x0000000C,
+                    }
+                    FixedDMA (0x001B, 0x0006, Width32bit, )
+                    FixedDMA (0x001A, 0x0007, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
+                }
             }
 
             //
@@ -1363,6 +1747,37 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Method (_STA, 0, NotSerialized)
                 {
                     Return (0x0F)
+                }
+
+                //
+                // HID-over-I2C _DSM: required by hidi2c.sys to discover the
+                // HID descriptor register address and supported functions.
+                // UUID 3cdff6f7 = HID I2C Device. Function 0 = query,
+                // returns 0x03 (supports fn 0+1). Function 1 = HID
+                // descriptor address (returns 0 = default discovery).
+                // Matches the Z2760 reference DSDT TOUC._DSM.
+                //
+                Method (_DSM, 4, NotSerialized)
+                {
+                    If ((Arg0 == ToUUID ("3cdff6f7-4267-4555-ad05-b30a3d8938de") /* HID I2C Device */))
+                    {
+                        If ((Arg2 == Zero))
+                        {
+                            If ((Arg1 == One))
+                            {
+                                Return (Buffer (One) { 0x03 })
+                            }
+                            Else
+                            {
+                                Return (Buffer (One) { 0x00 })
+                            }
+                        }
+                        ElseIf ((Arg2 == One))
+                        {
+                            Return (Zero)
+                        }
+                    }
+                    Return (Buffer (One) { 0x00 })
                 }
 
                 Method (_PS0, 0, NotSerialized)
@@ -1464,9 +1879,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // cameras on bus 4 (OV5645 @ 0x3C and OV8825 @ 0x30, dmesg-stock
         // "camera pdata: I2C bus = 4"); they are not declared here.
         // Modeled on the stock W511 (Z2760) \_SB.I2C4: _UID = 5, _HRV = STEP.
-        // Z2760 gated I2C4 on _STA (LCAM) and used STEP==2->CBUF (GSI 0x72);
-        // here _STA is always 0x0F and _CRS is the PIO (RBUF) form only (the
-        // GDMS FixedDMA descriptors are removed - see the I2C1 DMA note).
+        // Z2760 gated I2C4 on _STA (LCAM) and used STEP==2->CBUF (GSI 0x72,
+        // omitted here - B0 is STEP One); the SBUF arm (GDMS FixedDMA
+        // 0x001D,0x0004 / 0x001C,0x0005) is taken on this board exactly like
+        // the other GDMS clients now that the CSRT publishes the request
+        // lines. RBUF (PIO) is the A0 fallback.
         //
         Device (I2C4)
         {
@@ -1503,7 +1920,27 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000002D,
                     }
                 })
-                Return (RBUF)
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13C000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x0000002D,
+                    }
+                    FixedDMA (0x001D, 0x0004, Width32bit, )
+                    FixedDMA (0x001C, 0x0005, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
+                }
             }
         }
 
@@ -1523,8 +1960,9 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // GSI 0x2E, Level ActiveHigh, _HRV = STEP. The stock _DEP is
         // {PEP, IPC, GPO0}; GPO0 is now declared again but kept OUT of this
         // _DEP - it was only needed for slave GpioInts, which the ACC0 child
-        // does not use. PIO (RBUF) only, like every I2C controller here (the
-        // GDMS FixedDMA branch is removed - see the I2C1 DMA note).
+        // does not use. The _CRS STEP switch reproduces the Z2760 SBUF branch
+        // (GDMS FixedDMA 0x001F,0x0002 / 0x001E,0x0003); on B0 (STEP = One)
+        // the SBUF arm is taken, with RBUF (PIO) retained for A0 silicon.
         //
         Device (I2C5)
         {
@@ -1561,7 +1999,27 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000002E,
                     }
                 })
-                Return (RBUF)
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13D000,         // Address Base
+                        0x00000400,         // Address Length
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x0000002E,
+                    }
+                    FixedDMA (0x001F, 0x0002, Width32bit, )
+                    FixedDMA (0x001E, 0x0003, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
+                }
             }
 
             //

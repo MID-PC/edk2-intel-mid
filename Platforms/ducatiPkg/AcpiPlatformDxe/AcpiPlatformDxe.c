@@ -6,10 +6,10 @@
   them through EFI_ACPI_TABLE_PROTOCOL in the exact order the platform
   validated against Windows:
 
-    FACS -> DSDT -> FADT -> MADT -> (DBG2, KDNET-USB build only)
+    FACS -> DSDT -> FADT -> MADT -> CSRT -> (DBG2, KDNET-USB build only)
 
   Table ownership (Silicium model):
-    - SoC fixed tables (FADT/FACS/MADT/DBG2) are .aslc sources in
+    - SoC fixed tables (FADT/FACS/MADT/DBG2/CSRT) are .aslc sources in
       Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/, packed into one FREEFORM
       FFS file keyed on gCloverviewAcpiTableStorageGuid.
     - The device DSDT is compiled from the platform's Dsdt.asl
@@ -41,6 +41,7 @@
 #define CT_SIG_FADT  EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE_SIGNATURE
 #define CT_SIG_MADT  EFI_ACPI_6_5_MULTIPLE_APIC_DESCRIPTION_TABLE_SIGNATURE
 #define CT_SIG_DBG2  SIGNATURE_32 ('D', 'B', 'G', '2')
+#define CT_SIG_CSRT  SIGNATURE_32 ('C', 'S', 'R', 'T')
 
 /**
   Install a fixed table through EFI_ACPI_TABLE_PROTOCOL.
@@ -52,7 +53,7 @@
   size always comes from Header->Length.
 
   @param  AcpiTable    ACPI table protocol handle.
-  @param  Signature    Header signature of the table to find (FACS/FACP/APIC/DBG2).
+  @param  Signature    Header signature of the table to find (FACS/FACP/APIC/DBG2/CSRT).
 
   @retval EFI_SUCCESS          Table found and installed.
   @retval EFI_NOT_FOUND        No RAW section with that signature was found.
@@ -228,6 +229,21 @@ AcpiPlatformEntryPoint (
     return Status;
   }
 
+  //
+  // CSRT (Core System Resources Table). Board-corrected Z2760 reference: the
+  // two Intel MID DMA engines' resource groups that Windows' in-box HAL
+  // extensions (HalExtIntcLpioDMA / HalExtIntcUartDMA, bound to the GDMS /
+  // UDMS ACPI devices) need to service clients' FixedDMA descriptors.
+  // Without it those extensions load but never publish usable DMA channels,
+  // so SPI/I2C/UART nodes that carry FixedDMA fail to start. The blob's GDMS
+  // group was re-pointed at this board's interrupt (GSI 0x71 -> 0x31,
+  // polarity 02 -> 01); see Extra.fdf.inc.
+  //
+  Status = CtInstallCloverviewTable (AcpiTable, CT_SIG_CSRT);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
 #ifdef KDNET_USB
   //
   // DBG2 (Microsoft Debug Port 2), single-entry USB OTG debug port, based on
@@ -243,6 +259,6 @@ AcpiPlatformEntryPoint (
   }
 #endif
 
-  DEBUG ((DEBUG_INFO, "AcpiPlatform: FACS/DSDT/FADT/MADT installed\n"));
+  DEBUG ((DEBUG_INFO, "AcpiPlatform: FACS/DSDT/FADT/MADT/CSRT installed\n"));
   return EFI_SUCCESS;
 }
