@@ -1,0 +1,23 @@
+## @file
+#  t00gPkg - Asus ZenFone 6 (T00G / A600CG) device package
+#
+#  Device-specific ACPI table storage and board-level PCD overrides.
+#
+#  Copyright (c) 2026, CloverTrailPkg contributors
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = t00gPkg
+  PACKAGE_GUID                   = 0A1C2D3E-4F5A-6B7C-8D9E-0F1A2B3C4D5E
+  PACKAGE_VERSION                = 0.1
+
+[Includes]
+  Include
+
+[Guids]
+  ## FILE_GUID of AcpiPlatformDxe/AcpiTables.inf, the raw FFS file holding the
+  ## compiled DSDT. AcpiPlatformDxe locates it with GetSectionFromAnyFv().
+  ## 7E374E25-8E01-4FEE-87F2-390C23C606CD
+  gEfiAcpiTableStorageGuid = { 0x7e374e25, 0x8e01, 0x4fee, { 0x87, 0xf2, 0x39, 0x0c, 0x23, 0xc6, 0x06, 0xcd } }

@@ -1,0 +1,151 @@
+## @file
+#  Flash description for t00gPkg (Asus ZenFone 6 T00G / A600CG, Clover Trail+).
+#
+#  The resulting binary is NOT a classic flash image: the primary bootloader
+#  loads it at 0x01101000 and jumps to offset 0. Therefore the generic SEC
+#  module (whose first instruction is IntelPkg/Sec/Ia32/SecEntry.nasm's
+#  _ModuleEntryPoint) is placed at offset 0 of the FD as a raw, already-relocated
+#  binary, and the firmware volumes carrying PEI and DXE follow it at a fixed
+#  offset (0x10000), which is exactly what IntelPkg/Sec/Ia32/SecEntry.nasm
+#  hands to SecStartup() as the BFV.
+#
+#  Layout of T00G.fd (2 MiB, loaded at 0x01101000):
+#
+#    0x000000 +--------------------------------------+ <- entry point
+#             | FvSec  : raw SEC image (64 KiB)      |
+#    0x010000 +--------------------------------------+ <- BFV
+#             | FvMain : PEI Core + PEIMs + DXE FV   |
+#    0x200000 +--------------------------------------+
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[FD.T00G]
+BaseAddress   = 0x01101000 | gIntelMidTokenSpaceGuid.PcdFdBaseAddress
+Size          = 0x00200000 | gIntelMidTokenSpaceGuid.PcdFdSize
+ErasePolarity = 1
+BlockSize     = 0x1000
+NumBlocks     = 0x200
+
+#
+# SEC lives at the very start so the image is directly executable.
+#
+0x00000000|0x00010000
+FV = FVSEC
+
+#
+# Everything else.
+#
+0x00010000|0x001F0000
+FV = FVMAIN
+
+################################################################################
+#
+# SEC firmware volume
+#
+################################################################################
+[FV.FVSEC]
+BlockSize          = 0x1000
+FvAlignment        = 16
+ERASE_POLARITY     = 1
+MEMORY_MAPPED      = TRUE
+STICKY_WRITE       = TRUE
+LOCK_CAP           = TRUE
+LOCK_STATUS        = TRUE
+WRITE_DISABLED_CAP = TRUE
+WRITE_ENABLED_CAP  = TRUE
+WRITE_STATUS       = TRUE
+WRITE_LOCK_CAP     = TRUE
+WRITE_LOCK_STATUS  = TRUE
+READ_DISABLED_CAP  = TRUE
+READ_ENABLED_CAP   = TRUE
+READ_STATUS        = TRUE
+READ_LOCK_CAP      = TRUE
+READ_LOCK_STATUS   = TRUE
+
+INF  Silicon/Intel/IntelPkg/Sec/SecMain.inf
+
+################################################################################
+#
+# Main firmware volume: PEI + DXE
+#
+################################################################################
+[FV.FVMAIN]
+BlockSize          = 0x1000
+FvAlignment        = 16
+ERASE_POLARITY     = 1
+MEMORY_MAPPED      = TRUE
+STICKY_WRITE       = TRUE
+LOCK_CAP           = TRUE
+LOCK_STATUS        = TRUE
+WRITE_DISABLED_CAP = TRUE
+WRITE_ENABLED_CAP  = TRUE
+WRITE_STATUS       = TRUE
+WRITE_LOCK_CAP     = TRUE
+WRITE_LOCK_STATUS  = TRUE
+READ_DISABLED_CAP  = TRUE
+READ_ENABLED_CAP   = TRUE
+READ_STATUS        = TRUE
+READ_LOCK_CAP      = TRUE
+READ_LOCK_STATUS   = TRUE
+
+INF  MdeModulePkg/Core/Pei/PeiMain.inf
+INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
+INF  Silicon/Intel/CloverviewPkg/PlatformPei/PlatformPei.inf
+INF  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
+
+FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
+   SECTION GUIDED EE4E5898-3914-4259-9D6E-DC7BD79403CF PROCESSING_REQUIRED = TRUE {
+     SECTION FV_IMAGE = FVDXE
+   }
+ }
+
+################################################################################
+#
+# DXE firmware volume (LZMA compressed inside FVMAIN)
+#
+################################################################################
+[FV.FVDXE]
+BlockSize          = 0x1000
+FvAlignment        = 16
+ERASE_POLARITY     = 1
+MEMORY_MAPPED      = TRUE
+STICKY_WRITE       = TRUE
+LOCK_CAP           = TRUE
+LOCK_STATUS        = TRUE
+WRITE_DISABLED_CAP = TRUE
+WRITE_ENABLED_CAP  = TRUE
+WRITE_STATUS       = TRUE
+WRITE_LOCK_CAP     = TRUE
+WRITE_LOCK_STATUS  = TRUE
+READ_DISABLED_CAP  = TRUE
+READ_ENABLED_CAP   = TRUE
+READ_STATUS        = TRUE
+READ_LOCK_CAP      = TRUE
+READ_LOCK_STATUS   = TRUE
+
+#
+# PCD must dispatch first (many drivers read PCDs in their constructors but
+# do not depex on the PCD protocol), so it is pinned here in the APRIORI
+# block. The generic driver list in Include/DXE.inc, the raw ACPI storage
+# file (AcpiTables.inf below), and the Cloverview SoC drivers in
+# Silicon/Intel/CloverviewPkg/Extra.fdf.inc.
+#
+APRIORI DXE {
+  INF  MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
+}
+!include Include/DXE.inc
+#
+# ACPI tables delivered as a raw file whose FILE_GUID is gEfiAcpiTableStorageGuid;
+# AcpiPlatformDxe finds them there. RAW (not a driver), so kept separate from
+# the DXE.inc driver list.
+#
+INF  RuleOverride = ACPITABLE Platforms/t00gPkg/AcpiPlatformDxe/AcpiTables.inf
+!include Silicon/Intel/CloverviewPkg/Extra.fdf.inc
+
+################################################################################
+#
+# Rules (common, see Silicon/Intel/IntelPkg/Common.fdf.inc)
+#
+################################################################################
+!include Silicon/Intel/IntelPkg/Common.fdf.inc

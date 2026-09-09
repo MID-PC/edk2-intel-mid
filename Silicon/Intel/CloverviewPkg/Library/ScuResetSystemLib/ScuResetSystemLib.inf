@@ -34,3 +34,4 @@
 
 [FixedPcd]
   gCloverviewTokenSpaceGuid.PcdScuIpcBase
+  gCloverviewTokenSpaceGuid.PcdPmuBase
