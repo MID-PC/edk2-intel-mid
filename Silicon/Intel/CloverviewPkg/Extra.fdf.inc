@@ -9,19 +9,30 @@
 ##
 
 #
-# ACPI fixed tables for the Cloverview SoC (FADT/FACS/MADT/DBG2): one FREEFORM
-# file keyed on gCloverviewAcpiTableStorageGuid whose RAW sections
+# ACPI fixed tables for the Cloverview SoC (FADT/FACS/MADT/DBG2/CSRT): one
+# FREEFORM file keyed on gCloverviewAcpiTableStorageGuid whose RAW sections
 # AcpiPlatformDxe reads and installs. The tables are pre-compiled blobs
 # (Silicium-style) rather than being built from .aslc sources; the sources the
 # blobs were extracted from are archived under /tmp/opencode/acpi_ref/. The
 # device DSDT FREEFORM stays in the platform FDF (inline) and is compiled
 # from ASL at build time.
 #
+# CSRT (Core System Resources Table) is the board-corrected version of the
+# Z2760 CSRT.aml - only its GDMS group (INTL0005, "Intel(R) Serial IO DMA
+# Controller") differs: GSI 0x71 -> 0x31 (interrupts.txt "49:
+# INTEL_MID_DMAC2") and Interrupt Polarity 02 -> 01 (ActiveLow -> ActiveHigh,
+# matching the GDMS._CRS RBUF template returned at STEP != 0x02). UDMS
+# (INTL0004, "Intel(R) UART DMA") keeps the reference value (GSI 0x3B,
+# polarity 01). The two groups feed the in-box HalExtIntcLpioDMA /
+# HalExtIntcUartDMA extensions that service the FixedDMA descriptors on the
+# SPI/I2C/UART nodes.
+#
 FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facs.aml
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facp.aml
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Apic.aml
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Dbg2.aml
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Csrt.aml
 }
 
 #
