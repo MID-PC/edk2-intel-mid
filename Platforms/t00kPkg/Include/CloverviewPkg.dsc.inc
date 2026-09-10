@@ -1,0 +1,119 @@
+## @file
+#  CloverviewPkg.dsc.inc - Cloverview SoC (Intel Atom Z25xx) DSC fragment
+#
+#  Per-generation configuration for the Cloverview platform. Chains the generic
+#  Intel MID fragment (IntelPkg.dsc.inc) and adds the generation-specific PCDs
+#  and component build list. Included from the platform DSC.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+!include Silicon/Intel/IntelPkg/IntelPkg.dsc.inc
+
+[Defines]
+  #
+  # CPU variant selection (Mu-Silicium "SOC_TYPE"-style define; here named
+  # SOC_VARIANT). The device DSC must set SOC_VARIANT to SOC_VARIANT_Z2520,
+  # SOC_VARIANT_Z2560 or SOC_VARIANT_Z2580 before including this fragment:
+  # it is the ASLPP macro (the platform DSC passes it as -D$(SOC_VARIANT) to
+  # select which \_PR processor table - PrZ*.asl under
+  # CloverviewPkg/Acpi/Include/ - is compiled into the DSDT) and also drives
+  # the SMBIOS processor PCDs below.
+  #
+  #   SOC_VARIANT_Z2520  1.2 GHz, 100 MHz FSB  (Asus A502CG-class part)
+  #   SOC_VARIANT_Z2560  1.6 GHz, ~133 MHz FSB  (Acer Iconia A1-830)
+  #   SOC_VARIANT_Z2580  2.0 GHz, PPM data not captured yet (PrZ2580.asl is a stub)
+  #
+!if $(SOC_VARIANT) == SOC_VARIANT_Z2520
+!elseif $(SOC_VARIANT) == SOC_VARIANT_Z2560
+!elseif $(SOC_VARIANT) == SOC_VARIANT_Z2580
+!else
+  !error "SOC_VARIANT must be set to SOC_VARIANT_Z2520, SOC_VARIANT_Z2560 or SOC_VARIANT_Z2580"
+!endif
+
+[PcdsFixedAtBuild]
+  #
+  # Image / temporary RAM layout. 0x01101000 is where the primary bootloader
+  # hands control over (in place of the stock bootstub). Temporary RAM is put
+  # well above the image inside the 0x01000000-0x36FEFFFF System RAM window
+  # reported by the stock kernel's iomem.  These PCDs are generic (declared in
+  # IntelPkg.dec); the values are this generation's.
+  #
+  gIntelMidTokenSpaceGuid.PcdFdBaseAddress|0x01101000
+  gIntelMidTokenSpaceGuid.PcdFdSize|0x00200000
+
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize|0x00040000
+
+  #
+  # Local APIC timer clock = bus clock. Penwell/Cloverview run a 100 MHz FSB.
+  #
+  gEfiMdePkgTokenSpaceGuid.PcdFSBClock|100000000
+
+  #
+  # SMBIOS Processor (Type 4). SoC-generation values, selected by the CPU bin
+  # (SOC_VARIANT). The marketing part name and speed differ per variant; the
+  # "ProcessorModel" is the Atom Z2500-series family name.
+  #
+!if $(SOC_VARIANT) == SOC_VARIANT_Z2520
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor Z2520"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"Intel Atom Z2520"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz|1200
+!elseif $(SOC_VARIANT) == SOC_VARIANT_Z2560
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor Z2560"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"Intel Atom Z2560"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz|1600
+!elseif $(SOC_VARIANT) == SOC_VARIANT_Z2580
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Intel(R) Atom(TM) Processor Z2580"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"Intel Atom Z2580"
+  gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz|2000
+!else
+  !error "SOC_VARIANT must be set to SOC_VARIANT_Z2520, SOC_VARIANT_Z2560 or SOC_VARIANT_Z2580"
+!endif
+
+################################################################################
+#
+# Components - the Cloverview SoC drivers. Placement/dispatch order lives in
+# the platform FDF (Extra.fdf.inc / ducatiPkg.fdf), not here. The generic SEC
+# and the core stack come from IntelPkg.dsc.inc.
+#
+################################################################################
+[Components]
+  #
+  # ACPI fixed tables for the Cloverview SoC (FADT/FACS/MADT/DBG2) are NOT built
+  # here anymore: they are pre-compiled .aml blobs packed directly into a raw
+  # FREEFORM file by Extra.fdf.inc. The DSDT is built by the platform package
+  # (Platforms/t00kPkg/AcpiPlatformDxe/AcpiTables.inf), since it is
+  # device-specific.
+  #
+
+  #
+  # PEI - first dispatch ([Depex] TRUE), carries the pre-PEI SoC work that used
+  # to live in the Cloverview SEC (watchdog / APIC timer / XD enable).
+  #
+  Platforms/t00kPkg/PlatformPei/PlatformPei.inf
+
+  #
+  # Variable runtime support without NV storage (DRAM-loaded firmware).
+  #
+  Silicon/Intel/CloverviewPkg/Drivers/PlatformRuntimeDxe/PlatformRuntimeDxe.inf
+
+  #
+  # SD card stack. There is no real PCI on this SoC, so the SDHCI block at
+  # 0xFFA58000 (mmc1, the SD slot per iomem_A502CG.txt) is registered as a
+  # non-discoverable device; SdMmcPciHcDxe binds to it through
+  # NonDiscoverablePciDeviceDxe. Card detect is not used (assume connected).
+  #
+  Silicon/Intel/CloverviewPkg/Drivers/SdHostDxe/SdHostDxe.inf
+
+  #
+  # USB: OTG0 (Chipidea HDRC @ 0xFFA60000) registered as a non-discoverable
+  # EHCI controller, plus the generic USB stack.
+  #
+!ifndef KDNET_USB
+  Platforms/t00kPkg/OtgHostDxe/OtgHostDxe.inf
+  MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
+  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
+  MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+!endif

@@ -1,0 +1,65 @@
+## @file
+#  Platform PEIM for Clover Trail+ (Atom Z25xx).
+#
+#  DRAM is already trained and configured by the primary bootloader, so this
+#  PEIM only describes the memory map (derived from the stock A502CG iomem)
+#  and publishes the PPIs the DXE IPL needs.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PlatformPei
+  FILE_GUID                      = 890BA8C6-9AF0-4AA5-A081-A03A62DD2BE0
+  MODULE_TYPE                    = PEIM
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = PlatformPeiEntryPoint
+
+[Sources]
+  PlatformPei.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
+  Silicon/Intel/IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  PeimEntryPoint
+  PeiServicesLib
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  HobLib
+  IoLib
+  LocalApicLib
+  PcdLib
+  SfiMemoryMapLib
+
+[Ppis]
+  gEfiPeiMasterBootModePpiGuid                  ## PRODUCES
+  gEfiPeiMemoryDiscoveredPpiGuid                ## PRODUCES
+
+[FixedPcd]
+  gIntelMidTokenSpaceGuid.PcdFdBaseAddress
+  gIntelMidTokenSpaceGuid.PcdFdSize
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize
+  gIntelMidTokenSpaceGuid.PcdPeiMemoryBase
+  gIntelMidTokenSpaceGuid.PcdLegacyMemoryBase
+  gIntelMidTokenSpaceGuid.PcdLegacyMemorySize
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedBase
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedSize
+  gIntelMidTokenSpaceGuid.PcdLegacyTopBase
+  gIntelMidTokenSpaceGuid.PcdLegacyTopSize
+  gIntelMidTokenSpaceGuid.PcdConsoleStateBase
+  gCloverviewTokenSpaceGuid.PcdScuIpcBase
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBase
+  gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
+  gIntelMidTokenSpaceGuid.PcdFrameBufferHeight
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
+
+[Depex]
+  TRUE

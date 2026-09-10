@@ -1,0 +1,51 @@
+## @file
+#  Brings up the Clover Trail+ USB OTG core (OTG0 @ 0xFFA60000, Chipidea HDRC)
+#  in EHCI host mode and registers it as a non-discoverable EHCI device for
+#  MdeModulePkg/Bus/Pci/EhciDxe.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = OtgHostDxe
+  FILE_GUID                      = 6D981312-E5BC-4F6E-89A1-F1DDD245D8A3
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = OtgHostDxeEntryPoint
+
+[Sources]
+  OtgHostDxe.c
+  UsbTrace.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  DebugLib
+  IoLib
+  TimerLib
+  PcdLib
+  NonDiscoverableDeviceRegistrationLib
+
+[Guids]
+  gEfiEventExitBootServicesGuid                  ## CONSUMES ## Event
+
+[Protocols]
+  gEfiDriverBindingProtocolGuid                 ## CONSUMES
+  gEdkiiNonDiscoverableDeviceProtocolGuid       ## CONSUMES
+
+[FixedPcd]
+  gCloverviewTokenSpaceGuid.PcdOtgHostBase
+  gCloverviewTokenSpaceGuid.PcdOtgHostSize
+  gCloverviewTokenSpaceGuid.PcdGpioCoreBase
+  gCloverviewTokenSpaceGuid.PcdGpioAuxBase
+  gCloverviewTokenSpaceGuid.PcdPmuBase
+
+[Depex]
+  TRUE
