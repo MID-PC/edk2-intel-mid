@@ -204,7 +204,7 @@ CloverviewEnableSdPower (
 
   Status = ScuPmicWrite8 (VCCSDIO_ADDR, VCCSDIO_NORMAL);
   DEBUG ((
-    EFI_ERROR (Status) ? DEBUG_WARN : DEBUG_INFO,
+    EFI_ERROR (Status) ? DEBUG_WARN : DEBUG_VERBOSE,
     "SdHostDxe: VCCSDIO 0x%02x -> 0x%02x: %r\n",
     Value,
     VCCSDIO_NORMAL,
@@ -276,7 +276,7 @@ CloverviewEnableWlan (
 
   Level = MmioRead32 (GpioBase + ((CLV_WLAN_EN_LOCAL / 32) * sizeof (UINT32)));
   DEBUG ((
-    DEBUG_ERROR,
+    DEBUG_VERBOSE,
     "SdHostDxe: WLAN_EN (bank 0x%08x pin %u) asserted, GPLR=%u\n",
     GpioBase,
     (UINT32)CLV_WLAN_EN_LOCAL,
@@ -301,7 +301,7 @@ CloverviewConfigureSdPins (
   SetGpioAlt1Input (GpioBase, CLV_SD_DAT2_LOCAL);
   SetGpioAlt1Input (GpioBase, CLV_SD_DAT3_LOCAL);
   SetGpioAlt1Input (GpioBase, CLV_SD_CMD_LOCAL);
-  DEBUG ((DEBUG_INFO, "SdHostDxe: DAT0..3/CMD set to Langwell ALT1 at 0x%08x\n", GpioBase));
+  DEBUG ((DEBUG_VERBOSE, "SdHostDxe: DAT0..3/CMD set to Langwell ALT1 at 0x%08x\n", GpioBase));
 }
 
 /**
@@ -332,7 +332,7 @@ CtSdMmcCapability (
   *Capability |= SDHCI_CAP_EMBEDDED; // Skip broken card detect; assume inserted.
 
   DEBUG ((
-    DEBUG_INFO,
+    DEBUG_VERBOSE,
     "SdHostDxe: conservative capability 0x%Lx, physical base clock %u MHz\n",
     *Capability,
     *BaseClkFreq
@@ -366,7 +366,7 @@ CtSdMmcNotifyPhase (
     Params->DriverStrength.Sd = SdDriverStrengthTypeB;
 
     DEBUG ((
-      DEBUG_INFO,
+      DEBUG_VERBOSE,
       "SdHostDxe: operating params forced to %d-bit / %dMHz\n",
       Params->BusWidth,
       Params->ClockFreq
@@ -435,6 +435,5 @@ SdHostDxeEntryPoint (
     return Status;
   }
 
-  DEBUG ((DEBUG_INFO, "SdHostDxe: SD host registered\n"));
   return EFI_SUCCESS;
 }
