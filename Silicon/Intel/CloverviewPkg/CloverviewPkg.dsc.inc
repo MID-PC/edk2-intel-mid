@@ -15,14 +15,16 @@
   # CPU variant selection (Mu-Silicium "SOC_TYPE"-style define; here named
   # SOC_VARIANT). The device DSC must set SOC_VARIANT to SOC_VARIANT_Z2520,
   # SOC_VARIANT_Z2560 or SOC_VARIANT_Z2580 before including this fragment:
-  # it is the ASLPP macro (the platform DSC passes it as -D$(SOC_VARIANT) to
-  # select which \_PR processor table - PrZ*.asl under
-  # CloverviewPkg/Acpi/Include/ - is compiled into the DSDT) and also drives
-  # the SMBIOS processor PCDs below.
+  # it drives the SMBIOS processor PCDs below and determines which precompiled
+  # \_PR PPM SSDT (SsdPpm<SKU>.aml, with an adjacent .dsl disassembly under
+  # CloverviewPkg/Acpi/AcpiTables) the device FDF packs. It is NOT an ASL macro
+  # any more: the
+  # DSDT defines no \_PR since the PPM surface moved to the SSDT.
   #
   #   SOC_VARIANT_Z2520  1.2 GHz, 100 MHz FSB  (Asus A502CG-class part)
   #   SOC_VARIANT_Z2560  1.6 GHz, ~133 MHz FSB  (Acer Iconia A1-830)
-  #   SOC_VARIANT_Z2580  2.0 GHz, PPM data not captured yet (PrZ2580.asl is a stub)
+  #   SOC_VARIANT_Z2580  2.0 GHz, ~133 MHz FSB  (Asus ZenFone 6 A600CG/T00G;
+  #                        6 P-states from the stock SFI FREQ table)
   #
 !if $(SOC_VARIANT) == SOC_VARIANT_Z2520
 !elseif $(SOC_VARIANT) == SOC_VARIANT_Z2560
@@ -95,10 +97,12 @@
 [Components]
   #
   # ACPI fixed tables for the Cloverview SoC (FADT/FACS/MADT/DBG2) are NOT built
-  # here anymore: they are pre-compiled .aml blobs packed directly into a raw
-  # FREEFORM file by Extra.fdf.inc. The DSDT is built by the platform package
-  # (Platforms/ducatiPkg/AcpiPlatformDxe/AcpiTables.inf), since it is
-  # device-specific.
+  # here anymore: they are pre-compiled .aml blobs packed by each device into
+  # its own FREEFORM file (see the device FDF). The DSDT is built by the
+  # platform package (Platforms/<dev>Pkg/AcpiPlatformDxe/AcpiTables.inf), since
+  # it is device-specific. The SoC-generic AcpiPlatformDxe
+  # (Silicon/Intel/CloverviewPkg/Drivers/AcpiPlatformDxe) is listed per-device
+  # in the platform DSC.
   #
 
   #

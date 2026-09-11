@@ -1,5 +1,6 @@
 /** @file
-  USB OTG0 host-mode variant (A502CG).
+  USB OTG0 host-mode variant (shared by the Cloverview devices; A502CG
+  register map).
 
   Included from Dsdt.asl inside Scope (\\_SB) when KDNET_USB is NOT defined
   (the default). This is the full host-mode bring-up: Windows binds the controller
@@ -8,7 +9,6 @@
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 */
-
         Device (OTG0)
         {
             Name (_ADR, Zero)
@@ -179,6 +179,7 @@
                     Stall (0x0A)
                     Local0--
                 }
+
             }
 
             Method (_STA, 0, NotSerialized)

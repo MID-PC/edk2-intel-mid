@@ -17,7 +17,7 @@
   Include
 
 [Guids]
-  ## FILE_GUID of AcpiPlatformDxe/AcpiTables.inf, the raw FFS file holding the
-  ## compiled DSDT. AcpiPlatformDxe locates it with GetSectionFromAnyFv().
+  ## FILE_GUID of AcpiTables/AcpiTables.inf, the raw FFS file holding the
+  ## compiled DSDT. The SoC AcpiPlatformDxe (CloverviewPkg) locates it with
+  ## GetSectionFromAnyFv(); the GUID name is defined in CloverviewPkg.dec.
   ## 7E374E25-8E01-4FEE-87F2-390C23C606CD
-  gEfiAcpiTableStorageGuid = { 0x7e374e25, 0x8e01, 0x4fee, { 0x87, 0xf2, 0x39, 0x0c, 0x23, 0xc6, 0x06, 0xcd } }

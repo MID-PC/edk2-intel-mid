@@ -1,13 +1,13 @@
 ## @file
-#  ACPI table installer for Intel Atom Z25xx (Clover Trail+, A502CG).
+#  Generic ACPI table installer for the Intel Atom Z25xx (Clover Trail+) SoC.
 #
-#  Reads the fixed ACPI tables (FADT/FACS/MADT/DBG2) from the Cloverview
-#  FREEFORM file (gCloverviewAcpiTableStorageGuid) and the DSDT from the
-#  device FREEFORM file (gEfiAcpiTableStorageGuid), and installs them through
-#  EFI_ACPI_TABLE_PROTOCOL in the order FACS -> DSDT -> FADT -> MADT -> DBG2
-#  (DBG2 only in the KDNET-USB build). This is what Windows' bootia32.efi
-#  needs in order not to fail with 0xc0000225 ("the firmware (BIOS) is not
-#  ACPI compatible").
+#  Reads the RAW ACPI table sections a device packs into the Cloverview
+#  FREEFORM file (gCloverviewAcpiTableStorageGuid) and the device DSDT file
+#  (gEfiAcpiTableStorageGuid), and installs them through
+#  EFI_ACPI_TABLE_PROTOCOL in the platform-validated order
+#  (FACS -> DSDT -> FADT -> MADT -> CSRT -> DBG2), skipping any table a device
+#  chose to exclude. This is what Windows' bootia32.efi needs in order not to
+#  fail with 0xc0000225 ("the firmware (BIOS) is not ACPI compatible").
 #
 #  SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
@@ -15,7 +15,7 @@
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = AcpiPlatformDxe
-  FILE_GUID                      = 5B9974BA-C1B7-4170-8A9B-410D850D1094
+  FILE_GUID                      = 5B9D50D2-E721-4B43-A560-4A766408B1A9
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
   ENTRY_POINT                    = AcpiPlatformEntryPoint
@@ -27,7 +27,6 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
-  Platforms/t00kPkg/t00kPkg.dec
 
 [LibraryClasses]
   BaseLib

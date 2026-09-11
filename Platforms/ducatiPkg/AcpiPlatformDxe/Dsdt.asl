@@ -13,9 +13,12 @@
   (b) that the OS not hand the blocks it maps to anyone else. This table
   therefore keeps only:
 
-    - \_PR processor objects: the PPM (P-state/C-state) surface the PEP
-      drives via IA32_PERF_CTL (MSR 0x199) and MWAIT C-states
-      (_PSS/_PCT/_PSD/_PPC/_CST, including HW-C6 in _CST).
+    - \_PR processor objects: nothing in this table any more. The PPM
+      (P-state/C-state) surface the PEP drives via IA32_PERF_CTL (MSR 0x199)
+      and MWAIT C-states (_PSS/_PCT/_PSD/_PPC/_CST, including HW-C6) lives in
+      the per-SKU PPM SSDT (SsdPpm<SKU>.aml, disassembly in
+      CloverviewPkg/Acpi/AcpiTables/SsdPpm<SKU>.dsl) packed by the device FDF
+      and installed by AcpiPlatformDxe.
     - \_SB.SYSR (PNP0C02): reserves the exact MMIO the PEP maps directly so
       no driver claims it:
         * 0xFF11D000  North-Complex PM unit (iomem_A502CG: intel_pmu_driver)
@@ -164,36 +167,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
     // with the board-corrected CSRT installed those request lines are now
     // serviced again (see the SPI1/SPI2 node comment).
 
-    Scope (\_PR)
-    {
-        //
-        // CPU-specific PPM block (Processor P000..P003), selected by the
-        // build's SOC_VARIANT define (Acer A1-830 = SOC_VARIANT_Z2560, see
-        // ducatiPkg.dsc:
-        //   PrZ2520  1.2 GHz part on a 100 MHz FSB (7 P-states)
-        //   PrZ2560  1.6 GHz part on a ~133 MHz FSB (4 P-states)
-        //   PrZ2580  2.0 GHz part - not authored yet (stub, #error)
-        //
-        // Sources live in Silicon/Intel/CloverviewPkg/Acpi/Include/ so every
-        // Cloverview-derived platform selects its own \_PR without forking the
-        // device DSDT.
-        //
-        // Why this is needed: clvpep.sys (ACPI\INT3395, the Z25xx/Z27xx Power
-        // Engine Plug-in) drives P-states through the PPM interface. With no
-        // _PCT/_PSS/_PPC/_PSD/_CST on the processor objects there is nothing
-        // for it to attach to, so nothing ever raises the ratio and the CPU
-        // stays at its boot ratio.
-        //
-#ifdef SOC_VARIANT_Z2520
-        #include "PrZ2520.asl"
-#elif defined (SOC_VARIANT_Z2560)
-        #include "PrZ2560.asl"
-#elif defined (SOC_VARIANT_Z2580)
-        #include "PrZ2580.asl"
-#else
-        #error "No SOC_VARIANT_* define for the ASL build (set SOC_VARIANT in the platform DSC)"
-#endif
-    }
+    // \_PR is intentionally absent: the processor PPM/PEP surface (P000..P003,
+    // _PSS/_PCT/_PSD/_PPC/_CST) is a per-SKU precompiled SSDT (SsdPpm<SKU>.aml,
+    // disassembly in CloverviewPkg/Acpi/AcpiTables/SsdPpm<SKU>.dsl), packed by
+    // the device FDF and loaded add-only by AcpiPlatformDxe. This table must
+    // not declare \_PR.P000..P003 or the SSDT load aborts on duplicate names.
 
     Scope (\_SB)
     {
@@ -1400,7 +1378,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF138000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000000A,
                     }
@@ -1411,7 +1389,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF138000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000000A,
                     }
@@ -1446,7 +1424,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // NOT a regular 0x0A + bus pattern (I2C0 = 0x0A, I2C1 = 0x39,
         // I2C2 = 0x0C); 0x39 matches BOTH the stock W511 table and the
         // "real PCI IRQ line of the function owning 0xFF139000" comment in
-        // the earlier working port. Level ActiveHigh. _HRV returns STEP
+        // the earlier working port. Level ActiveLow Shared. _HRV returns STEP
         // (= One -> REV_0001, B0). The _CRS STEP switch mirrors the Z2760
         // SBUF branch (FixedDMA 0x0019,0x0006 / 0x0018,0x0007 on GDMS,
         // serviced by HalExtIntcLpioDMA via the CSRT table); STEP == 0 (A0)
@@ -1483,7 +1461,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF139000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x00000039,
                     }
@@ -1494,7 +1472,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF139000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x00000039,
                     }
@@ -1562,7 +1540,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                             {   // gpio_codec_int (AON pin 32)
                                 0x00000020
                             }
-                        I2cSerialBusV2 (0x004A, ControllerInitiated, 0x000186A0,
+                        I2cSerialBusV2 (0x004A, ControllerInitiated, 0x00061A80,
                             AddressingMode7Bit, "\\_SB.I2C1",
                             0x00, ResourceConsumer, , Exclusive,
                             )
@@ -1576,7 +1554,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // Designware I2C controller for bus 2 (third controller at
         // 0xFF138000 + bus * 0x1000; iomem: i2c-designware at 0xFF13A000).
         // Modeled on the stock W511 (Z2760) \_SB.I2C2: _UID = 3, GSI 0x0C,
-        // Level ActiveHigh, _HRV = STEP. _DEP on PEP + IPC (the POWER island
+        // Level ActiveLow Shared, _HRV = STEP. _DEP on PEP + IPC (the POWER island
         // for this controller is PEP-gated like the others). The _CRS STEP
         // switch mirrors the Z2760 SBUF branch (FixedDMA 0x001B,0x0006 /
         // 0x001A,0x0007 on GDMS), taken on this B0 board (STEP = One); PIO
@@ -1624,7 +1602,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF13A000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000000C,
                     }
@@ -1635,7 +1613,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF13A000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000000C,
                     }
@@ -1673,7 +1651,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 {
                     Name (RBUF, ResourceTemplate ()
                     {
-                        I2cSerialBusV2 (0x006A, ControllerInitiated, 0x000186A0,
+                        I2cSerialBusV2 (0x006A, ControllerInitiated, 0x00061A80,
                             AddressingMode7Bit, "\\_SB.I2C2",
                             0x00, ResourceConsumer, , Exclusive,
                             )
@@ -1702,7 +1680,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 {
                     Name (RBUF, ResourceTemplate ()
                     {
-                        I2cSerialBusV2 (0x0036, ControllerInitiated, 0x000186A0,
+                        I2cSerialBusV2 (0x0036, ControllerInitiated, 0x00061A80,
                             AddressingMode7Bit, "\\_SB.I2C2",
                             0x00, ResourceConsumer, , Exclusive,
                             )
@@ -1806,7 +1784,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 {
                     Name (RBUF, ResourceTemplate ()
                     {
-                        I2cSerialBusV2 (0x0038, ControllerInitiated, 0x000186A0,
+                        I2cSerialBusV2 (0x0038, ControllerInitiated, 0x00061A80,
                             AddressingMode7Bit, "\\_SB.I2C2",
                             0x00, ResourceConsumer, , Exclusive,
                             )
@@ -1863,7 +1841,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF13B000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000002C,
                     }
@@ -1915,7 +1893,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF13C000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000002D,
                     }
@@ -1926,7 +1904,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF13C000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000002D,
                     }
@@ -1957,7 +1935,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
         // driver fails Code 10 at start without the data-ready line.
         //
         // Modeled on the stock W511 (Z2760) \_SB.I2C5: _UID = bus + 1 = 6,
-        // GSI 0x2E, Level ActiveHigh, _HRV = STEP. The stock _DEP is
+        // GSI 0x2E, Level ActiveLow Shared, _HRV = STEP. The stock _DEP is
         // {PEP, IPC, GPO0}; GPO0 is now declared again but kept OUT of this
         // _DEP - it was only needed for slave GpioInts, which the ACC0 child
         // does not use. The _CRS STEP switch reproduces the Z2760 SBUF branch
@@ -1994,7 +1972,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF13D000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000002E,
                     }
@@ -2005,7 +1983,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0xFF13D000,         // Address Base
                         0x00000400,         // Address Length
                         )
-                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
                         0x0000002E,
                     }
@@ -2060,7 +2038,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                             {   // Pin list
                                 0x003C
                             }
-                        I2cSerialBusV2 (0x0018, ControllerInitiated, 0x000186A0,
+                        I2cSerialBusV2 (0x0018, ControllerInitiated, 0x00061A80,
                             AddressingMode7Bit, "\\_SB.I2C5",
                             0x00, ResourceConsumer, , Exclusive,
                             )

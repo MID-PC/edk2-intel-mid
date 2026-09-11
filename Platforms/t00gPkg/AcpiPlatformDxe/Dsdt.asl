@@ -13,9 +13,12 @@
   (b) that the OS not hand the blocks it maps to anyone else. This table
   therefore keeps only:
 
-    - \_PR processor objects: the PPM (P-state/C-state) surface the PEP
-      drives via IA32_PERF_CTL (MSR 0x199) and MWAIT C-states
-      (_PSS/_PCT/_PSD/_PPC/_CST, including HW-C6 in _CST).
+    - \_PR processor objects: nothing in this table any more. The PPM
+      (P-state/C-state) surface the PEP drives via IA32_PERF_CTL (MSR 0x199)
+      and MWAIT C-states (_PSS/_PCT/_PSD/_PPC/_CST, including HW-C6) lives in
+      the per-SKU PPM SSDT (SsdPpm<SKU>.aml, disassembly in
+      CloverviewPkg/Acpi/AcpiTables/SsdPpm<SKU>.dsl) packed by the device FDF
+      and installed by AcpiPlatformDxe.
     - \_SB.SYSR (PNP0C02): reserves the exact MMIO the PEP maps directly so
       no driver claims it:
         * 0xFF11D000  North-Complex PM unit (iomem: intel_pmu_driver)
@@ -116,37 +119,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
     Name (\UOFD, 0x00)
     // (SPI FixedDMA/DMAS experiment reverted - see the SPI1/SPI2 comment.)
 
-    Scope (\_PR)
-    {
-        //
-        // CPU-specific PPM block (Processor P000..P003), selected by the
-        // build's SOC_VARIANT define (Asus ZenFone 6 = SOC_VARIANT_Z2580, see
-        // t00gPkg.dsc:
-        //   PrZ2520  1.2 GHz part on a 100 MHz FSB (7 P-states)
-        //   PrZ2560  1.6 GHz part on a ~133 MHz FSB (4 P-states)
-        //   PrZ2580  2.0 GHz part on a ~133 MHz FSB (6 P-states,
-        //            SFI FREQ: 2000/1866/1600/1333/933/800)
-        //
-        // Sources live in Silicon/Intel/CloverviewPkg/Acpi/Include/ so every
-        // Cloverview-derived platform selects its own \_PR without forking the
-        // device DSDT.
-        //
-        // Why this is needed: clvpep.sys (ACPI\INT3395, the Z25xx/Z27xx Power
-        // Engine Plug-in) drives P-states through the PPM interface. With no
-        // _PCT/_PSS/_PPC/_PSD/_CST on the processor objects there is nothing
-        // for it to attach to, so nothing ever raises the ratio and the CPU
-        // stays at its boot ratio.
-        //
-#ifdef SOC_VARIANT_Z2520
-        #include "PrZ2520.asl"
-#elif defined (SOC_VARIANT_Z2560)
-        #include "PrZ2560.asl"
-#elif defined (SOC_VARIANT_Z2580)
-        #include "PrZ2580.asl"
-#else
-        #error "No SOC_VARIANT_* define for the ASL build (set SOC_VARIANT in the platform DSC)"
-#endif
-    }
+    // \_PR is intentionally absent: the processor PPM/PEP surface (P000..P003,
+    // _PSS/_PCT/_PSD/_PPC/_CST) is a per-SKU precompiled SSDT (SsdPpm<SKU>.aml,
+    // disassembly in CloverviewPkg/Acpi/AcpiTables/SsdPpm<SKU>.dsl), packed by
+    // the device FDF and loaded add-only by AcpiPlatformDxe. This table must
+    // not declare \_PR.P000..P003 or the SSDT load aborts on duplicate names.
 
     Scope (\_SB)
     {

@@ -91,7 +91,7 @@ READ_LOCK_STATUS   = TRUE
 
 INF  MdeModulePkg/Core/Pei/PeiMain.inf
 INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
-INF  Platforms/t00kPkg/PlatformPei/PlatformPei.inf
+INF  Silicon/Intel/CloverviewPkg/PlatformPei/PlatformPei.inf
 INF  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
 
 FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
@@ -141,7 +141,33 @@ APRIORI DXE {
 # the DXE.inc driver list.
 #
 INF  RuleOverride = ACPITABLE Platforms/t00kPkg/AcpiPlatformDxe/AcpiTables.inf
-!include Platforms/t00kPkg/Include/Extra.fdf.inc
+#
+# SoC fixed tables, packed by this device into the FREEFORM file keyed on
+# gCloverviewAcpiTableStorageGuid. The generic AcpiPlatformDxe
+# (Silicon/Intel/CloverviewPkg) installs each RAW section it finds in the
+# validated order and skips tables a device chose to exclude:
+#   - CSRT is included on this board (Z2760 DMA groups, GDMS GSI 0x71 -> 0x31;
+#     see the comment in Extra.fdf.inc).
+#   - DBG2 is only packed for the KDNET-over-USB build, where usb-debug.asl
+#     replaces usb-host.asl so nothing forces the OTG core into host mode.
+#
+FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facs.aml
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facp.aml
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Apic.aml
+!ifdef KDNET_USB
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Dbg2.aml
+!endif
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Csrt.aml
+  #
+  # Per-SKU \_PR PPM SSDT (processor P000..P003 PEP/P-state surface). This
+  # board is the Z2520 part (SOC_VARIANT_Z2520, see t00kPkg.dsc); the DSDT
+  # defines no \_PR, so this SSDT adds it. The blob is precompiled and packed
+  # like the fixed tables above; SsdPpm2520.dsl is its disassembly.
+  #
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/SsdPpm2520.aml
+}
+!include Silicon/Intel/CloverviewPkg/Extra.fdf.inc
 
 ################################################################################
 #

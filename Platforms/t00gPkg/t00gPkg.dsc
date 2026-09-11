@@ -27,9 +27,10 @@
   DEFINE SHELL_TYPE              = BUILD_SHELL
 
   #
-  # CPU variant: the Asus ZenFone 6 uses the Z2580 bin. CloverviewPkg.dsc.inc
-  # validates this; the ASLPP define below selects the \_PR PPM table compiled
-  # into the DSDT (PrZ2580.asl). Other values: SOC_VARIANT_Z2520, SOC_VARIANT_Z2560.
+  # CPU variant for this board: the Z2580 bin. CloverviewPkg.dsc.inc validates
+  # it; it also picks the precompiled \_PR PPM SSDT (SsdPpm2580.aml) that the
+  # device FDF packs - the DSDT itself is SKU-independent now. Other values:
+  # SOC_VARIANT_Z2520, SOC_VARIANT_Z2560.
   #
   DEFINE SOC_VARIANT             = SOC_VARIANT_Z2580
 
@@ -37,17 +38,14 @@
 
 [BuildOptions]
   #
-  # ASLPP (device DSDT): -D$(SOC_VARIANT) resolves the \_PR #include to the
-  # right PrZ<SKU>.asl (SOC_VARIANT _is_ the ASLPP macro name, e.g.
-  # SOC_VARIANT_Z2580); -DKDNET_USB (KDNET_USB=1 ./build.sh t00g
-  # DEBUG) swaps OTG0 to usb-debug.asl. CC: the KDNET define gates DBG2 table
-  # installation in AcpiPlatformDxe.
+  # ASLPP (device DSDT): -DKDNET_USB (KDNET_USB=1 ./build.sh t00g DEBUG)
+  # swaps OTG0 to usb-debug.asl. CC: the KDNET define gates DBG2 table packing
+  # in the device FDF. SOC_VARIANT is no longer an ASL macro (the \_PR PPM
+  # surface is precompiled into SsdPpm<SKU>.aml, not #included here).
   #
 !ifdef KDNET_USB
-  GCC:*_*_*_ASLPP_FLAGS          = -D$(SOC_VARIANT) -DKDNET_USB
+  GCC:*_*_*_ASLPP_FLAGS          = -DKDNET_USB
   GCC:*_*_*_CC_FLAGS             = -DKDNET_USB
-!else
-  GCC:*_*_*_ASLPP_FLAGS          = -D$(SOC_VARIANT)
 !endif
 
 ################################################################################
@@ -115,8 +113,11 @@
   #
   # ACPI. Windows' bootia32.efi/winload aborts with 0xc0000225 ("the firmware
   # (BIOS) is not ACPI compatible") when no RSDP/XSDT is published. AcpiTableDxe
-  # builds the RSDP/XSDT; this driver installs a hardware-reduced FADT, a FACS,
-  # an MADT and the DSDT compiled from AcpiTables.inf.
+  # builds the RSDP/XSDT; the SoC-generic AcpiPlatformDxe (CloverviewPkg)
+  # installs a hardware-reduced FADT, a FACS, an MADT, the DSDT compiled from
+  # AcpiTables.inf and whatever else this device packs into the fixed-table
+  # FREEFORM (see t00gPkg.fdf; CSRT is deliberately not packed here), skipping
+  # tables the device excludes.
   #
-  Platforms/t00gPkg/AcpiPlatformDxe/AcpiPlatformDxe.inf
+  Silicon/Intel/CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
   Platforms/t00gPkg/AcpiPlatformDxe/AcpiTables.inf

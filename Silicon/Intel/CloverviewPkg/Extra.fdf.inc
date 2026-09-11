@@ -9,13 +9,14 @@
 ##
 
 #
-# ACPI fixed tables for the Cloverview SoC (FADT/FACS/MADT/DBG2/CSRT): one
-# FREEFORM file keyed on gCloverviewAcpiTableStorageGuid whose RAW sections
-# AcpiPlatformDxe reads and installs. The tables are pre-compiled blobs
-# (Silicium-style) rather than being built from .aslc sources; the sources the
-# blobs were extracted from are archived under /tmp/opencode/acpi_ref/. The
-# device DSDT FREEFORM stays in the platform FDF (inline) and is compiled
-# from ASL at build time.
+# ACPI fixed tables (FACS/FADT/MADT/DBG2/CSRT) are NOT packed here: which
+# tables a board publishes is a device decision, so each device FDF packs the
+# .aml blobs from Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/ into its own
+# FREEFORM file keyed on gCloverviewAcpiTableStorageGuid. The SoC-generic
+# AcpiPlatformDxe (Silicon/Intel/CloverviewPkg/Drivers/AcpiPlatformDxe)
+# installs whatever RAW sections it finds and skips what a device excluded.
+# The .aml blobs are pre-compiled (Silicium-style); the sources they were
+# extracted from are archived under /tmp/opencode/acpi_ref/.
 #
 # CSRT (Core System Resources Table) is the board-corrected version of the
 # Z2760 CSRT.aml - only its GDMS group (INTL0005, "Intel(R) Serial IO DMA
@@ -27,13 +28,6 @@
 # HalExtIntcUartDMA extensions that service the FixedDMA descriptors on the
 # SPI/I2C/UART nodes.
 #
-FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
-  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facs.aml
-  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facp.aml
-  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Apic.aml
-  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Dbg2.aml
-  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Csrt.aml
-}
 
 #
 # Runtime variable support without NV storage (DRAM-loaded firmware).

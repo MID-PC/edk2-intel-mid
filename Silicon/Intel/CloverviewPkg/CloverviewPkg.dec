@@ -23,12 +23,17 @@
   gCloverviewTokenSpaceGuid = { 0x4f1c2d3e, 0x5a6b, 0x4c7d, { 0x8e, 0x9f, 0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0xf5 } }
   #
   # Raw ACPI table storage for the Cloverview fixed tables (FADT/FACS/MADT/
-  # DBG2). The .aslc sources in CloverviewPkg/Acpi/AcpiTables/ are packed into
-  # one FREEFORM FFS file with this GUID; AcpiPlatformDxe reads its RAW
-  # sections and installs them. (The DSDT storage is the device package's
-  # gEfiAcpiTableStorageGuid file.)
+  # DBG2). The .aslc sources in CloverviewPkg/Acpi/AcpiTables/ are packed by
+  # the device FDF into one FREEFORM FFS file with this GUID; the SoC
+  # AcpiPlatformDxe reads its RAW sections and installs them.
   #
   gCloverviewAcpiTableStorageGuid = { 0xF77A9DA4, 0x8DF3, 0x4B2C, { 0xA1, 0xE6, 0x0C, 0x57, 0xB2, 0xD3, 0x4E, 0x91 } }
+  #
+  # Raw ACPI table storage for the device DSDT (FILE_GUID of the device's
+  # AcpiTables.inf). Owned by the SoC package so the generic AcpiPlatformDxe
+  # does not depend on any platform package.
+  #
+  gEfiAcpiTableStorageGuid = { 0x7e374e25, 0x8e01, 0x4fee, { 0x87, 0xf2, 0x39, 0x0c, 0x23, 0xc6, 0x06, 0xcd } }
 
 [PcdsFixedAtBuild]
   ## SD host controller (mmc1, SD card slot) MMIO window, per iomem_A502CG.txt:

@@ -33,7 +33,7 @@ INF  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
 # The raw DSDT storage file is listed inline in t00gPkg.fdf.
 #
 INF  MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
-INF  Platforms/t00gPkg/AcpiPlatformDxe/AcpiPlatformDxe.inf
+INF  Silicon/Intel/CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
 
 #
 # SMBIOS: SmbiosDxe aggregates the records and publishes the entry point;

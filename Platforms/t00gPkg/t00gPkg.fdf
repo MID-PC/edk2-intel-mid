@@ -141,6 +141,31 @@ APRIORI DXE {
 # the DXE.inc driver list.
 #
 INF  RuleOverride = ACPITABLE Platforms/t00gPkg/AcpiPlatformDxe/AcpiTables.inf
+#
+# SoC fixed tables, packed by this device into the FREEFORM file keyed on
+# gCloverviewAcpiTableStorageGuid. The generic AcpiPlatformDxe
+# (Silicon/Intel/CloverviewPkg) installs each RAW section it finds in the
+# validated order and skips tables a device chose to exclude:
+#   - CSRT is deliberately NOT packed: the board-corrected Z2760 CSRT (GDMS
+#     GSI 0x71 -> 0x31) targets the ducati tablet's DMA wiring and must not be
+#     served to this device.
+#   - DBG2 is only packed for the KDNET-over-USB build.
+#
+FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facs.aml
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facp.aml
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Apic.aml
+!ifdef KDNET_USB
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Dbg2.aml
+!endif
+  #
+  # Per-SKU \_PR PPM SSDT (processor P000..P003 PEP/P-state surface). This
+  # board is the Z2580 part (SOC_VARIANT_Z2580, see t00gPkg.dsc); the DSDT
+  # defines no \_PR, so this SSDT adds it. The blob is precompiled and packed
+  # like the fixed tables above; SsdPpm2580.dsl is its disassembly.
+  #
+  SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/SsdPpm2580.aml
+}
 !include Silicon/Intel/CloverviewPkg/Extra.fdf.inc
 
 ################################################################################
