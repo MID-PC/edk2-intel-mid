@@ -667,8 +667,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
             // Touchscreen reset (ts_rst): AON pin 58, active-low. Same pattern
             // as GPO1's WLEN (GeneralPurposeIo operation region). While held
             // low the FocalTech FT5x06 can hold the I2C2 bus in a bad state,
-            // so it must be pulsed high before any I2C traffic. TOUC._PS0 does
-            // the timed pulse; this exposes the bit so ASL can drive it.
+            // so it must be pulsed high before any I2C traffic. The pulse is
+            // performed here in _REG as soon as the GPIO region attaches
+            // (U-Boot never runs on the EDK2/Windows path, so ts_rst is still
+            // low from power-on). This is the single reset owner - TOUC only
+            // reads the register, it does not pulse it.
             //
             Name (AVBL, Zero)
             Method (_REG, 2, NotSerialized)
@@ -676,6 +679,12 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 If ((Arg0 == 0x08))
                 {
                     AVBL = Arg1
+                    If ((Arg1 == One))
+                    {
+                        TSTP = Zero
+                        Sleep (0x0A)
+                        TSTP = One
+                    }
                 }
             }
 
@@ -1540,7 +1549,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                             {   // gpio_codec_int (AON pin 32)
                                 0x00000020
                             }
-                        I2cSerialBusV2 (0x004A, ControllerInitiated, 0x00061A80,
+                        I2cSerialBusV2 (0x004A, ControllerInitiated, 0x000186A0,
                             AddressingMode7Bit, "\\_SB.I2C1",
                             0x00, ResourceConsumer, , Exclusive,
                             )
@@ -1651,7 +1660,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 {
                     Name (RBUF, ResourceTemplate ()
                     {
-                        I2cSerialBusV2 (0x006A, ControllerInitiated, 0x00061A80,
+                        I2cSerialBusV2 (0x006A, ControllerInitiated, 0x000186A0,
                             AddressingMode7Bit, "\\_SB.I2C2",
                             0x00, ResourceConsumer, , Exclusive,
                             )
@@ -1680,7 +1689,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 {
                     Name (RBUF, ResourceTemplate ()
                     {
-                        I2cSerialBusV2 (0x0036, ControllerInitiated, 0x00061A80,
+                        I2cSerialBusV2 (0x0036, ControllerInitiated, 0x000186A0,
                             AddressingMode7Bit, "\\_SB.I2C2",
                             0x00, ResourceConsumer, , Exclusive,
                             )
@@ -1694,101 +1703,45 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
             // "ft5x0x_ts @ 0x38" on bus 2; dmesg-stock: "I2C bus = 2, name
             // = ft5x0x_ts, addr = 0x38"; FTS firmware v0x17; ts_int GPIO
             // pin 62). _HID MSHW1003 binds the FocalTechTouch (FT8607)
-            // Windows digitizer driver (matches ACPI\MSHW1003). _CID
-            // PNP0C50 (HID-over-I2C) plus a GpioInt on \\_SB.GPO0 pin 62
-            // (ts_int) lets the driver receive touch interrupts/wake. The
-            // GpioInt is Edge ActiveLow with PullUp, matching the board's
-            // U-Boot DSDT (southcluster.asl TCH0, which Linux used to bring
-            // the FT6236 up) rather than the Z2760 reference tablet's Atmel
-            // Level/PullNone. The FocalTech asserts INT only after a scan,
-            // so the GPIO pad must catch the falling pulse; a level-triggered
-            // pad would only re-fire while the line is held low and miss it.
+            // Windows digitizer driver (matches ACPI\MSHW1003). _CID is
+            // deliberately OMITTED: the FT5x06 is NOT HID-over-I2C
+            // compatible, so nothing else (hidi2c.sys) may bind. A GpioInt
+            // on \\_SB.GPO0 pin 62 (ts_int) lets the driver receive touch
+            // interrupts/wake. The GpioInt is Level ActiveLow with PullUp,
+            // per the FocalTechTouch driver's own requirement (its ISR is
+            // passive-level; device.c: "ACPI should specify level-triggered
+            // interrupts when using FocalTech 3202" / "This FT5X chip's IRQ
+            // is level-triggered"). Linux/U-Boot used Edge ActiveLow, but a
+            // passive ISR on an edge pad misses the short INT pulse (line
+            // held low, no new edge once the level is consumed), so the
+            // driver never gets re-triggered and reports nothing.
             //
             // _DEP on GPO0 so the TSTP operation-region handler is attached
-            // before _PS0. _PS0 performs the ts_rst timed pulse (pin 58, AON,
-            // active-low: assert 0, wait 10ms, release 1), mirroring what
-            // U-Boot's ducati_gpio_set(board/acer/ducati/ducati.c) did before
-            // the OS on the Linux side. While held low the FT5x06 can hold the
-            // I2C2 bus in a bad state, so it must be released before the
-            // touch driver issues any I2C traffic. The pulse is done once at
-            // first D0 entry (guarded by PSTS), matching the firmware
-            // one-shot behavior.
+            // before any I2C activity. The ts_rst release is owned by
+            // GPO0._REG (pulses the pin once when the GPIO region attaches,
+            // mirroring U-Boot's ducati_gpio_set); TOUC no longer drives the
+            // pin itself, so there is no _PS0/_PS3 reset logic here.
             //
             Device (TOUC)
             {
                 Name (_ADR, Zero)
                 Name (_HID, "MSHW1003")
-                Name (_CID, "PNP0C50")
                 Name (_UID, One)
                 Name (_DEP, Package (0x01) { \_SB.GPO0 })
-                Name (PSTS, Zero)
                 Method (_STA, 0, NotSerialized)
                 {
                     Return (0x0F)
-                }
-
-                //
-                // HID-over-I2C _DSM: required by hidi2c.sys to discover the
-                // HID descriptor register address and supported functions.
-                // UUID 3cdff6f7 = HID I2C Device. Function 0 = query,
-                // returns 0x03 (supports fn 0+1). Function 1 = HID
-                // descriptor address (returns 0 = default discovery).
-                // Matches the Z2760 reference DSDT TOUC._DSM.
-                //
-                Method (_DSM, 4, NotSerialized)
-                {
-                    If ((Arg0 == ToUUID ("3cdff6f7-4267-4555-ad05-b30a3d8938de") /* HID I2C Device */))
-                    {
-                        If ((Arg2 == Zero))
-                        {
-                            If ((Arg1 == One))
-                            {
-                                Return (Buffer (One) { 0x03 })
-                            }
-                            Else
-                            {
-                                Return (Buffer (One) { 0x00 })
-                            }
-                        }
-                        ElseIf ((Arg2 == One))
-                        {
-                            Return (Zero)
-                        }
-                    }
-                    Return (Buffer (One) { 0x00 })
-                }
-
-                Method (_PS0, 0, NotSerialized)
-                {
-                    If ((PSTS == Zero))
-                    {
-                        If ((\_SB.GPO0.AVBL == One))
-                        {
-                            \_SB.GPO0.TSTP = Zero
-                            Sleep (0x0A)
-                            \_SB.GPO0.TSTP = One
-                            PSTS = One
-                        }
-                    }
-                }
-
-                Method (_PS3, 0, NotSerialized)
-                {
-                    If ((\_SB.GPO0.AVBL == One))
-                    {
-                        \_SB.GPO0.TSTP = Zero
-                    }
                 }
 
                 Method (_CRS, 0, NotSerialized)
                 {
                     Name (RBUF, ResourceTemplate ()
                     {
-                        I2cSerialBusV2 (0x0038, ControllerInitiated, 0x00061A80,
+                        I2cSerialBusV2 (0x0038, ControllerInitiated, 0x000186A0,
                             AddressingMode7Bit, "\\_SB.I2C2",
                             0x00, ResourceConsumer, , Exclusive,
                             )
-                        GpioInt (Edge, ActiveLow, ExclusiveAndWake, PullUp, 0x0000,
+                        GpioInt (Level, ActiveLow, ExclusiveAndWake, PullUp, 0x0000,
                             "\\_SB.GPO0", 0x00, ResourceConsumer, ,
                             )
                             {
@@ -2038,7 +1991,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                             {
                                 0x003C
                             }
-                        I2cSerialBusV2 (0x0018, ControllerInitiated, 0x00061A80,
+                        I2cSerialBusV2 (0x0018, ControllerInitiated, 0x000186A0,
                             AddressingMode7Bit, "\\_SB.I2C5",
                             0x00, ResourceConsumer, , Exclusive,
                             )
