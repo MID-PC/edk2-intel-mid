@@ -709,11 +709,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 })
                 If ((STEP == 0x02))
                 {
-                    Return (CBUF) /* \_SB_.GDMS._CRS.CBUF */
+                    Return (CBUF)
                 }
                 Else
                 {
-                    Return (RBUF) /* \_SB_.GDMS._CRS.RBUF */
+                    Return (RBUF)
                 }
             }
             Method (_STA, 0, NotSerialized)
@@ -736,7 +736,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                         0x0000003B,
                     }
                 })
-                Return (RBUF) /* \_SB_.UDMS._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -776,7 +776,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                     FixedDMA (0x0000, 0x0000, Width8bit, )
                     FixedDMA (0x0001, 0x0001, Width8bit, )
                 })
-                Return (RBUF) /* \_SB_.URT0._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -809,17 +809,17 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                         GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
                             "\\_SB.GPO0", 0x00, ResourceConsumer, ,
                             )
-                            {   // Pin list
+                            {
                                 0x002D      // device-wakeup (AON GPIO 45)
                             }
                         GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
                             "\\_SB.GPO1", 0x00, ResourceConsumer, ,
                             )
-                            {   // Pin list
+                            {
                                 0x000D      // shutdown (Core GPIO 13 / global 109)
                             }
                     })
-                    Return (PBUF) /* \_SB_.URT0.BT0._CRS.PBUF */
+                    Return (PBUF)
                 }
                 Method (_STA, 0, NotSerialized)
                 {
@@ -847,7 +847,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                     FixedDMA (0x0002, 0x0002, Width8bit, )
                     FixedDMA (0x0003, 0x0003, Width8bit, )
                 })
-                Return (RBUF) /* \_SB_.URT1._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -874,7 +874,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                     FixedDMA (0x0004, 0x0004, Width8bit, )
                     FixedDMA (0x0005, 0x0005, Width8bit, )
                 })
-                Return (RBUF) /* \_SB_.URT2._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -923,11 +923,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 })
                 If ((STEP == Zero))
                 {
-                    Return (RBUF) /* \_SB_.SPI1._CRS.RBUF */
+                    Return (RBUF)
                 }
                 Else
                 {
-                    Return (SBUF) /* \_SB_.SPI1._CRS.SBUF */
+                    Return (SBUF)
                 }
             }
             Method (_STA, 0, NotSerialized)
@@ -964,11 +964,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 })
                 If ((STEP == Zero))
                 {
-                    Return (RBUF) /* \_SB_.SPI2._CRS.RBUF */
+                    Return (RBUF)
                 }
                 Else
                 {
-                    Return (SBUF) /* \_SB_.SPI2._CRS.SBUF */
+                    Return (SBUF)
                 }
             }
             Method (_STA, 0, NotSerialized)
@@ -1139,8 +1139,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF138000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF138000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1150,8 +1150,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF138000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF138000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1174,9 +1174,9 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
         //
         // Designware I2C controller for bus 1 (second of the six controllers
         // at 0xFF138000 + bus * 0x1000; iomem_A502CG: i2c-designware at
-        // 0xFF139000). Controller only - no subdevices (per the commit, all
-        // I2C function children except CHGR are omitted while retaining every
-        // controller bus). Modeled on the stock W511 (Z2760) \_SB.I2C1:
+        // 0xFF139000). Controller only - no subdevices (all I2C function children
+        // except CHGR are omitted; every controller bus is retained).
+        // Modeled on the stock W511 (Z2760) \_SB.I2C1:
         // _UID = bus + 1 = 2, GSI 0x39. NOTE: the stock CLV I2C GSIs are
         // NOT a regular 0x0A + bus pattern (I2C0 = 0x0A, I2C1 = 0x39,
         // I2C2 = 0x0C); 0x39 matches BOTH the stock W511 table and the
@@ -1214,8 +1214,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF139000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF139000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1225,8 +1225,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF139000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF139000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1257,15 +1257,15 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
         // Designware I2C controller for bus 2 (third controller at
         // 0xFF138000 + bus * 0x1000; iomem: i2c-designware at 0xFF13A000).
         // Modeled on the stock W511 (Z2760) \_SB.I2C2: _UID = 3, GSI 0x0C,
-        // _HRV = 0x02 (hardcoded - the commit fixes this bus; see below).
+        // _HRV = 0x02 (hardcoded - see below).
         // _DEP on PEP + IPC (the POWER island for this controller is
         // PEP-gated like the others).
         //
-        // Fix I2C2 on T00K (commit 49640a2): the Interrupt is ActiveLow,
-        // Shared - not ActiveHigh Exclusive like the other I2C controllers -
-        // which is what makes SpbTestTool transfers complete instead of
-        // aborting with ERROR_OPERATION_ABORTED (995). The GDMS FixedDMA
-        // descriptors (0x001B/0x001A) are carried inline in the single RBUF.
+        // I2C2 Interrupt is ActiveLow, Shared - not ActiveHigh Exclusive
+        // like the other I2C controllers - which is what makes SpbTestTool
+        // transfers complete instead of aborting with ERROR_OPERATION_ABORTED
+        // (995). The GDMS FixedDMA descriptors (0x001B/0x001A) are carried
+        // inline in the single RBUF.
         //
         // Bus 2 hosts the sole exposed I2C function device in this test image:
         // SPBT0001 at 7-bit address 0x6A. All other I2C function children are
@@ -1298,8 +1298,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13A000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13A000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1381,8 +1381,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13B000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13B000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1433,8 +1433,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13C000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13C000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1444,8 +1444,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13C000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13C000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1468,9 +1468,9 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
         //
         // Designware I2C controller for bus 5 (sixth controller at
         // 0xFF138000 + bus * 0x1000; iomem_A502CG: i2c-designware at
-        // 0xFF13D000). Controller only - no subdevices (per the commit, all
-        // I2C function children except CHGR are omitted while retaining every
-        // controller bus). Modeled on the stock W511 (Z2760) \_SB.I2C5:
+        // 0xFF13D000). Controller only - no subdevices (all I2C function children
+        // except CHGR are omitted; every controller bus is retained).
+        // Modeled on the stock W511 (Z2760) \_SB.I2C5:
         // _UID = bus + 1 = 6, GSI 0x2E, Level ActiveHigh Exclusive, _HRV =
         // STEP. The stock _DEP is {PEP, IPC, GPO0}; GPO0 is kept OUT of this
         // _DEP - it is only needed for slave GpioInts, which no child uses.
@@ -1506,8 +1506,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13D000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13D000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1517,8 +1517,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13D000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13D000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {

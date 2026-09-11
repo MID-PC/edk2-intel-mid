@@ -117,7 +117,6 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
     Name (\STEP, One)
     Name (\USBS, 0x00)
     Name (\UOFD, 0x00)
-    // (SPI FixedDMA/DMAS experiment reverted - see the SPI1/SPI2 comment.)
 
     // \_PR is intentionally absent: the processor PPM/PEP surface (P000..P003,
     // _PSS/_PCT/_PSD/_PPC/_CST) is a per-SKU precompiled SSDT (SsdPpm<SKU>.aml,
@@ -712,11 +711,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 })
                 If ((STEP == 0x02))
                 {
-                    Return (CBUF) /* \_SB_.GDMS._CRS.CBUF */
+                    Return (CBUF)
                 }
                 Else
                 {
-                    Return (RBUF) /* \_SB_.GDMS._CRS.RBUF */
+                    Return (RBUF)
                 }
             }
             Method (_STA, 0, NotSerialized)
@@ -739,7 +738,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000003B,
                     }
                 })
-                Return (RBUF) /* \_SB_.UDMS._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -783,7 +782,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000003C,
                     }
                 })
-                Return (RBUF) /* \_SB_.URT0._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -816,17 +815,17 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
                             "\\_SB.GPO0", 0x00, ResourceConsumer, ,
                             )
-                            {   // Pin list
+                            {
                                 0x002D      // device-wakeup (AON GPIO 45)
                             }
                         GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
                             "\\_SB.GPO1", 0x00, ResourceConsumer, ,
                             )
-                            {   // Pin list
+                            {
                                 0x000D      // shutdown (Core GPIO 13 / global 109)
                             }
                     })
-                    Return (PBUF) /* \_SB_.URT0.BT0._CRS.PBUF */
+                    Return (PBUF)
                 }
                 Method (_STA, 0, NotSerialized)
                 {
@@ -852,7 +851,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000003D,
                     }
                 })
-                Return (RBUF) /* \_SB_.URT1._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -877,7 +876,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000003E,
                     }
                 })
-                Return (RBUF) /* \_SB_.URT2._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -915,7 +914,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x00000009,
                     }
                 })
-                Return (RBUF) /* \_SB_.SPI1._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -939,7 +938,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x00000026,
                     }
                 })
-                Return (RBUF) /* \_SB_.SPI2._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {

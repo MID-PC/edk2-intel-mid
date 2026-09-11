@@ -876,11 +876,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 })
                 If ((STEP == 0x02))
                 {
-                    Return (CBUF) /* \_SB_.GDMS._CRS.CBUF */
+                    Return (CBUF)
                 }
                 Else
                 {
-                    Return (RBUF) /* \_SB_.GDMS._CRS.RBUF */
+                    Return (RBUF)
                 }
             }
             Method (_STA, 0, NotSerialized)
@@ -903,7 +903,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         0x0000003B,
                     }
                 })
-                Return (RBUF) /* \_SB_.UDMS._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -951,7 +951,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                     FixedDMA (0x0000, 0x0000, Width8bit, )
                     FixedDMA (0x0001, 0x0001, Width8bit, )
                 })
-                Return (RBUF) /* \_SB_.URT0._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -984,17 +984,17 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
                             "\\_SB.GPO0", 0x00, ResourceConsumer, ,
                             )
-                            {   // Pin list
+                            {
                                 0x002D      // device-wakeup (AON GPIO 45)
                             }
                         GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
                             "\\_SB.GPO1", 0x00, ResourceConsumer, ,
                             )
-                            {   // Pin list
+                            {
                                 0x000D      // shutdown (Core GPIO 13 / global 109)
                             }
                     })
-                    Return (PBUF) /* \_SB_.URT0.BT0._CRS.PBUF */
+                    Return (PBUF)
                 }
                 Method (_STA, 0, NotSerialized)
                 {
@@ -1022,7 +1022,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                     FixedDMA (0x0002, 0x0002, Width8bit, )
                     FixedDMA (0x0003, 0x0003, Width8bit, )
                 })
-                Return (RBUF) /* \_SB_.URT1._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -1049,7 +1049,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                     FixedDMA (0x0004, 0x0004, Width8bit, )
                     FixedDMA (0x0005, 0x0005, Width8bit, )
                 })
-                Return (RBUF) /* \_SB_.URT2._CRS.RBUF */
+                Return (RBUF)
             }
             Method (_STA, 0, NotSerialized)
             {
@@ -1088,8 +1088,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF135000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF135000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1099,8 +1099,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF135000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF135000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1111,11 +1111,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 })
                 If ((STEP == Zero))
                 {
-                    Return (RBUF) /* \_SB_.SPI1._CRS.RBUF */
+                    Return (RBUF)
                 }
                 Else
                 {
-                    Return (SBUF) /* \_SB_.SPI1._CRS.SBUF */
+                    Return (SBUF)
                 }
             }
             Method (_STA, 0, NotSerialized)
@@ -1135,8 +1135,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF136000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF136000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1146,8 +1146,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF136000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF136000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                     {
@@ -1158,11 +1158,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 })
                 If ((STEP == Zero))
                 {
-                    Return (RBUF) /* \_SB_.SPI2._CRS.RBUF */
+                    Return (RBUF)
                 }
                 Else
                 {
-                    Return (SBUF) /* \_SB_.SPI2._CRS.SBUF */
+                    Return (SBUF)
                 }
             }
             Method (_STA, 0, NotSerialized)
@@ -1375,8 +1375,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF138000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF138000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1386,8 +1386,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF138000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF138000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1458,8 +1458,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF139000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF139000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1469,8 +1469,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF139000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF139000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1599,8 +1599,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13A000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13A000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1610,8 +1610,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13A000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13A000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1791,7 +1791,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         GpioInt (Edge, ActiveLow, ExclusiveAndWake, PullUp, 0x0000,
                             "\\_SB.GPO0", 0x00, ResourceConsumer, ,
                             )
-                            {   // Pin list
+                            {
                                 0x003E      // ts_int (pin 62)
                             }
                     })
@@ -1838,8 +1838,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13B000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13B000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1890,8 +1890,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13C000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13C000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1901,8 +1901,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13C000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13C000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1969,8 +1969,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13D000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13D000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -1980,8 +1980,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 Name (SBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
-                        0xFF13D000,         // Address Base
-                        0x00000400,         // Address Length
+                        0xFF13D000,
+                        0x00000400,
                         )
                     Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
                     {
@@ -2035,7 +2035,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                         GpioInt (Level, ActiveLow, Exclusive, PullDefault, 0x0000,
                             "\\_SB.GPO0", 0x00, ResourceConsumer, ,
                             )
-                            {   // Pin list
+                            {
                                 0x003C
                             }
                         I2cSerialBusV2 (0x0018, ControllerInitiated, 0x00061A80,
