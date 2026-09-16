@@ -19,7 +19,7 @@
 # before doing anything.  Build settings can be given as KEY=VALUE
 # arguments (CLI overrides the platform defaults in SetPlatformEnv):
 #
-#   python3 Platforms/t00gPkg/DeviceBuild.py                  # DEBUG, GCC, IA32
+#   python3 Platforms/t00gPkg/DeviceBuild.py                  # DEBUG, CLANGPDB, IA32
 #   python3 Platforms/t00gPkg/DeviceBuild.py TARGET=RELEASE
 #   python3 Platforms/t00gPkg/DeviceBuild.py TARGET=RELEASE KDNET_USB=1
 #   python3 Platforms/t00gPkg/DeviceBuild.py -j 8
@@ -74,14 +74,14 @@ TARGET_TXT_CONTENT = """\
 # flow passes the platform, target, arch and toolchain explicitly on the
 # build command line, so the corresponding values here are intentionally
 # commented out - an active value in this file would override the command
-# line.  Per-target defaults (DEBUG, GCC, IA32) are enforced in
+# line.  Per-target defaults (DEBUG, CLANGPDB, IA32) are enforced in
 # SetPlatformEnv instead and are still overridable on the command line.
 #
 #ACTIVE_PLATFORM       = Platforms/t00gPkg/t00gPkg.dsc
 #TARGET                = DEBUG
 #TARGET_ARCH           = IA32
 TOOL_CHAIN_CONF       = Conf/tools_def.txt
-#TOOL_CHAIN_TAG        = GCC
+#TOOL_CHAIN_TAG        = CLANGPDB
 BUILD_RULE_CONF = Conf/build_rule.txt
 """
 
@@ -220,7 +220,7 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
         # Root-relative DSC path; BaseTools resolves it against WORKSPACE first.
         self.env.SetValue("ACTIVE_PLATFORM", f"Platforms/{PACKAGE_NAME}/{PACKAGE_NAME}.dsc", "Platform Hardcoded")
         self.env.SetValue("TARGET_ARCH", "IA32", "Platform Hardcoded")
-        self.env.SetValue("TOOL_CHAIN_TAG", "GCC", "Platform Hardcoded - default toolchain")
+        self.env.SetValue("TOOL_CHAIN_TAG", "CLANGPDB", "Platform Hardcoded - default toolchain")
         # Default build target (DEBUG).  A CLI 'TARGET=...' argument wins over
         # this because the invocable applies command-line tokens first and they
         # are created non-overridable.
@@ -242,6 +242,14 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
             os.path.join(base_tools, "Source", "C", "bin"),
         ]
         os.environ["PATH"] = os.pathsep.join(path_additions + [os.environ.get("PATH", "")])
+
+        # .nasm sources (BaseLib, BaseCpuLib, DxeIpl) are assembled with a bare
+        # 'nasm' resolved via PATH (NASM_PREFIX is unset); fail early with a
+        # clear message instead of a cryptic error half-way through the build.
+        if shutil.which("nasm") is None:
+            logging.critical("nasm not found on PATH: the platform assembles .nasm "
+                             "sources.  Install NASM and add it to PATH.")
+            return 1
 
         # KDNET-over-USB variant: mirrors 'KDNET_USB=1 ./build.sh t00g DEBUG'.
         # The define is only emitted when explicitly requested so the DSC/FDF
@@ -283,6 +291,11 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
             cmd = ["git", "-C", edk2_dir] + list(args)
             return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                   cwd=kwargs.pop("cwd", None))
+
+        if shutil.which("git") is None:
+            logging.critical("no 'git' on PATH: needed to apply edk2.patch and init the "
+                             "brotli submodules (Git for Windows provides it on Windows).")
+            return 1
 
         # -- edk2.patch ------------------------------------------------------
         # Same decision ladder as setup_env.sh: already-applied is skipped,
@@ -336,6 +349,15 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
             if make is None:
                 logging.critical("no 'make' on PATH: BaseTools needs GNU make (POSIX, or "
                                  "msys2/MSYS2 on Windows; VS2022 nmake is not wired up yet)")
+                return 1
+            # Guard against non-GNU 'make' implementations (dmake, jom, ...)
+            # picked up from PATH on Windows: the BaseTools C build and the edk2
+            # module GNUmakefiles both target GNU make.
+            make_ver = subprocess.run([make, "--version"], capture_output=True, text=True,
+                                      encoding="utf-8", errors="replace")
+            if make_ver.returncode != 0 or "GNU Make" not in (make_ver.stdout or ""):
+                logging.critical(f"'{make}' is not GNU make: BaseTools needs GNU make "
+                                 "(msys2/MSYS2 on Windows; VS2022 nmake is not wired up yet)")
                 return 1
             r = subprocess.run([make, "-C", os.path.join(edk2_dir, "BaseTools"),
                                 "-j", str(os.cpu_count() or 1)])

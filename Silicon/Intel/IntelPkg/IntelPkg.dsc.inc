@@ -9,14 +9,51 @@
 ##
 
 [BuildOptions]
-  GCC:DEBUG_*_*_CC_FLAGS         = -UMDEPKG_NDEBUG -Og
-  GCC:RELEASE_*_*_CC_FLAGS       = -DMDEPKG_NDEBUG
   #
-  # The image is entered directly at its first byte, so no ELF/PE loader is in
-  # play for SEC: keep it position dependent and 32 bit.
+  # CLANGPDB (clang + lld-link) is the only supported toolchain for this
+  # platform; it builds identical MSVC-format PE/COFF on Linux and Windows
+  # (target i686-pc-windows-msvc).
   #
-  GCC:*_*_IA32_CC_FLAGS          = -march=i686 -mtune=atom -fno-pic -fno-pie
-  GCC:*_*_IA32_DLINK_FLAGS       = -no-pie -z common-page-size=0x1000
+  # CC carries the platform ISA over the tools_def default: CLANGPDB IA32
+  # defaults to -march=i586, so add -march=i686 -mtune=atom here.  RELEASE
+  # re-adds -DMDEPKG_NDEBUG (the tools_def CLANGPDB RELEASE flags do not
+  # carry it); DEBUG gets -Og.
+  #
+  # The link-side page alignment is /ALIGN:0x1000 (the PE equivalent of
+  # '-z common-page-size=0x1000').  It is applied per module type below, not
+  # globally: GenFw needs SectionAlignment == FileAlignment to convert a PEIM
+  # to a TE image, so TE-converted module types (/ALIGN + /FILEALIGN at the
+  # same page size) must be kept apart from DXE/UEFI images (which need only
+  # /ALIGN and keep the tools_def /FILEALIGN:32).
+  #
+  CLANGPDB:DEBUG_*_*_CC_FLAGS    = -Og
+  CLANGPDB:RELEASE_*_*_CC_FLAGS  = -DMDEPKG_NDEBUG
+  CLANGPDB:*_*_IA32_CC_FLAGS     = -march=i686 -mtune=atom
+
+[BuildOptions.common.EDKII.SEC]
+  #
+  # SEC is entered at firmware offset 0 with no PE loader: page-align both the
+  # section virtual addresses (/ALIGN) and the raw file layout (/FILEALIGN) -
+  # the same lld-link settings Silicium applies to SEC.
+  #
+  *_CLANGPDB_*_DLINK_FLAGS       = /ALIGN:0x1000 /FILEALIGN:0x1000
+
+[BuildOptions.common.EDKII.PEI_CORE,BuildOptions.common.EDKII.PEIM]
+  #
+  # PEI images are TE-converted by GenFw (-t), which requires
+  # SectionAlignment == FileAlignment.  The tools_def CLANGPDB defaults
+  # (/ALIGN:32 /FILEALIGN:32) already satisfy that; raising both to the page
+  # size aligns every module's sections to 0x1000 for cleaner memory maps.
+  #
+  *_CLANGPDB_*_DLINK_FLAGS       = /ALIGN:0x1000 /FILEALIGN:0x1000
+
+[BuildOptions.common.EDKII.DXE_CORE,BuildOptions.common.EDKII.DXE_DRIVER,BuildOptions.common.EDKII.DXE_RUNTIME_DRIVER,BuildOptions.common.EDKII.UEFI_DRIVER,BuildOptions.common.EDKII.UEFI_APPLICATION]
+  #
+  # DXE/UEFI images stay plain PE32 (no TE conversion): page-align the section
+  # virtual addresses only, matching Silicium's lld-link settings for these
+  # module types.
+  #
+  *_CLANGPDB_*_DLINK_FLAGS       = /ALIGN:0x1000
 
 ################################################################################
 #

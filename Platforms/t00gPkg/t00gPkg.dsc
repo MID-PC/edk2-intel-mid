@@ -44,8 +44,8 @@
   # surface is precompiled into SsdPpm<SKU>.aml, not #included here).
   #
 !ifdef KDNET_USB
-  GCC:*_*_*_ASLPP_FLAGS          = -DKDNET_USB
-  GCC:*_*_*_CC_FLAGS             = -DKDNET_USB
+  CLANGPDB:*_*_*_ASLPP_FLAGS     = -DKDNET_USB
+  CLANGPDB:*_*_*_CC_FLAGS        = -DKDNET_USB
 !endif
 
 ################################################################################
