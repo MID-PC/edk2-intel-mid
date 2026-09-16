@@ -13,6 +13,12 @@
   (drivers/sfi/sfi_core.c), which is shared across all Intel Atom MID SoC
   generations (Menlow/Moorestown, Medfield, Cloverview, ...).
 
+  This library REQUIRES a bootloader-published SFI table: when the SYST/MMAP
+  tables cannot be found it logs an error and asserts (CpuDeadLoop stop).
+  Every platform that links this library is an SFI platform; a MID SoC that
+  does not publish SFI tables (e.g. SoFIA) supplies its own memory map
+  library instead.
+
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -130,6 +136,36 @@ SfiFindTable (
   return NULL;
 }
 
+/**
+  Halt on a missing SFI table.
+
+  The platforms that link this library are SFI platforms; a primary
+  bootloader that hands over without publishing SYST/MMAP in the legacy BIOS
+  area is a firmware defect and the platform cannot describe its own memory.
+  Log, assert, and stop instead of letting a consumer fall into a fabricated
+  map. Devices that genuinely have no SFI (e.g. SoFIA) link a different memory
+  map library, so this branch is never expected.
+
+  Never returns.
+**/
+STATIC
+VOID
+SfiMmapMissing (
+  VOID
+  )
+{
+  DEBUG ((
+    DEBUG_ERROR,
+    "SfiMemoryMapLib: no SFI SYST/MMAP table in 0x%llx-0x%llx; "
+    "the bootloader must publish SFI tables on this platform\n",
+    (UINT64)SFI_SEARCH_BASE,
+    (UINT64)(SFI_SEARCH_BASE + SFI_SEARCH_SIZE)
+    ));
+
+  ASSERT (FALSE);
+  CpuDeadLoop ();
+}
+
 EFI_STATUS
 EFIAPI
 SfiGetMmap (
@@ -148,7 +184,7 @@ SfiGetMmap (
 
   Syst = SfiFindTable (SFI_SIG_SYST);
   if (Syst == NULL) {
-    return EFI_NOT_FOUND;
+    SfiMmapMissing ();
   }
 
   PointerCount = (Syst->Len - sizeof (*Syst)) / sizeof (UINT64);
@@ -191,6 +227,17 @@ SfiGetMmap (
     return EFI_SUCCESS;
   }
 
+  //
+  // SYST was found but no pointer led to a valid MMAP table: the bootloader
+  // published an incomplete table set. Same firmware defect as a missing
+  // table - stop.
+  //
+  SfiMmapMissing ();
+
+  //
+  // Unreachable: SfiMmapMissing() never returns. Kept so the EFI_STATUS
+  // return contract is explicit to tools/compilers.
+  //
   return EFI_NOT_FOUND;
 }
 
@@ -241,19 +288,17 @@ SfiMmapBuildMmioList (
 
   Count = 0;
 
-  if (Mmap != NULL) {
-    for (Index = 0; Index < Mmap->EntryCount; Index++) {
-      if (Mmap->Entry[Index].Type == SFI_MMAP_TABLE_TYPE_MMIO) {
-        if (Count >= Capacity) {
-          *MmioCount = 0;
-          return EFI_BUFFER_TOO_SMALL;
-        }
-
-        Mmio[Count].Base = Mmap->Entry[Index].PhysStart;
-        Mmio[Count].Size = Mmap->Entry[Index].Pages << 12;
-        Mmio[Count].Name = "sfi mmio";
-        Count++;
+  for (Index = 0; Index < Mmap->EntryCount; Index++) {
+    if (Mmap->Entry[Index].Type == SFI_MMAP_TABLE_TYPE_MMIO) {
+      if (Count >= Capacity) {
+        *MmioCount = 0;
+        return EFI_BUFFER_TOO_SMALL;
       }
+
+      Mmio[Count].Base = Mmap->Entry[Index].PhysStart;
+      Mmio[Count].Size = Mmap->Entry[Index].Pages << 12;
+      Mmio[Count].Name = "sfi mmio";
+      Count++;
     }
   }
 

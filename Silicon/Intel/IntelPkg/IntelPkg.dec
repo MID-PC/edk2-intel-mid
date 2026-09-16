@@ -65,6 +65,21 @@
   #  phase can allocate over the SEC/PEI/DXE/BDS serial-log cursor state).
   gIntelMidTokenSpaceGuid.PcdConsoleStateBase|0x3EEFD000|UINT32|0x0000000C
 
+  ## PCI device MMIO windows that the SFI MMAP table cannot publish: the
+  #  primary bootloader never enumerates PCI on this SoC family, so SFI has
+  #  no BAR entries for the PCI-attached devices (GPU, ISP, EMAC). These are
+  #  board properties and live here so PlatformPei can emit them beside the
+  #  SFI-derived windows instead of hard-coding them in the shared PEIM
+  #  (per-board .dsc overrides, cf. t00g's GMMADR at 0x80000000). A Size of 0
+  #  disables the window. A PEI-time probe of PCI config space over the
+  #  MCFG-derived MMCONFIG base can replace these once BARs are validated.
+  gIntelMidTokenSpaceGuid.PcdPciGpuMmioBase|0x40000000|UINT64|0x00000016
+  gIntelMidTokenSpaceGuid.PcdPciGpuMmioSize|0x10000000|UINT64|0x00000017
+  gIntelMidTokenSpaceGuid.PcdPciIspMmioBase|0xDF800000|UINT64|0x00000018
+  gIntelMidTokenSpaceGuid.PcdPciIspMmioSize|0x00800000|UINT64|0x00000019
+  gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase|0xFA000000|UINT64|0x0000001A
+  gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize|0x04000000|UINT64|0x0000001B
+
   ## SMBIOS System Information (Type 1). The device package (e.g.
   #  Platforms/ducatiPkg/ducatiPkg.dsc) overrides these with the real device
   #  identity; the generically-shared values here are the defaults.

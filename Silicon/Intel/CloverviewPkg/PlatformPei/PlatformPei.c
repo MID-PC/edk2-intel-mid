@@ -4,16 +4,23 @@
   The primary bootloader has already trained DRAM, configured the SCU and left
   the display engine scanning out of 0x3F000000. This PEIM therefore only:
 
-    1. Reads the SFI MMAP table the bootloader left in the legacy BIOS area
-       (0x000E0000-0x00100000) and reports DRAM and every MMIO window from
-       it, falling back to the hard-coded layout below when the table is
-       missing or invalid.
-    2. Reports the permanent system memory to the PEI Core.
-    3. Signals boot mode and memory discovery.
+    1. Walks the SFI MMAP table the bootloader left in the legacy BIOS area
+       (0x000E0000-0x00100000) and reports one EFI resource descriptor HOB
+       per entry (type 7 = RAM, 11 = MMIO, 12 = I/O, anything else reserved),
+       mirroring the sfi_setup_e820() consumer in the U-Boot Tangier
+       reference (arch/x86/cpu/tangier/sdram.c).  SFI is mandatory on this
+       platform: SfiMemoryMapLib refuses to return when the table is missing
+       (the primary bootloader always publishes it), so there is no fallback
+       map and no degraded-boot path.
+    2. Validates the permanent PEI window and every firmware carve-out
+       against the RAM descriptors, and emits the PCI device MMIO windows the
+       bootloader never publishes via SFI from per-board PCDs.
+    3. Reports the permanent system memory to the PEI Core.
+    4. Signals boot mode and memory discovery.
 
-  Memory map (SFI MMAP from sfi-tables/MMAP, cross-checked with
-  iomem_A502CG.txt).  SFI types: 7 = conventional, 6 = runtime data,
-  11 = MMIO.
+  Reference memory map for the A502CG (SFI MMAP from sfi-tables/MMAP,
+  cross-checked with iomem_A502CG.txt).  SFI types: 7 = conventional,
+  6 = runtime data, 11 = MMIO.
 
     00000000-00097fff  conventional (legacy, not reported: IVT/BDA)
     00098000-000fffff  runtime data (RAM buffer / legacy BIOS area)
@@ -26,12 +33,13 @@
     3eeff400-3eefffff  RAM buffer
     3ef00000-3effffff  MMIO          PCI MMCONFIG (bus 00)
     3f000000-3fffffff  MMIO          framebuffer window (GOP base 0x3F000000)
-    40000000-4fffffff  MMIO          GPU (00:02.0)
-    df800000-dfffffff  MMIO          00:03.0 / 00:02.0 (pvrsrvkm)
-    fa000000-fdffffff  MMIO          00:06.0
     fec00000-fec00fff  MMIO          IOAPIC
     fee00000-fee00fff  MMIO          Local APIC
     ff000000-ffffffff  MMIO          south complex (SCU, HSU, SDHCI, I2C...)
+
+  The PCI device BAR windows (0x40000000 GPU 00:02.0, 0xDF800000
+  00:03.0/00:02.0, 0xFA000000 00:06.0) never appear in SFI: the bootloader
+  does not enumerate PCI, so they are PCD-defined (PcdPci*Mmio*).
 
   IMPORTANT: the firmware image is loaded at 0x01101000, i.e. *inside* the
   0x01000000-0x36feffff DRAM window.  The DXE Core requires every memory
@@ -63,27 +71,16 @@
 
 
 //
-// Fallback DRAM windows, used only when the live SFI MMAP table at 0x000E0000
-// cannot be read. SFI normally drives these ranges; the firmware-owned regions
-// it does not describe (firmware image, SEC/PEI temporary RAM, permanent PEI
-// window, legacy AP-trampoline carve, shared console state) are PCD-defined.
+// The whole 0-1 MiB block (IVT/BDA, EBDA, VGA/ISA hole, legacy BIOS/SFI
+// area) is reported through the PcdLegacy* real-mode trampoline machinery
+// below, so the SFI walk skips whatever the bootloader describes under 1 MiB;
+// emitting both would create overlapping resource descriptors. The PCI device
+// BAR windows the bootloader never publishes via SFI (it does not enumerate
+// PCI) come from per-board PcdPci*Mmio* PCDs (see IntelPkg.dec) instead of
+// hard-coded tables, which keeps this shared PEIM correct across the
+// drei/A502CG and t00g boards.
 //
-#define CT_MAIN_MEMORY_BASE    0x01000000ULL
-#define CT_MAIN_MEMORY_LIMIT   0x36FF0000ULL
-#define CT_MAIN_MEMORY_SIZE    (CT_MAIN_MEMORY_LIMIT - CT_MAIN_MEMORY_BASE)
-
-#define CT_LOW_MEMORY_BASE     0x00100000ULL
-#define CT_LOW_MEMORY_SIZE     (0x00D00000ULL - CT_LOW_MEMORY_BASE)
-
-//
-// 379fd400-3eeff3ff System RAM, page aligned inwards.
-//
-#define CT_HIGH_MEMORY_BASE    0x379FE000ULL
-#define CT_HIGH_MEMORY_SIZE    (0x3EEFF000ULL - CT_HIGH_MEMORY_BASE)
-
-//
-// SFI discovery moved to IntelPkg Library/SfiMemoryMapLib (see SfiGetMmap()).
-//
+#define CT_SUB_MEGABYTE_LIMIT  0x00100000ULL
 
 #define CT_SYSTEM_MEMORY_ATTRIBUTES  (                  \
   EFI_RESOURCE_ATTRIBUTE_PRESENT                      | \
@@ -103,36 +100,95 @@
   )
 
 //
-// Every MMIO window of the platform, in ascending order (fallback list; the
-// DRAM-side rows are duplicated by the type-11 entries of the live SFI MMAP
-// table, completed with mDeviceMmioRegions below when SFI drives the map).
-// None of these may overlap each other or a system memory descriptor, or the
-// DXE Core GCD map initialisation will assert.
+// True when [Start1, Start1+Size1) and [Start2, Start2+Size2) intersect. All
+// windows here lie within the 4 GiB address space, so the sums cannot wrap.
 //
-STATIC CONST SFI_MMIO_REGION  mMmioRegions[] = {
-  { 0x00D00000ULL, 0x00300000ULL, "low reserved"      },
-  { 0x36FF0000ULL, 0x00A0D000ULL, "reserved hole"     }, // 36ff0000-379fcfff
-  { 0x379FD000ULL, 0x00001000ULL, "ram buffer"        }, // 379fd000-379fdfff
-  { 0x3EF00000ULL, 0x00100000ULL, "PCI MMCONFIG"      },
-  { 0x3F000000ULL, 0x01000000ULL, "framebuffer"       }, // GOP base lives here
-  { 0x40000000ULL, 0x10000000ULL, "GPU 00:02.0"       },
-  { 0xDF800000ULL, 0x00800000ULL, "00:03.0 / 00:02.0" },
-  { 0xFA000000ULL, 0x04000000ULL, "00:06.0"           },
-  { 0xFEC00000ULL, 0x00001000ULL, "IOAPIC"            },
-  { 0xFEE00000ULL, 0x00001000ULL, "Local APIC"        },
-  { 0xFF000000ULL, 0x01000000ULL, "south complex"     }
-};
+STATIC
+BOOLEAN
+MmapRangeOverlaps (
+  IN UINT64  Start1,
+  IN UINT64  Size1,
+  IN UINT64  Start2,
+  IN UINT64  Size2
+  )
+{
+  return (Start1 < (Start2 + Size2)) && (Start2 < (Start1 + Size1));
+}
 
 //
-// Device MMIO windows the SFI MMAP table does not publish (their BARs were
-// taken from the stock /proc/iomem dump). Merged into the MMIO descriptor
-// list when the map comes from the live SFI table.
+// True when [InnerBase, InnerBase+InnerSize) lies entirely within
+// [OuterBase, OuterBase+OuterSize).
 //
-STATIC CONST SFI_MMIO_REGION  mDeviceMmioRegions[] = {
-  { 0x40000000ULL, 0x10000000ULL, "GPU 00:02.0"       },
-  { 0xDF800000ULL, 0x00800000ULL, "00:03.0 / 00:02.0" },
-  { 0xFA000000ULL, 0x04000000ULL, "00:06.0"           }
-};
+STATIC
+BOOLEAN
+MmapRangeIsInside (
+  IN UINT64  InnerBase,
+  IN UINT64  InnerSize,
+  IN UINT64  OuterBase,
+  IN UINT64  OuterSize
+  )
+{
+  return (InnerBase >= OuterBase) &&
+         (InnerBase + InnerSize <= OuterBase + OuterSize);
+}
+
+//
+// Emit one resource descriptor HOB, logging its identity.
+//
+STATIC
+VOID
+ReportResourceWindow (
+  IN EFI_RESOURCE_TYPE  ResourceType,
+  IN UINT64             Attributes,
+  IN UINT64             Base,
+  IN UINT64             Size,
+  IN CONST CHAR8        *Name
+  )
+{
+  DEBUG ((
+    DEBUG_VERBOSE,
+    "PlatformPei: %a %lx-%lx\n",
+    Name,
+    Base,
+    Base + (Size - 1)
+    ));
+
+  BuildResourceDescriptorHob (ResourceType, Attributes, Base, Size);
+}
+
+//
+// The DXE Core promotes each memory allocation HOB by allocating the exact
+// range (EfiReservedMemoryType / AllocateAddress), so a carve-out must be
+// fully covered by an EFI_RESOURCE_SYSTEM_MEMORY descriptor or the promotion
+// fails at hand-off. Validate a firmware carve-out against the RAM windows
+// collected from the SFI walk (plus the legacy real-mode block).
+//
+STATIC
+VOID
+ValidateCarveOut (
+  IN UINT64                Base,
+  IN UINT64                Size,
+  IN CONST SFI_MMIO_REGION *RamWindows,
+  IN UINTN                 RamCount,
+  IN CONST CHAR8           *Name
+  )
+{
+  UINTN  Index;
+
+  for (Index = 0; Index < RamCount; Index++) {
+    if (MmapRangeIsInside (Base, Size, RamWindows[Index].Base, RamWindows[Index].Size)) {
+      return;
+    }
+  }
+
+  DEBUG ((
+    DEBUG_ERROR,
+    "PlatformPei: carve-out %a (%lx-%lx) lies outside every RAM window\n",
+    Name,
+    Base,
+    Base + (Size - 1)
+    ));
+}
 
 STATIC EFI_PEI_PPI_DESCRIPTOR  mPpiBootMode = {
   EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
@@ -318,11 +374,29 @@ EnableExecuteDisable (
 /**
   Report the whole platform memory map.
 
-  The DRAM windows and the MMIO windows come from the live SFI MMAP table when
-  it is present, with the hard-coded layout above kept as fallback. The
-  firmware-owned regions SFI does not describe - the firmware image, the
-  SEC/PEI temporary RAM, the permanent PEI window, the legacy AP-trampoline
-  carve and the shared framebuffer console state - are always PCD-defined.
+  Single-pass port of the SFI MMAP consumer in the U-Boot Tangier reference
+  (arch/x86/cpu/tangier/sdram.c: sfi_setup_e820 / sfi_get_bank_size /
+  board_get_usable_ram_top) applied to the UEFI HOB model:
+
+    - every SFI MMAP entry becomes one EFI resource descriptor HOB
+      (7 -> SYSTEM_MEMORY, 11 -> MEMORY_MAPPED_IO, 12 -> IO, anything else
+      -> MEMORY_RESERVED), page-aligned inwards;
+    - the type-6 block under 1 MiB is deliberately skipped: the whole
+      real-mode block comes from the PcdLegacy* PCD machinery below;
+    - the permanent PEI window is validated against the RAM descriptor that
+      also covers the loaded firmware image, and is placed dynamically just
+      below the top of that window when the PCD value does not describe a
+      valid interior point;
+    - the PCI-device MMIO windows the bootloader never puts into SFI (it does
+      not enumerate PCI) come from per-board PcdPci*Mmio* PCDs and are
+      emitted as MEMORY_MAPPED_IO beside the SFI-derived windows;
+    - firmware-owned carve-outs stay PCD-defined, but each one is validated
+      to lie inside a RAM descriptor and to not overlap any sibling before
+      its allocation HOB is built.
+
+  SFI is mandatory: the library refuses to return when the bootloader has not
+  published the MMAP table, so the walk below always sees a decoded table and
+  there is no constant fallback map.
 **/
 STATIC
 VOID
@@ -332,8 +406,12 @@ PlatformPeiInstallMemoryMap (
 {
   EFI_STATUS         Status;
   UINTN              Index;
-  UINTN              MMapCount;
-  BOOLEAN            UseSfi;
+  UINTN              RamIndex;
+  UINTN              MmioIndex;
+  UINTN              RamCount;
+  UINTN              CarveCount;
+  UINTN              PciMmioCount;
+  UINTN              MmapMmioCount;
   UINT64             FdBase;
   UINT64             FdSize;
   UINT64             TempRamBase;
@@ -345,16 +423,19 @@ PlatformPeiInstallMemoryMap (
   UINT64             ConsoleBase;
   UINT64             MainBase;
   UINT64             MainLimit;
-  UINT64             MainSize;
-  UINT64             LowBase;
-  UINT64             LowLimit;
-  UINT64             LowSize;
-  UINT64             HighBase;
-  UINT64             HighLimit;
-  UINT64             HighSize;
+  UINT64             Start;
+  UINT64             Size;
+  UINT64             Limit;
+  UINT64             Attr;
+  EFI_RESOURCE_TYPE  ResourceType;
+  CONST CHAR8        *TypeName;
+  BOOLEAN            Found;
   SFI_MMAP_TABLE     SfiMmap;
   UINTN              SfiCount;
-  SFI_MMIO_REGION    MMap[SFI_MAX_MMAP_ENTRIES + ARRAY_SIZE (mDeviceMmioRegions)];
+  SFI_MMIO_REGION    RamWindows[SFI_MAX_MMAP_ENTRIES + 1];
+  SFI_MMIO_REGION    MmapMmio[SFI_MAX_MMAP_ENTRIES];
+  SFI_MMIO_REGION    PciMmio[3];
+  SFI_MMIO_REGION    CarveOuts[5];
 
   FdBase      = (UINT64)FixedPcdGet32 (PcdFdBaseAddress) &
                 ~(UINT64)EFI_PAGE_MASK;
@@ -377,249 +458,377 @@ PlatformPeiInstallMemoryMap (
   ConsoleBase = (UINT64)FixedPcdGet32 (PcdConsoleStateBase);
 
   //
-  // Derive the DRAM map from the SFI MMAP table. Each window is anchored to a
-  // firmware address SFI does not know about but whose property the
-  // bootloader guarantees: the main window must cover the loaded firmware
-  // image, the low window must start right after the legacy window, and the
-  // high island must cover the shared console state page.
+  // RAM windows collected for carve-out validation. Entry 0 is the legacy
+  // real-mode block reported from PCDs below, so the legacy carve-outs are
+  // validated with the same machinery as the firmware windows.
   //
-  UseSfi   = FALSE;
-  SfiCount = 0;
-  if (SfiGetMmap (&SfiMmap) == EFI_SUCCESS) {
-    SfiCount = SfiMmap.EntryCount;
+  RamWindows[0].Base = LegacyBase;
+  RamWindows[0].Size = LegacySize;
+  RamWindows[0].Name = "legacy real-mode";
+  RamCount = 1;
+
+  //
+  // PCI-device MMIO windows from per-board PCDs (see IntelPkg.dec). These are
+  // the only MMIO windows SFI cannot publish on this platform: the bootloader
+  // does not enumerate PCI, so no BAR entries ever reach the table. A Size of
+  // 0 disables the window.
+  //
+  PciMmioCount = 0;
+  if (FixedPcdGet64 (PcdPciGpuMmioSize) != 0) {
+    PciMmio[PciMmioCount].Base = FixedPcdGet64 (PcdPciGpuMmioBase);
+    PciMmio[PciMmioCount].Size = FixedPcdGet64 (PcdPciGpuMmioSize);
+    PciMmio[PciMmioCount].Name = "GPU 00:02.0";
+    PciMmioCount++;
+  }
+  if (FixedPcdGet64 (PcdPciIspMmioSize) != 0) {
+    PciMmio[PciMmioCount].Base = FixedPcdGet64 (PcdPciIspMmioBase);
+    PciMmio[PciMmioCount].Size = FixedPcdGet64 (PcdPciIspMmioSize);
+    PciMmio[PciMmioCount].Name = "00:03.0 / 00:02.0";
+    PciMmioCount++;
+  }
+  if (FixedPcdGet64 (PcdPciEmacMmioSize) != 0) {
+    PciMmio[PciMmioCount].Base = FixedPcdGet64 (PcdPciEmacMmioBase);
+    PciMmio[PciMmioCount].Size = FixedPcdGet64 (PcdPciEmacMmioSize);
+    PciMmio[PciMmioCount].Name = "00:06.0";
+    PciMmioCount++;
   }
 
-  if (SfiCount > 0) {
-    UseSfi = (SfiMmapFindConvRange (&SfiMmap, FdBase, &MainBase, &MainLimit)
-              == EFI_SUCCESS);
-  }
-  if (UseSfi) {
-    UseSfi = (SfiMmapFindConvRange (
-                &SfiMmap,
-                LegacyBase + LegacySize,
-                &LowBase,
-                &LowLimit
-                ) == EFI_SUCCESS);
-  }
-  if (UseSfi) {
-    UseSfi = (SfiMmapFindConvRange (
-                &SfiMmap,
-                ConsoleBase,
-                &HighBase,
-                &HighLimit
-                ) == EFI_SUCCESS);
-    if (UseSfi) {
-      //
-      // MMAP entries are not guaranteed page aligned; square the high island
-      // up inwards.
-      //
-      HighBase  = ALIGN_VALUE (HighBase, EFI_PAGE_SIZE);
-      HighLimit = HighLimit & ~(UINT64)(EFI_PAGE_SIZE - 1);
-      UseSfi    = (HighBase < HighLimit);
+  //
+  // Walk the live SFI MMAP table, one resource descriptor HOB per entry,
+  // mirroring sfi_setup_e820() in the U-Boot Tangier reference. SfiGetMmap()
+  // asserts (dead-loops) when the bootloader failed to publish the table, so
+  // reaching this point means the map is decoded and authoritative.
+  //
+  Status = SfiGetMmap (&SfiMmap);
+  ASSERT_EFI_ERROR (Status);
+  SfiCount = SfiMmap.EntryCount;
+
+  MainBase       = 0;
+  MainLimit      = 0;
+  MmapMmioCount  = 0;
+
+  for (Index = 0; Index < SfiCount; Index++) {
+    Start = SfiMmap.Entry[Index].PhysStart;
+    Size  = SfiMmap.Entry[Index].Pages << EFI_PAGE_SHIFT;
+
+    if (Size == 0) {
+      continue;
     }
-  }
-  if (UseSfi) {
-    UseSfi = (MainBase < MainLimit) &&
-             (LowBase < LowLimit) &&
-             (PeiMemBase < MainLimit);
+    if (Start > MAX_UINT64 - Size) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "PlatformPei: SFI entry %d wraps the address space\n",
+        (UINT32)Index
+        ));
+      continue;
+    }
+    Limit = Start + Size;
+
+    //
+    // The whole sub-1 MiB block is reported through the legacy machinery
+    // below; the bootloader's own rows there must not be emitted a second
+    // time or the descriptors would overlap.
+    //
+    if (Limit <= CT_SUB_MEGABYTE_LIMIT) {
+      DEBUG ((
+        DEBUG_VERBOSE,
+        "PlatformPei: SFI entry %d (%lx-%lx) covered by legacy window\n",
+        (UINT32)Index,
+        Start,
+        Limit
+        ));
+      continue;
+    }
+
+    //
+    // MMAP entries are not guaranteed page aligned; square each window
+    // inwards so the descriptor boundaries are GCD-clean.
+    //
+    Start = ALIGN_VALUE (Start, EFI_PAGE_SIZE);
+    Limit = Limit & ~(UINT64)(EFI_PAGE_SIZE - 1);
+    if (Start >= Limit) {
+      continue;
+    }
+    Size = Limit - Start;
+
+    switch (SfiMmap.Entry[Index].Type) {
+    case SFI_MMAP_TABLE_TYPE_RAM:
+      ResourceType = EFI_RESOURCE_SYSTEM_MEMORY;
+      Attr         = CT_SYSTEM_MEMORY_ATTRIBUTES;
+      TypeName     = "RAM";
+      break;
+
+    case SFI_MMAP_TABLE_TYPE_MMIO:
+      ResourceType = EFI_RESOURCE_MEMORY_MAPPED_IO;
+      Attr         = CT_MMIO_ATTRIBUTES;
+      TypeName     = "MMIO";
+      break;
+
+    case 12:                     // SFI type 12 = I/O window (see U-Boot
+      ResourceType = EFI_RESOURCE_IO;   // arch/x86/include/asm/sfi.h)
+      Attr         = CT_MMIO_ATTRIBUTES;
+      TypeName     = "I/O";
+      break;
+
+    default:                     // 6 = reserved runtime data, 8 = ACPI, ...
+      ResourceType = EFI_RESOURCE_MEMORY_RESERVED;
+      Attr         = CT_MMIO_ATTRIBUTES;
+      TypeName     = "reserved";
+      break;
+    }
+
+    if (ResourceType == EFI_RESOURCE_SYSTEM_MEMORY) {
+      if (RamCount < ARRAY_SIZE (RamWindows)) {
+        RamWindows[RamCount].Base = Start;
+        RamWindows[RamCount].Size = Size;
+        RamWindows[RamCount].Name = "SFI RAM";
+        RamCount++;
+      }
+
+      //
+      // The main window is the one covering the loaded firmware image; the
+      // permanent PEI window is validated against it below.
+      //
+      if ((MainLimit == 0) && (FdBase >= Start) && (FdBase < Limit)) {
+        MainBase  = Start;
+        MainLimit = Limit;
+      }
+    } else if (ResourceType == EFI_RESOURCE_MEMORY_MAPPED_IO) {
+      if (MmapMmioCount < ARRAY_SIZE (MmapMmio)) {
+        MmapMmio[MmapMmioCount].Base = Start;
+        MmapMmio[MmapMmioCount].Size = Size;
+        MmapMmio[MmapMmioCount].Name = TypeName;
+        MmapMmioCount++;
+      }
+    }
+
+    ReportResourceWindow (ResourceType, Attr, Start, Size, TypeName);
   }
 
-  if (UseSfi) {
-    MainSize   = MainLimit - MainBase;
-    LowSize    = LowLimit - LowBase;
-    HighSize   = HighLimit - HighBase;
-    PeiMemSize = MainLimit - PeiMemBase;
-
+  //
+  // The DXE Core requires the FD image and every memory allocation HOB to be
+  // covered by a SYSTEM_MEMORY descriptor (CoreAddMemoryDescriptor cannot
+  // promote a range that no resource descriptor covers). If no SFI RAM entry
+  // covers the firmware image the map is unusable - a firmware defect. There
+  // is no constant fallback: the SFI table is authoritative, so stop.
+  //
+  if (MainLimit == 0) {
     DEBUG ((
-      DEBUG_INIT,
-      "PlatformPei: SFI MMAP: main %lx-%lx low %lx-%lx high %lx-%lx, PEI mem %lx-%lx\n",
-      MainBase, MainLimit, LowBase, LowLimit, HighBase, HighLimit,
-      PeiMemBase, PeiMemBase + PeiMemSize
+      DEBUG_ERROR,
+      "PlatformPei: no SFI RAM entry covers the firmware image at %lx, "
+      "memory map unusable\n",
+      FdBase
       ));
-  } else {
-    MainBase   = CT_MAIN_MEMORY_BASE;
-    MainLimit  = CT_MAIN_MEMORY_LIMIT;
-    MainSize   = CT_MAIN_MEMORY_SIZE;
-    LowBase    = CT_LOW_MEMORY_BASE;
-    LowLimit   = LowBase + CT_LOW_MEMORY_SIZE;
-    LowSize    = CT_LOW_MEMORY_SIZE;
-    HighBase   = CT_HIGH_MEMORY_BASE;
-    HighLimit  = HighBase + CT_HIGH_MEMORY_SIZE;
-    HighSize   = CT_HIGH_MEMORY_SIZE;
-    PeiMemSize = CT_MAIN_MEMORY_LIMIT - PeiMemBase;
-
-    DEBUG ((DEBUG_WARN, "PlatformPei: SFI MMAP unavailable, using fallback layout\n"));
+    ASSERT (FALSE);
+    CpuDeadLoop ();
   }
 
+  DEBUG ((
+    DEBUG_INIT,
+    "PlatformPei: SFI MMAP: %d entries -> main %lx-%lx, %d RAM windows, %d MMIO windows\n",
+    (UINT32)SfiCount,
+    MainBase,
+    MainLimit,
+    (UINT32)(RamCount - 1),
+    (UINT32)MmapMmioCount
+    ));
+
   //
-  // MMIO windows: when SFI drives the map, SfiMemoryMapLib merges the SFI
-  // type-11 entries with the device windows the table omits and sorts the
-  // result ascending; otherwise the full fallback list is used.
+  // Permanent PEI memory. The PCD value describes the board's preferred
+  // window when it lies inside the main DRAM window; otherwise place it
+  // dynamically just below the top of the main window (analogue of
+  // board_get_usable_ram_top in the U-Boot Tangier reference) so the PCD can
+  // never land in the reserved hole or over the firmware image.
   //
-  if (UseSfi) {
-    Status = SfiMmapBuildMmioList (
-               &SfiMmap,
-               mDeviceMmioRegions,
-               ARRAY_SIZE (mDeviceMmioRegions),
-               MMap,
-               ARRAY_SIZE (MMap),
-               &MMapCount
-               );
-    ASSERT (Status == EFI_SUCCESS);
-  } else {
-    MMapCount = 0;
-    for (Index = 0; Index < ARRAY_SIZE (mMmioRegions); Index++) {
-      MMap[MMapCount++] = mMmioRegions[Index];
-    }
+  if ((PeiMemBase < MainBase) || (PeiMemBase >= MainLimit)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "PlatformPei: PcdPeiMemoryBase 0x%lx outside main window, placing PEI memory dynamically\n",
+      PeiMemBase
+      ));
+    PeiMemBase = (MainLimit - SIZE_64MB) & ~(UINT64)(EFI_PAGE_SIZE - 1);
   }
+  PeiMemSize = MainLimit - PeiMemBase;
+
+  DEBUG ((
+    DEBUG_INIT,
+    "PlatformPei: permanent PEI memory %lx-%lx\n",
+    PeiMemBase,
+    PeiMemBase + PeiMemSize - 1
+    ));
 
   //
   // Hand the window above the firmware image to the PEI Core as permanent
-  // memory. The descriptor HOB below covers a larger range (from the main
+  // memory. The descriptor HOBs below cover a larger range (from the main
   // window base) so that the image and the temporary RAM are described too.
   //
   Status = PeiServicesInstallPeiMemory (PeiMemBase, PeiMemSize);
   ASSERT_EFI_ERROR (Status);
 
-  BuildResourceDescriptorHob (
-    EFI_RESOURCE_SYSTEM_MEMORY,
-    CT_SYSTEM_MEMORY_ATTRIBUTES,
-    MainBase,
-    MainSize
-    );
-
   //
   // Legacy low memory, required for the OS AP startup trampoline (see the
   // PcdLegacyMemory* entries in IntelPkg.dec for the rationale).
   //
-  BuildResourceDescriptorHob (
+  ReportResourceWindow (
     EFI_RESOURCE_SYSTEM_MEMORY,
     CT_SYSTEM_MEMORY_ATTRIBUTES,
     LegacyBase,
-    LegacySize
+    LegacySize,
+    "legacy real-mode"
     );
 
-  BuildMemoryAllocationHob (
-    (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdLegacyReservedBase),
-    (UINT64)FixedPcdGet32 (PcdLegacyReservedSize),
-    EfiReservedMemoryType
-    );
+  //
+  // PCI-device MMIO windows (never published by SFI). Skip any window that
+  // overlaps an SFI-derived RAM or MMIO descriptor: the SFI table is the
+  // bootloader's truth and overlapping resource descriptors would make the
+  // DXE Core GCD initialisation assert.
+  //
+  for (Index = 0; Index < PciMmioCount; Index++) {
+    Found = FALSE;
+    for (RamIndex = 0; RamIndex < RamCount; RamIndex++) {
+      if (MmapRangeOverlaps (
+            PciMmio[Index].Base,
+            PciMmio[Index].Size,
+            RamWindows[RamIndex].Base,
+            RamWindows[RamIndex].Size
+            )) {
+        Found = TRUE;
+        break;
+      }
+    }
+    for (MmioIndex = 0; !Found && (MmioIndex < MmapMmioCount); MmioIndex++) {
+      if (MmapRangeOverlaps (
+            PciMmio[Index].Base,
+            PciMmio[Index].Size,
+            MmapMmio[MmioIndex].Base,
+            MmapMmio[MmioIndex].Size
+            )) {
+        Found = TRUE;
+        break;
+      }
+    }
+    if (Found) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "PlatformPei: PCI window %a (%lx-%lx) overlaps an SFI window, skipped\n",
+        PciMmio[Index].Name,
+        PciMmio[Index].Base,
+        PciMmio[Index].Base + PciMmio[Index].Size - 1
+        ));
+      continue;
+    }
+    ReportResourceWindow (
+      EFI_RESOURCE_MEMORY_MAPPED_IO,
+      CT_MMIO_ATTRIBUTES,
+      PciMmio[Index].Base,
+      PciMmio[Index].Size,
+      PciMmio[Index].Name
+      );
+  }
 
-  BuildMemoryAllocationHob (
-    (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdLegacyTopBase),
-    (UINT64)FixedPcdGet32 (PcdLegacyTopSize),
-    EfiReservedMemoryType
-    );
+  //
+  // Firmware carve-outs: allocation HOBs. Collect them up front so each one
+  // can be validated both against the RAM windows and against its siblings.
+  //
+  CarveCount = 0;
+  CarveOuts[CarveCount].Base = (UINT64)FixedPcdGet32 (PcdLegacyReservedBase);
+  CarveOuts[CarveCount].Size = (UINT64)FixedPcdGet32 (PcdLegacyReservedSize);
+  CarveOuts[CarveCount].Name = "legacy reserved";
+  CarveCount++;
+  CarveOuts[CarveCount].Base = (UINT64)FixedPcdGet32 (PcdLegacyTopBase);
+  CarveOuts[CarveCount].Size = (UINT64)FixedPcdGet32 (PcdLegacyTopSize);
+  CarveOuts[CarveCount].Name = "legacy top";
+  CarveCount++;
+  CarveOuts[CarveCount].Base = FdBase;
+  CarveOuts[CarveCount].Size = FdSize;
+  CarveOuts[CarveCount].Name = "firmware image";
+  CarveCount++;
+  CarveOuts[CarveCount].Base = TempRamBase;
+  CarveOuts[CarveCount].Size = TempRamSize;
+  CarveOuts[CarveCount].Name = "SEC/PEI temp RAM";
+  CarveCount++;
+  CarveOuts[CarveCount].Base = ConsoleBase;
+  CarveOuts[CarveCount].Size = SIZE_4KB;
+  CarveOuts[CarveCount].Name = "console state";
+  CarveCount++;
 
-  BuildResourceDescriptorHob (
-    EFI_RESOURCE_SYSTEM_MEMORY,
-    CT_SYSTEM_MEMORY_ATTRIBUTES,
-    LowBase,
-    LowSize
-    );
+  for (Index = 0; Index < CarveCount; Index++) {
+    ValidateCarveOut (
+      CarveOuts[Index].Base,
+      CarveOuts[Index].Size,
+      RamWindows,
+      RamCount,
+      CarveOuts[Index].Name
+      );
+  }
 
-  BuildResourceDescriptorHob (
-    EFI_RESOURCE_SYSTEM_MEMORY,
-    CT_SYSTEM_MEMORY_ATTRIBUTES,
-    HighBase,
-    HighSize
-    );
+  //
+  // The DXE Core promotes each allocation HOB by allocating the exact range
+  // (EfiReservedMemoryType / AllocateAddress); the second and later of two
+  // overlapping promotions hit pages that are already allocated and
+  // CoreConvertPages() bails out with "incompatible memory types" - the
+  // ConvertPages lesson recorded in the note below. Detect any such overlap
+  // here instead of relying on it at hand-off time.
+  //
+  for (RamIndex = 0; RamIndex < CarveCount; RamIndex++) {
+    for (MmioIndex = RamIndex + 1; MmioIndex < CarveCount; MmioIndex++) {
+      if (MmapRangeOverlaps (
+            CarveOuts[RamIndex].Base,
+            CarveOuts[RamIndex].Size,
+            CarveOuts[MmioIndex].Base,
+            CarveOuts[MmioIndex].Size
+            )) {
+        DEBUG ((
+          DEBUG_ERROR,
+          "PlatformPei: carve-outs %a and %a overlap\n",
+          CarveOuts[RamIndex].Name,
+          CarveOuts[MmioIndex].Name
+          ));
+      }
+    }
+  }
 
   //
   // The firmware image itself must never be allocated over or freed: the BFV
-  // and every XIP PEIM still live there when DXE starts. Reserved, not
-  // BootServicesData.
+  // and every XIP PEIM still live there when DXE starts. The SEC/PEI
+  // temporary RAM (stack + heap used before permanent memory) sits inside the
+  // main DRAM window below the permanent memory window, so it must be carved
+  // out explicitly. The legacy carve-outs protect the IVT/BDA and the
+  // VGA/ISA/option-ROM hole. The console-state page at PcdConsoleStateBase is
+  // the shared FrameBufferSerialPortLib cursor state (see IntelPkg.dec) and
+  // must never be handed to the OS: it is written by every phase
+  // (SEC/PEI/DXE/BDS). All five are EfiReservedMemoryType for the above
+  // reasons.
   //
-  BuildMemoryAllocationHob (
-    FdBase,
-    FdSize,
-    EfiReservedMemoryType
-    );
+  for (Index = 0; Index < CarveCount; Index++) {
+    BuildMemoryAllocationHob (
+      CarveOuts[Index].Base,
+      CarveOuts[Index].Size,
+      EfiReservedMemoryType
+      );
+  }
 
   //
-  // SEC/PEI temporary RAM (stack + heap used before permanent memory). It sits
-  // inside the main DRAM window and below the permanent memory window, so it
-  // must be carved out explicitly.
-  //
-  BuildMemoryAllocationHob (
-    TempRamBase,
-    TempRamSize,
-    EfiReservedMemoryType
-    );
-
-  //
-  // Firmware console-state window at PcdConsoleStateBase (one 4 KiB page):
-  //   FrameBufferSerialPortLib shared console state (FB_CONSOLE_STATE).
-  //
-  // RELOCATED from 0x020F0000. That address sits in the low DRAM window the
-  // primary bootloader (OSIP loader / bootstub) uses as its own scratch before
-  // it jumps to 0x01101000, and the Windows boot loader also allocates heavily
-  // there, which is why the shared cursor state was corrupted on most boots.
-  // The new base is the top page of the high DRAM island, which nothing on
-  // this platform touches before or after the firmware runs, so the console
-  // state survives the reset back into UEFI.
-  //
-  // This must be a real EfiReservedMemoryType range, not ordinary DRAM:
-  // the console state is written by every phase (SEC/PEI/DXE/BDS) and must
-  // not be handed to the OS.
-  //
-  // It is page aligned, 1 page long, and does not overlap the FD image
-  // (0x01101000 + PcdFdSize) or the SEC/PEI temporary RAM (0x02000000 +
-  // PcdSecPeiTemporaryRamSize), so the DXE Core promotes it exactly once and
-  // no ConvertPages() conflict can occur.
-  //
-  BuildMemoryAllocationHob (
-    (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdConsoleStateBase),
-    (UINT64)SIZE_4KB,
-    EfiReservedMemoryType
-    );
-
-  //
-  // NOTE: do NOT add a third allocation HOB covering the whole
+  // NOTE: do NOT add a sixth allocation HOB covering the whole
   // 0x01000000..PeiMemBase window. It used to be reserved here as a
-  // "bootloader owned" range, but that HOB fully contains both HOBs built
-  // above (the FD image at 0x01101000 and the SEC/PEI temporary RAM at
-  // 0x02000000). The DXE Core promotes memory allocation HOBs one by one with
-  // CoreAllocatePages (EfiReservedMemoryType, AllocateAddress); the second and
-  // third overlapping promotion hits pages that are already allocated, so
+  // "bootloader owned" range, but that HOB fully contains the firmware image
+  // and the SEC/PEI temporary RAM HOBs built above. The DXE Core promotes
+  // memory allocation HOBs one by one with CoreAllocatePages
+  // (EfiReservedMemoryType, AllocateAddress); the second and third
+  // overlapping promotions hit pages that are already allocated, so
   // CoreConvertPages() bails out with
   //
   //   ConvertPages: incompatible memory types
   //   ConvertPages: range ... covers multiple entries
   //
-  // and the corresponding descriptor is left in an inconsistent state in the
-  // GCD/UEFI memory map. That is exactly the message seen right before the
-  // intermittent reset while loading bootia32.efi (it also appears when
-  // booting from the SD card, i.e. it is not USB specific): the OS loader
-  // allocates from a range the memory map describes inconsistently.
+  // and the corresponding descriptor is left inconsistent in the GCD/UEFI
+  // memory map. That is exactly the message seen right before the intermittent
+  // reset while loading bootia32.efi. The firmware image and the temporary
+  // RAM - the only parts of this window that must survive into DXE - are
+  // reserved individually and non-overlappingly above; the remainder of the
+  // window is genuinely free once the primary bootloader has handed control
+  // over, so leave it as ordinary system memory.
   //
-  // The FD image and the temporary RAM - the only parts of this window that
-  // must survive into DXE - are already reserved individually and
-  // non-overlappingly above. The remainder of the window is genuinely free
-  // once the primary bootloader has handed control over, so leave it as
-  // ordinary system memory.
-  //
-
-  //
-  // MMIO windows. The framebuffer (0x3F000000) is one of them: it sits inside
-  // the 3f000000-3fffffff reserved window of the SFI map.
-  //
-  for (Index = 0; Index < MMapCount; Index++) {
-    DEBUG ((
-      DEBUG_VERBOSE,
-      "PlatformPei: MMIO %a %lx-%lx\n",
-      MMap[Index].Name,
-      MMap[Index].Base,
-      MMap[Index].Base + MMap[Index].Size - 1
-      ));
-
-    BuildResourceDescriptorHob (
-      EFI_RESOURCE_MEMORY_MAPPED_IO,
-      CT_MMIO_ATTRIBUTES,
-      MMap[Index].Base,
-      MMap[Index].Size
-      );
-  }
 
   //
   // The whole 4 GiB is addressable on this IA-32 part.

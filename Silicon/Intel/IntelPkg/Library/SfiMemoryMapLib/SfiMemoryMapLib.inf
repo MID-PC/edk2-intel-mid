@@ -6,6 +6,11 @@
 #  bootloader leaves in the legacy BIOS area and provides classification
 #  helpers for it. Consumes no PCDs, so it is fully firmware-independent.
 #
+#  SFI is mandatory for every platform that links this library: when the
+#  bootloader has not published the SYST/MMAP tables, SfiGetMmap() logs an
+#  error and asserts (CpuDeadLoop stop). A MID SoC without SFI tables
+#  (e.g. SoFIA) supplies its own memory map library instead of this one.
+#
 #  SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
 

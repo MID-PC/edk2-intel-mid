@@ -55,6 +55,12 @@
   gIntelMidTokenSpaceGuid.PcdLegacyTopBase
   gIntelMidTokenSpaceGuid.PcdLegacyTopSize
   gIntelMidTokenSpaceGuid.PcdConsoleStateBase
+  gIntelMidTokenSpaceGuid.PcdPciGpuMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciGpuMmioSize
+  gIntelMidTokenSpaceGuid.PcdPciIspMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciIspMmioSize
+  gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize
   gCloverviewTokenSpaceGuid.PcdScuIpcBase
   gIntelMidTokenSpaceGuid.PcdFrameBufferBase
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth

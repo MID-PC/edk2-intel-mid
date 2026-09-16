@@ -15,6 +15,13 @@
   firmware to turn the result into resource HOBs (which windows to report,
   which firmware-owned ranges to carve out, and so on).
 
+  The library is SFI-mandatory: SfiGetMmap() never returns a failure. When
+  the bootloader has not published the SYST/MMAP tables in the legacy BIOS
+  area the library logs an error and asserts (CpuDeadLoop stop), because
+  every platform that links this library is an SFI platform. A MID SoC that
+  does not publish SFI tables (e.g. SoFIA) supplies its own memory map
+  library instance instead of linking this one.
+
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -85,11 +92,13 @@ typedef struct {
   Scans the legacy BIOS area for the SYST table and follows its pointer list
   to the MMAP table, copying the memory entries out.
 
+  This platform is an SFI platform, so a missing SYST/MMAP table is a fatal
+  firmware defect: the function logs an error and asserts (CpuDeadLoop stop)
+  instead of returning. It only returns when the table was decoded.
+
   @param[out] Mmap  Decoded MMAP table. The caller provides the storage.
 
-  @retval EFI_SUCCESS        The MMAP table was found and decoded.
-  @retval EFI_NOT_FOUND      No valid SYST/MMAP table pair exists in the
-                             legacy BIOS area.
+  @retval EFI_SUCCESS  The MMAP table was found and decoded.
 **/
 EFI_STATUS
 EFIAPI
@@ -124,8 +133,7 @@ SfiMmapFindConvRange (
   device windows (which SFI does not publish) and sorts the result ascending
   by base address so debug output reads in address order.
 
-  @param[in]  Mmap          Decoded MMAP table, or NULL when no SFI table is
-                            available.
+  @param[in]  Mmap          Decoded MMAP table from SfiGetMmap().
   @param[in]  DeviceRegions Platform device windows not described by SFI.
                             May be NULL when DeviceCount is 0.
   @param[in]  DeviceCount   Number of entries in DeviceRegions.
