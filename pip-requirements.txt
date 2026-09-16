@@ -1,0 +1,26 @@
+##
+# EDK II Python PIP requirements file
+#
+# This file provides the list of python components to install using PIP.
+#
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+# https://pypi.org/project/pip/
+# https://pip.pypa.io/en/stable/user_guide/#requirements-files
+# https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
+# https://www.python.org/dev/peps/pep-0440/#version-specifiers
+##
+#
+# The stuart (Project Mu) build flow for this repository's per-device build
+# scripts (Platforms/<device>Pkg/DeviceBuild.py).  Pins match the versions
+# already in use on this host (Python 3.14):
+#
+#   pip install -r pip-requirements.txt
+#
+
+edk2-pytool-library~=0.23.16
+edk2-pytool-extensions~=0.31.1
+antlr4-python3-runtime==4.13.2
+regex==2026.7.19
+pefile~=2024.8.26
