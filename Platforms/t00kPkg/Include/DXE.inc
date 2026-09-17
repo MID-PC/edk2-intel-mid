@@ -45,7 +45,10 @@ INF  Silicon/Intel/IntelPkg/Drivers/SmBiosTableDxe/SmBiosTableDxe.inf
 INF  MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
 INF  MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
 INF  MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
-INF  MdeModulePkg/Bus/Sd/EmmcDxe/EmmcDxe.inf
+# EmmcDxe intentionally excluded: SdHostDxe exposes only the SD slot (mmc1);
+# the internal eMMC (mmc0) is not registered, so EmmcDxe's CMD1 probe always
+# times out on an SD card and floods DEBUG with the "TRB failed with Device
+# Error" dump storm on every enumeration.
 
 #
 # Console / graphics. PlatformGopDxe (fixed-mode GOP on the framebuffer) lives

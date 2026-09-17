@@ -80,10 +80,26 @@ index 912048eee9..3d88a87c5f 100644
    // 2. Start the Host Controller
    //
 diff --git a/MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c b/MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c
-index 8496ce4727..d3acfb1f3b 100644
+index 8496ce4727..775126c05e 100644
 --- a/MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c
 +++ b/MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c
-@@ -740,17 +740,27 @@ SdMmcPciHcDriverBindingStart (
+@@ -101,8 +101,14 @@ EMMC_DEVICE_PATH  mEmmcDpTemplate = {
+ // Prioritized function list to detect card type.
+ // User could add other card detection logic here.
+ //
++// Clover Trail+ platform: the SDHCI block exposed by SdHostDxe is the SD
++// slot (mmc1) only; the internal eMMC (mmc0) and the Wi-Fi SDIO (mmc2) are
++// not registered. EmmcIdentification probes MMC with CMD1, which an SD card
++// never answers, so on this platform it always times out and floods DEBUG
++// with "TRB failed with Device Error" + register dumps for no reason. The
++// SD-only detection below is sufficient.
++//
+ CARD_TYPE_DETECT_ROUTINE  mCardTypeDetectRoutineTable[] = {
+-  EmmcIdentification,
+   SdCardIdentification,
+   NULL
+ };
+@@ -740,17 +746,27 @@ SdMmcPciHcDriverBindingStart (
      //
      // Check whether there is a SD/MMC card attached
      //

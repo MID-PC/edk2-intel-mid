@@ -79,7 +79,7 @@ SMBIOS_TABLE_TYPE2  mSmbiosType2 = {
   3,    // Version
   4,    // SerialNumber
   5,    // AssetTag
-  { 0 },                // FeatureFlag
+  { 1 },                // FeatureFlag: hosting board
   6,    // LocationInChassis
   0,    // ChassisHandle (set at runtime)
   BaseBoardTypeMotherBoard,
@@ -136,7 +136,7 @@ SMBIOS_TABLE_TYPE4  mSmbiosType4 = {
   },
   1,                  // Socket
   0x03,               // ProcessorType: Central Processor
-  ProcessorFamilyUnknown, // ProcessorFamily
+  ProcessorFamilyIntelAtom, // ProcessorFamily
   2,                  // ProcessorManufacturer
   { { 0 }, { 0 } },   // ProcessorId (set at runtime)
   3,                  // ProcessorVersion
@@ -146,22 +146,23 @@ SMBIOS_TABLE_TYPE4  mSmbiosType4 = {
   0,                  // CurrentSpeed (set at runtime)
   0,                  // Status (set at runtime)
   ProcessorUpgradeOther, // ProcessorUpgrade
-  SMBIOS_HANDLE_PI_RESERVED, // L1CacheHandle
-  SMBIOS_HANDLE_PI_RESERVED, // L2CacheHandle
-  SMBIOS_HANDLE_PI_RESERVED, // L3CacheHandle
+  SMBIOS_HANDLE_PI_RESERVED, // L1CacheHandle (set at runtime)
+  SMBIOS_HANDLE_PI_RESERVED, // L2CacheHandle (set at runtime)
+  SMBIOS_HANDLE_PI_RESERVED, // L3CacheHandle (no L3 on Cloverview)
   4,                  // SerialNumber
   5,                  // AssetTag
   6,                  // PartNumber
-  2,                  // CoreCount
+  2,                  // CoreCount (Cloverview: 2 physical cores)
   2,                  // EnabledCoreCount
-  2,                  // ThreadCount
+  0,                  // ThreadCount (set at runtime from CPUID.1 EBX[23:16])
   BIT3 | BIT2,        // ProcessorCharacteristics: Multicore, 64-bit capable
-  ProcessorFamilyUnknown, // ProcessorFamily2
+                      //   (BIT4 "hardware threads" added at runtime for HT bins)
+  ProcessorFamilyIntelAtom, // ProcessorFamily2
   2,                  // CoreCount2
   2,                  // EnabledCoreCount2
-  2,                  // ThreadCount2
-  0,                  // ThreadEnabled
-  7,                  // SocketType
+  0,                  // ThreadCount2 (set at runtime)
+  0,                  // ThreadEnabled (set at runtime)
+  1,                  // SocketType: "On Board" (string 1, not a new string)
 };
 
 CHAR8  *mSmbiosType4Strings[] = {
@@ -171,6 +172,97 @@ CHAR8  *mSmbiosType4Strings[] = {
   "Not Specified", // SerialNumber
   "Not Specified", // AssetTag
   "Not Specified", // PartNumber
+  NULL
+};
+
+//
+// Cache records (Type 7). Cloverview (Saltwell) has fixed cache geometry per
+// core: L1I 32 KB 8-way, L1D 24 KB 6-way, L2 512 KB 8-way, and no L3. The
+// SMBIOS cache-associativity enum has no 6-way value, so L1D is reported as
+// "Unknown" instead of a wrong way count. The records mirror the cache set
+// the Silicium SMBIOS driver registers for its ARM parts, and Type 4 links
+// to them the same way (L1CacheHandle points at the L1 data cache).
+//
+// CacheConfiguration (word): bit7 Enabled, bits 6:5 Location (00 internal),
+// bit3 Socketed (0), bits 2:0 level (001 = L1, 010 = L2),
+// bits 9:8 operation mode (00 write-through, 01 write-back).
+//
+#define CACHE_CONFIG_L1_WT  0x0081
+#define CACHE_CONFIG_L1_WB  0x0181
+#define CACHE_CONFIG_L2_WB  0x0182
+
+SMBIOS_TABLE_TYPE7  mSmbiosType7L1I = {
+  {
+    SMBIOS_TYPE_CACHE_INFORMATION,
+    sizeof (SMBIOS_TABLE_TYPE7),
+    0
+  },
+  1,                  // SocketDesignation
+  CACHE_CONFIG_L1_WT, // CacheConfiguration: enabled, internal, L1, write-through
+  { 0x0020, 0 },      // MaximumCacheSize: 32 KB
+  { 0x0020, 0 },      // InstalledSize: 32 KB
+  { 0, 1 },           // SupportedSRAMType: Unknown
+  { 0, 1 },           // CurrentSRAMType: Unknown
+  0,                  // CacheSpeed (unknown)
+  CacheErrorUnknown,  // ErrorCorrectionType
+  CacheTypeInstruction, // SystemCacheType
+  CacheAssociativity8Way, // Associativity
+  { 0x0020, 0 },      // MaximumCacheSize2: 32 KB
+  { 0x0020, 0 },      // InstalledSize2: 32 KB
+};
+
+CHAR8  *mSmbiosType7L1IStrings[] = {
+  "L1 Instruction Cache",
+  NULL
+};
+
+SMBIOS_TABLE_TYPE7  mSmbiosType7L1D = {
+  {
+    SMBIOS_TYPE_CACHE_INFORMATION,
+    sizeof (SMBIOS_TABLE_TYPE7),
+    0
+  },
+  1,                  // SocketDesignation
+  CACHE_CONFIG_L1_WB, // CacheConfiguration: enabled, internal, L1, write-back
+  { 0x0018, 0 },      // MaximumCacheSize: 24 KB
+  { 0x0018, 0 },      // InstalledSize: 24 KB
+  { 0, 1 },           // SupportedSRAMType: Unknown
+  { 0, 1 },           // CurrentSRAMType: Unknown
+  0,                  // CacheSpeed (unknown)
+  CacheErrorUnknown,  // ErrorCorrectionType
+  CacheTypeData,      // SystemCacheType
+  CacheAssociativityUnknown, // Associativity (6-way not representable)
+  { 0x0018, 0 },      // MaximumCacheSize2: 24 KB
+  { 0x0018, 0 },      // InstalledSize2: 24 KB
+};
+
+CHAR8  *mSmbiosType7L1DStrings[] = {
+  "L1 Data Cache",
+  NULL
+};
+
+SMBIOS_TABLE_TYPE7  mSmbiosType7L2 = {
+  {
+    SMBIOS_TYPE_CACHE_INFORMATION,
+    sizeof (SMBIOS_TABLE_TYPE7),
+    0
+  },
+  1,                  // SocketDesignation
+  CACHE_CONFIG_L2_WB, // CacheConfiguration: enabled, internal, L2, write-back
+  { 0x0200, 0 },      // MaximumCacheSize: 512 KB
+  { 0x0200, 0 },      // InstalledSize: 512 KB
+  { 0, 1 },           // SupportedSRAMType: Unknown
+  { 0, 1 },           // CurrentSRAMType: Unknown
+  0,                  // CacheSpeed (unknown)
+  CacheErrorUnknown,  // ErrorCorrectionType
+  CacheTypeUnified,   // SystemCacheType
+  CacheAssociativity8Way, // Associativity
+  { 0x0200, 0 },      // MaximumCacheSize2: 512 KB
+  { 0x0200, 0 },      // InstalledSize2: 512 KB
+};
+
+CHAR8  *mSmbiosType7L2Strings[] = {
+  "L2 Unified Cache",
   NULL
 };
 

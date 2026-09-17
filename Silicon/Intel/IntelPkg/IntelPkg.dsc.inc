@@ -236,7 +236,7 @@
   # on the UiApp front page (line 3). PcdFirmwareVendor's "EDK II" default is
   # kept.
   #
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"edk2-intel-mid v1.0"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"edk2-intel-mid v0.1"
 
   #
   # Debug
@@ -396,14 +396,16 @@
   Silicon/Intel/IntelPkg/Drivers/SmBiosTableDxe/SmBiosTableDxe.inf
 
   #
-  # Block stack: SDHCI + SD/eMMC, bound to the SoC's register block via
+  # Block stack: SDHCI + SD, bound to the SoC's register block via
   # NonDiscoverablePciDeviceDxe. The SoC's SdHostDxe (see
-  # CloverviewPkg.dsc.inc) publishes that controller.
+  # CloverviewPkg.dsc.inc) exposes only the SD slot (mmc1); the internal
+  # eMMC (mmc0) is not registered, so EmmcDxe has nothing to bind and is
+  # intentionally excluded (its CMD1 probe would time out on every SD card
+  # and flood DEBUG with "TRB failed with Device Error" dumps).
   #
   MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
   MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
   MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
-  MdeModulePkg/Bus/Sd/EmmcDxe/EmmcDxe.inf
 
   #
   # Console / graphics

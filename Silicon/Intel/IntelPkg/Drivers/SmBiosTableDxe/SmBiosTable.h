@@ -38,6 +38,15 @@ extern CHAR8               *mSmbiosType3Strings[];
 extern SMBIOS_TABLE_TYPE4  mSmbiosType4;
 extern CHAR8               *mSmbiosType4Strings[];
 
+extern SMBIOS_TABLE_TYPE7  mSmbiosType7L1I;
+extern CHAR8               *mSmbiosType7L1IStrings[];
+
+extern SMBIOS_TABLE_TYPE7  mSmbiosType7L1D;
+extern CHAR8               *mSmbiosType7L1DStrings[];
+
+extern SMBIOS_TABLE_TYPE7  mSmbiosType7L2;
+extern CHAR8               *mSmbiosType7L2Strings[];
+
 extern SMBIOS_TABLE_TYPE16 mSmbiosType16;
 extern CHAR8               *mSmbiosType16Strings[];
 

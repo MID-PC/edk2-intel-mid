@@ -164,10 +164,28 @@ UpdateSmBiosType4 (
 {
   UINT32  CpuSignature;
   UINT32  CpuFeatureFlags;
+  UINT32  Ebx;
+  UINT16  ThreadCount;
 
-  AsmCpuid (0x01, &CpuSignature, NULL, NULL, &CpuFeatureFlags);
+  AsmCpuid (0x01, &CpuSignature, &Ebx, NULL, &CpuFeatureFlags);
   CopyMem (&mSmbiosType4.ProcessorId.Signature, &CpuSignature, sizeof (UINT32));
   CopyMem (&mSmbiosType4.ProcessorId.FeatureFlags, &CpuFeatureFlags, sizeof (UINT32));
+
+  //
+  // Cloverview comes in two thread bins: the Z2520 (2 threads, no Hyper
+  // Threading) and the Z2560/Z2580 (4 threads). Ask the silicon rather than
+  // hardcoding the SKU; CPUID.1 EBX[23:16] is the logical processor count.
+  //
+  ThreadCount = (UINT16)((Ebx >> 16) & 0xFF);
+  if ((ThreadCount != 2) && (ThreadCount != 4)) {
+    ThreadCount = 2;
+  }
+  mSmbiosType4.ThreadCount   = ThreadCount;
+  mSmbiosType4.ThreadCount2  = ThreadCount;
+  mSmbiosType4.ThreadEnabled = ThreadCount;
+  if (ThreadCount > 2) {
+    mSmbiosType4.ProcessorCharacteristics |= BIT4; // Hardware threads
+  }
 
   mSmbiosType4Strings[2] = (CHAR8 *)FixedPcdGetPtr (PcdSmbiosProcessorModel);
   mSmbiosType4Strings[5] = (CHAR8 *)FixedPcdGetPtr (PcdSmbiosProcessorPartNumber);
@@ -180,8 +198,8 @@ UpdateSmBiosType4 (
 
 STATIC
 UINT64
-GetMemorySize (
-  VOID
+GetMemoryInfo (
+  OUT UINT64  *MemoryBase
   )
 {
   EFI_STATUS            Status;
@@ -198,6 +216,7 @@ GetMemorySize (
   MapSize       = 0;
   MemoryMap     = NULL;
   MemorySize    = 0;
+  *MemoryBase   = 0;
 
   Status = gBS->GetMemoryMap (
                   &MapSize,
@@ -235,6 +254,9 @@ GetMemorySize (
   for (Index = 0; Index < NumEntries; Index++) {
     if (MapWalker->Type == EfiConventionalMemory) {
       MemorySize += LShiftU64 (MapWalker->NumberOfPages, EFI_PAGE_SHIFT);
+      if (*MemoryBase == 0) {
+        *MemoryBase = MapWalker->PhysicalStart;
+      }
     }
     MapWalker = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)MapWalker + DescriptorSize);
   }
@@ -247,7 +269,8 @@ GetMemorySize (
 STATIC
 VOID
 UpdateSmBiosMemory (
-  UINT64  MemorySize
+  UINT64  MemorySize,
+  UINT64  MemoryBase
   )
 {
   UINT64  MemorySizeInMb;
@@ -274,8 +297,20 @@ UpdateSmBiosMemory (
     mSmbiosType17.Size = (UINT16)MemorySizeInMb;
   }
 
-  mSmbiosType19.StartingAddress = 0;
-  mSmbiosType19.EndingAddress   = (UINT32)(MemorySizeInKb - 1);
+  //
+  // SMBIOS 3.2 memory device details: LPDDR2 is plain DRAM (no dedicated
+  // enum value), and the extended size fields are byte counts.
+  //
+  mSmbiosType17.MemoryTechnology                     = MemoryTechnologyDram;
+  mSmbiosType17.MemoryOperatingModeCapability.Bits.VolatileMemory = 1;
+  mSmbiosType17.VolatileSize                         = MemorySize;
+
+  //
+  // Memory Array Mapped Address covers the conventional-memory window as
+  // reported by the EFI memory map, in 1 KB units.
+  //
+  mSmbiosType19.StartingAddress = (UINT32)(MemoryBase >> 10);
+  mSmbiosType19.EndingAddress   = (UINT32)(RShiftU64 (MemoryBase + MemorySize - 1, 10));
 }
 
 STATIC EFI_SMBIOS_PROTOCOL  *mSmBiosProtocol = NULL;
@@ -356,12 +391,16 @@ RegisterSmBiosTables (
   EFI_STATUS         Status;
   EFI_SMBIOS_HANDLE   MemoryArrayHandle;
   EFI_SMBIOS_HANDLE   ChassisHandle;
+  EFI_SMBIOS_HANDLE   L1DataCacheHandle;
+  EFI_SMBIOS_HANDLE   L2CacheHandle;
 
   //
   // Register the system/BIOS records first so the Type 2 chassis handle can
   // be linked. The Type 3 handle and the Type 16 memory array handle are only
   // known after the referenced record has been registered, so the memory
-  // records are registered last.
+  // records are registered last. Cache records are registered before Type 4
+  // so its L1/L2 cache handles resolve to real handles (L1 points at the L1
+  // data cache, the SMBIOS convention; L3 stays PI_RESERVED - no L3 here).
   //
   Status = RegisterTable ((EFI_SMBIOS_TABLE_HEADER *)&mSmbiosType0, mSmbiosType0Strings, NULL);
   if (EFI_ERROR (Status)) {
@@ -383,6 +422,24 @@ RegisterSmBiosTables (
   if (EFI_ERROR (Status)) {
     return Status;
   }
+
+  Status = RegisterTable ((EFI_SMBIOS_TABLE_HEADER *)&mSmbiosType7L1I, mSmbiosType7L1IStrings, NULL);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  Status = RegisterTable ((EFI_SMBIOS_TABLE_HEADER *)&mSmbiosType7L1D, mSmbiosType7L1DStrings, &L1DataCacheHandle);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  Status = RegisterTable ((EFI_SMBIOS_TABLE_HEADER *)&mSmbiosType7L2, mSmbiosType7L2Strings, &L2CacheHandle);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  mSmbiosType4.L1CacheHandle = L1DataCacheHandle;
+  mSmbiosType4.L2CacheHandle = L2CacheHandle;
 
   Status = RegisterTable ((EFI_SMBIOS_TABLE_HEADER *)&mSmbiosType4, mSmbiosType4Strings, NULL);
   if (EFI_ERROR (Status)) {
@@ -418,6 +475,7 @@ SmBiosTableDxeEntry (
 {
   EFI_STATUS           Status;
   UINT64               MemorySize;
+  UINT64               MemoryBase;
 
   Status = gBS->LocateProtocol (&gEfiSmbiosProtocolGuid, NULL, (VOID **)&mSmBiosProtocol);
   if (EFI_ERROR (Status)) {
@@ -425,15 +483,15 @@ SmBiosTableDxeEntry (
     return Status;
   }
 
-  MemorySize = GetMemorySize ();
-  DEBUG ((DEBUG_INFO, "SmBiosTableDxe: memory size = %d MB\n", (UINTN)RShiftU64 (MemorySize, 20)));
+  MemorySize = GetMemoryInfo (&MemoryBase);
+  DEBUG ((DEBUG_INFO, "SmBiosTableDxe: memory size = %d MB, base = 0x%llx\n", (UINTN)RShiftU64 (MemorySize, 20), (UINT64)MemoryBase));
 
   UpdateSmBiosType0 ();
   UpdateSmBiosType1 ();
   UpdateSmBiosType2 ();
   UpdateSmBiosType3 ();
   UpdateSmBiosType4 ();
-  UpdateSmBiosMemory (MemorySize);
+  UpdateSmBiosMemory (MemorySize, MemoryBase);
 
   return RegisterSmBiosTables ();
 }
