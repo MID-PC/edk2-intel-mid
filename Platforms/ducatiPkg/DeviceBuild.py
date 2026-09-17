@@ -121,7 +121,7 @@ class CommonPlatform:
     # PACKAGES_PATH="$ROOT_DIR:$EDK2_DIR" export.
     PackagesPath = (
         "Platforms",
-        ".",
+        "Silicon/Intel",
         "Common/edk2",
     )
 

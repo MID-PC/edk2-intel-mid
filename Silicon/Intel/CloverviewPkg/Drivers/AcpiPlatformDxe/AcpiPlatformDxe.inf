@@ -1,17 +1,3 @@
-## @file
-#  Generic ACPI table installer for the Intel Atom Z25xx (Clover Trail+) SoC.
-#
-#  Reads the RAW ACPI table sections a device packs into the Cloverview
-#  FREEFORM file (gCloverviewAcpiTableStorageGuid) and the device DSDT file
-#  (gEfiAcpiTableStorageGuid), and installs them through
-#  EFI_ACPI_TABLE_PROTOCOL in the platform-validated order
-#  (FACS -> DSDT -> FADT -> MADT -> CSRT -> DBG2), skipping any table a device
-#  chose to exclude. This is what Windows' bootia32.efi needs in order not to
-#  fail with 0xc0000225 ("the firmware (BIOS) is not ACPI compatible").
-#
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
-
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = AcpiPlatformDxe
@@ -26,7 +12,7 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
-  Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
+  CloverviewPkg/CloverviewPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -37,8 +23,8 @@
   UefiDriverEntryPoint
 
 [Guids]
-  gEfiAcpiTableStorageGuid                      ## CONSUMES  ## Device DSDT FREEFORM file
-  gCloverviewAcpiTableStorageGuid               ## CONSUMES  ## SoC fixed-table FREEFORM file
+  gEfiAcpiTableStorageGuid                      ## CONSUMES
+  gCloverviewAcpiTableStorageGuid               ## CONSUMES
 
 [Protocols]
   gEfiAcpiTableProtocolGuid                     ## CONSUMES

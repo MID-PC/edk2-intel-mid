@@ -1,16 +1,14 @@
 ;------------------------------------------------------------------------------
 ; @file
-;   Generic Intel MID SEC entry point (IA-32).
+;   Generic Intel MID SEC entry point (IA32)
 ;
-;   The primary bootloader loads this image at PcdFdBaseAddress (0x01101000 on
+;   The primary bootloader loads this image at PcdFdBaseAddress (e.g. 0x01101000 on
 ;   Cloverview) and jumps to its first byte in 32-bit flat protected mode,
 ;   interrupts disabled, paging off - exactly the state the stock Intel
 ;   bootstub was entered in. This file MUST therefore be linked at offset 0 of
-;   the final binary (see the [Rule.Common.SEC] / FD layout in the platform
-;   FDF).
+;   the final binary (which is what patch_sec_entry.py does)
 ;
-;   No hardware initialization is performed here: DRAM, the display engine and
-;   the panel are already up. We only build a known-good flat GDT, set up a
+;   No hardware initialization is performed here; we only build a known-good flat GDT, set up a
 ;   temporary stack in DRAM and call into C.
 ;
 ; SPDX-License-Identifier: BSD-2-Clause-Patent

@@ -1,14 +1,3 @@
-## @file
-#  CloverviewPkg - Intel Atom Z25xx (Clover Trail+, Cloverview) generation
-#
-#  Contains SoC register block addresses (SD/OTG/SCU/GPIO/PMU MMIO regions).
-#  The flash image layout (FD base/size) and the SEC temporary RAM parameters
-#  are generic and live in Silicon/Intel/IntelPkg/IntelPkg.dec.
-#
-#  Copyright (c) 2026, CloverTrailPkg contributors
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
-
 [Defines]
   DEC_SPECIFICATION              = 0x00010005
   PACKAGE_NAME                   = CloverviewPkg
@@ -21,43 +10,27 @@
 
 [Guids]
   gCloverviewTokenSpaceGuid = { 0x4f1c2d3e, 0x5a6b, 0x4c7d, { 0x8e, 0x9f, 0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0xf5 } }
-  #
-  # Raw ACPI table storage for the Cloverview fixed tables (FADT/FACS/MADT/
-  # DBG2). The .aslc sources in CloverviewPkg/Acpi/AcpiTables/ are packed by
-  # the device FDF into one FREEFORM FFS file with this GUID; the SoC
-  # AcpiPlatformDxe reads its RAW sections and installs them.
-  #
   gCloverviewAcpiTableStorageGuid = { 0xF77A9DA4, 0x8DF3, 0x4B2C, { 0xA1, 0xE6, 0x0C, 0x57, 0xB2, 0xD3, 0x4E, 0x91 } }
-  #
-  # Raw ACPI table storage for the device DSDT (FILE_GUID of the device's
-  # AcpiTables.inf). Owned by the SoC package so the generic AcpiPlatformDxe
-  # does not depend on any platform package.
-  #
   gEfiAcpiTableStorageGuid = { 0x7e374e25, 0x8e01, 0x4fee, { 0x87, 0xf2, 0x39, 0x0c, 0x23, 0xc6, 0x06, 0xcd } }
 
 [PcdsFixedAtBuild]
-  ## SD host controller (mmc1, SD card slot) MMIO window, per iomem_A502CG.txt:
+  ## SD host controller (mmc1, SD card slot) MMIO window
   ##   ffa58000-ffa580ff : 0000:00:04.0 -> mmc1
   gCloverviewTokenSpaceGuid.PcdSdHostBase|0xFFA58000|UINT32|0x00000020
   gCloverviewTokenSpaceGuid.PcdSdHostSize|0x00001000|UINT32|0x00000021
 
-  ## USB OTG controller (OTG0, 00:02.3, "penwell_otg") per iomem_A502CG.txt:
-  ##   ffa60000-ffa7ffff : 0000:00:02.3 -> penwell_otg
+  ## USB OTG controller (OTG0, 00:02.3, "penwell_otg")
+  ##  ffa60000-ffa7ffff : 0000:00:02.3 -> penwell_otg
   gCloverviewTokenSpaceGuid.PcdOtgHostBase|0xFFA60000|UINT32|0x00000024
   gCloverviewTokenSpaceGuid.PcdOtgHostSize|0x00001000|UINT32|0x00000025
 
-  ## SCU IPC-1 register block (intel_scu_ipc in iomem_A502CG.txt). Used for the
-  ## watchdog disable in SEC and for the PMIC PCNTRL access that powers the
-  ## VCCSDIO rail before the SD slot is registered.
+  ## SCU IPC-1 register block (intel_scu_ipc)
   gCloverviewTokenSpaceGuid.PcdScuIpcBase|0xFF11C000|UINT32|0x00000022
 
-  ## Cloverview core Langwell GPIO bank (00:03.5 BAR0), global GPIO base 96.
-  ## Used to mux SD CMD/DAT0..3 into alternate function 1.
+  ## Langwell GPIO Core bank (clv_gpio_1), global GPIO base 96
   gCloverviewTokenSpaceGuid.PcdGpioCoreBase|0xFF13F000|UINT32|0x00000023
 
-  ## Cloverview auxiliary Langwell GPIO bank (clv_gpio_0, global GPIO base 0),
-  ## 'langwell_gpio' at ff119000 in iomem_A502CG.txt. Holds the TUSB121x
-  ## ULPI repeater reset line (SFI GPIO 'usb_otg_phy_rst', pin 78).
+  ## Langwell GPIO AON bank (clv_gpio_0), global GPIO base 0
   gCloverviewTokenSpaceGuid.PcdGpioAuxBase|0xFF119000|UINT32|0x00000026
-  ## South-complex PMU ("intel_pmu_driver" in iomem_A502CG.txt, ff11d000-ff11dfff).
+  ## South-complex PMU ("intel_pmu_driver", ff11d000-ff11dfff).
   gCloverviewTokenSpaceGuid.PcdPmuBase|0xFF11D000|UINT32|0x00000027

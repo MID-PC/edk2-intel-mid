@@ -1,11 +1,3 @@
-##
-#  Common FDF rules for Intel MID platforms.
-#
-#  Platform FDFs pull this in from the workspace root path
-#  (e.g. "INCLUDE_SILICON_COMMON_FDF" resolves to this file).
-#
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
 
 [Rule.Common.SEC]
   FILE SEC = $(NAMED_GUID) RELOCS_STRIPPED FIXED {

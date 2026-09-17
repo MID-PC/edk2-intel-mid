@@ -1,24 +1,3 @@
-## @file
-#  Flash description for ducatiPkg (Acer Iconia A1-830, Clover Trail+).
-#
-#  The resulting binary is NOT a classic flash image: the primary bootloader
-#  loads it at 0x01101000 and jumps to offset 0. Therefore the generic SEC
-#  module (whose first instruction is IntelPkg/Sec/Ia32/SecEntry.nasm's
-#  _ModuleEntryPoint) is placed at offset 0 of the FD as a raw, already-relocated
-#  binary, and the firmware volumes carrying PEI and DXE follow it at a fixed
-#  offset (0x10000), which is exactly what IntelPkg/Sec/Ia32/SecEntry.nasm
-#  hands to SecStartup() as the BFV.
-#
-#  Layout of DUCATI.fd (2 MiB, loaded at 0x01101000):
-#
-#    0x000000 +--------------------------------------+ <- entry point
-#             | FvSec  : raw SEC image (64 KiB)      |
-#    0x010000 +--------------------------------------+ <- BFV
-#             | FvMain : PEI Core + PEIMs + DXE FV   |
-#    0x200000 +--------------------------------------+
-#
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
 
 [FD.DUCATI]
 BaseAddress   = 0x01101000 | gIntelMidTokenSpaceGuid.PcdFdBaseAddress
@@ -28,13 +7,13 @@ BlockSize     = 0x1000
 NumBlocks     = 0x200
 
 #
-# SEC lives at the very start so the image is directly executable.
+# SEC lives at the very start, so the image is directly executable
 #
 0x00000000|0x00010000
 FV = FVSEC
 
 #
-# Everything else.
+# Everything else
 #
 0x00010000|0x001F0000
 FV = FVMAIN
@@ -63,7 +42,7 @@ READ_STATUS        = TRUE
 READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
 
-INF  Silicon/Intel/IntelPkg/Sec/SecMain.inf
+INF IntelPkg/Sec/SecMain.inf
 
 ################################################################################
 #
@@ -89,9 +68,12 @@ READ_STATUS        = TRUE
 READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
 
+#
+# PEIM
+#
 INF  MdeModulePkg/Core/Pei/PeiMain.inf
 INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
-INF  Silicon/Intel/CloverviewPkg/PlatformPei/PlatformPei.inf
+INF  CloverviewPkg/PlatformPei/PlatformPei.inf
 INF  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
 
 FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
@@ -125,32 +107,20 @@ READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
 
 #
-# PCD must dispatch first (many drivers read PCDs in their constructors but
-# do not depex on the PCD protocol), so it is pinned here in the APRIORI
-# block. The generic driver list in Include/DXE.inc, the raw ACPI storage
-# file (AcpiTables.inf below), and the Cloverview SoC drivers in
-# Silicon/Intel/CloverviewPkg/Extra.fdf.inc.
+# PCD must dispatch first
 #
 APRIORI DXE {
   INF  MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
 }
-!include Include/DXE.inc
 #
-# ACPI tables delivered as a raw file whose FILE_GUID is gEfiAcpiTableStorageGuid;
-# AcpiPlatformDxe finds them there. RAW (not a driver), so kept separate from
-# the DXE.inc driver list.
+# Every other driver loaded in DXE phase
+#
+!include Include/DXE.inc
+
+#
+# ACPI
 #
 INF  RuleOverride = ACPITABLE Platforms/ducatiPkg/AcpiPlatformDxe/AcpiTables.inf
-#
-# SoC fixed tables, packed by this device into the FREEFORM file keyed on
-# gCloverviewAcpiTableStorageGuid. The generic AcpiPlatformDxe
-# (Silicon/Intel/CloverviewPkg) installs each RAW section it finds in the
-# validated order and skips tables a device chose to exclude:
-#   - CSRT is included on this board (Z2760 DMA groups, GDMS GSI 0x71 -> 0x31;
-#     see the comment in Extra.fdf.inc).
-#   - DBG2 is only packed for the KDNET-over-USB build, where usb-debug.asl
-#     replaces usb-host.asl so nothing forces the OTG core into host mode.
-#
 FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facs.aml
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Facp.aml
@@ -159,19 +129,13 @@ FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Dbg2.aml
 !endif
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Csrt.aml
-  #
-  # Per-SKU \_PR PPM SSDT (processor P000..P003 PEP/P-state surface). This
-  # board is the Z2560 part (SOC_VARIANT_Z2560, see ducatiPkg.dsc); the DSDT
-  # defines no \_PR, so this SSDT adds it. The blob is precompiled and packed
-  # like the fixed tables above; SsdPpm2560.dsl is its disassembly.
-  #
   SECTION RAW = Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/SsdPpm2560.aml
 }
 !include Silicon/Intel/CloverviewPkg/Extra.fdf.inc
 
 ################################################################################
 #
-# Rules (common, see Silicon/Intel/IntelPkg/Common.fdf.inc)
+# Common FDF rules
 #
 ################################################################################
 !include Silicon/Intel/IntelPkg/Common.fdf.inc

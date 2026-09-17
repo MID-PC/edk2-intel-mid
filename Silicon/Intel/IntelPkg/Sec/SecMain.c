@@ -1,18 +1,7 @@
 /** @file
   Generic Intel MID SEC phase.
 
-  Deliberately minimal: the primary bootloader has already initialized DRAM,
-  the SCU, the display engine and the panel for every Intel MID (Clover Trail+)
-  part. This module only:
-
-    1. Bring up the debug console.
-    2. Locate the PEI Core inside the boot firmware volume that follows this
-       SEC module inside the same image.
-    3. Publish the Temporary RAM Support PPI and jump into the PEI Core.
-
-  SoC-specific work that must run before the PEI Core dispatches (watchdog
-  handling, APIC timer programming, XD enable) lives in the platform PEIM, not
-  here; see Silicon/Intel/CloverviewPkg/PlatformPei.
+  SoC-specific work that must run before the PEI Core dispatches lives in the platform PEIM.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -197,7 +186,7 @@ SecStartup (
 
   SerialPortInitialize ();
 
-  // Print UEFI Version Message
+  // Print UEFI version message
   DEBUG ((EFI_D_WARN, "\n"));
   DEBUG ((EFI_D_WARN, "%s for %a %a\n", PcdGetPtr (PcdFirmwareVersionString), FixedPcdGetPtr (PcdSmbiosSystemManufacturer), FixedPcdGetPtr (PcdSmbiosSystemModel)));
   DEBUG ((EFI_D_WARN, "Built at %a on %a\n",  __TIME__, __DATE__));

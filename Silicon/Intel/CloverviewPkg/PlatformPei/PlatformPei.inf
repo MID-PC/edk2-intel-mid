@@ -1,13 +1,3 @@
-## @file
-#  Platform PEIM for Clover Trail+ (Atom Z25xx).
-#
-#  DRAM is already trained and configured by the primary bootloader, so this
-#  PEIM only describes the memory map (derived from the stock A502CG iomem)
-#  and publishes the PPIs the DXE IPL needs.
-#
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
-
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = PlatformPei
@@ -23,8 +13,8 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
-  Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
-  Silicon/Intel/IntelPkg/IntelPkg.dec
+  CloverviewPkg/CloverviewPkg.dec
+  IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
   PeimEntryPoint

@@ -1,17 +1,12 @@
 /** @file
-  Minimal 8x16 bitmap font (ASCII 0x20..0x7E) used by the framebuffer
-  serial log. Glyphs are stored as 16 rows of 8 bits, MSB = leftmost pixel.
+  Minimal 8x16 bitmap font (ASCII 0x20..0x7E) used by FrameBufferSerialPortLib.
+  Glyphs are stored as 16 rows of 8 bits, MSB = leftmost pixel.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include <Base.h>
 
-//
-// Compact 8x16 font. Each glyph is generated from an 8x8 core doubled
-// vertically is avoided: rows are explicit so the text stays readable on a
-// 544x960 panel.
-//
 CONST UINT8 gFont8x16[95][16] = {
   /* 0x20 ' ' */ {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
   /* 0x21 '!' */ {0,0,0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x00,0x18,0x18,0,0,0,0},

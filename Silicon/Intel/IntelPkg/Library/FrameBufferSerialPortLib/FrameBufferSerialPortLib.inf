@@ -1,13 +1,3 @@
-## @file
-#  Framebuffer-backed SerialPortLib for Clover Trail+ (Atom Z25xx).
-#
-#  DEBUG()/serial output is rendered as text directly into the fixed
-#  framebuffer at PcdFrameBufferBase, because no usable UART is exposed
-#  once the primary bootloader has handed control over.
-#
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
-
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = FrameBufferSerialPortLib
@@ -22,7 +12,7 @@
 
 [Packages]
   MdePkg/MdePkg.dec
-  Silicon/Intel/IntelPkg/IntelPkg.dec
+  IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
   BaseLib

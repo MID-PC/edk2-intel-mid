@@ -1,24 +1,10 @@
-##
-#  DXE driver list for ducatiPkg (generic core, console/graphics, ACPI drivers,
-#  block/SD, generic drivers + UI).
-#
-#  The Cloverview SoC drivers live in Silicon/Intel/CloverviewPkg/Extra.fdf.inc;
-#  the raw ACPI tables are listed inline in ducatiPkg.fdf.
-#
-#  Included from [FV.FVDXE]; see ducatiPkg.fdf.
-#
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
 
 INF  MdeModulePkg/Core/Dxe/DxeMain.inf
 INF  MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
 
 INF  UefiCpuPkg/CpuDxe/CpuDxe.inf
 INF  MdeModulePkg/Universal/Metronome/Metronome.inf
-#
-# EFI_TIMER_ARCH_PROTOCOL. No 8254/PIT and no usable HPET on this SoC, so the
-# local APIC timer is the only tick source.
-#
+
 INF  OvmfPkg/LocalApicTimerDxe/LocalApicTimerDxe.inf
 INF  MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
 INF  MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
@@ -28,38 +14,21 @@ INF  MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
 INF  MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf
 INF  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
 
-#
-# ACPI: table protocol producer and the platform tables (FADT/FACS/MADT, DSDT).
-# The raw DSDT storage file is listed inline in ducatiPkg.fdf.
-#
 INF  MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
-INF  Silicon/Intel/CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
+INF  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
 
-#
-# SMBIOS: SmbiosDxe aggregates the records and publishes the entry point;
-# SmBiosTableDxe adds the platform records (depex on the SMBIOS protocol).
-#
 INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
-INF  Silicon/Intel/IntelPkg/Drivers/SmBiosTableDxe/SmBiosTableDxe.inf
+INF  IntelPkg/Drivers/SmBiosTableDxe/SmBiosTableDxe.inf
 
 INF  MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
 INF  MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
 INF  MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
-# EmmcDxe intentionally excluded: SdHostDxe exposes only the SD slot (mmc1);
-# the internal eMMC (mmc0) is not registered, so EmmcDxe's CMD1 probe always
-# times out on an SD card and floods DEBUG with the "TRB failed with Device
-# Error" dump storm on every enumeration.
 
-#
-# Console / graphics. PlatformGopDxe (fixed-mode GOP on the framebuffer) lives
-# in Silicon/Intel/IntelPkg.
-#
-INF  Silicon/Intel/IntelPkg/Library/PlatformGopLib/PlatformGopDxe.inf
+INF  IntelPkg/Library/PlatformGopLib/PlatformGopDxe.inf
 INF  MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
 INF  MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
 INF  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
-# Serial console stack: DEBUG only (RELEASE SerialPortLib is a no-op and the
-# console is GOP-only, so a serial terminal would never be usable).
+
 !if $(TARGET) == DEBUG
 INF  MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
 INF  MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
@@ -75,9 +44,6 @@ INF  MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
 INF  MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 INF  FatPkg/EnhancedFatDxe/Fat.inf
 
-#
-# UiApp is the default boot option; the Shell is the fallback.
-#
 INF  MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
 INF  MdeModulePkg/Application/UiApp/UiApp.inf
 INF  ShellPkg/Application/Shell/Shell.inf

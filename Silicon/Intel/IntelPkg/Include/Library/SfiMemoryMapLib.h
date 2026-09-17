@@ -1,26 +1,15 @@
 /** @file
   Library interface to discover and classify the SFI (Simple Firmware
-  Interface) memory map published by an Intel MID primary bootloader.
+  Interface) memory map published by IFWI,
 
-  Implements the SFI 1.0 discovery walk common to every Intel Atom MID SoC
-  generation (Menlow/Moorestown, Medfield, Cloverview, ...): a 16-byte scan of
+  Implements the SFI 1.0 discovery walk common to every SFI MID device: a 16-byte scan of
   0x000E0000-0x00100000 for the SYST table, length- and checksum-based
   validation, then a walk of the SYST pointer list to the MMAP table. The MMAP
   entries describe the entire DRAM/MMIO layout (types 7 = RAM, 6 = reserved,
   11 = MMIO) exactly as the Linux kernel drivers/sfi/sfi_core.c reference
   implementation reads them.
 
-  The library is firmware-independent: it consumes no PCDs and only returns
-  the parsed table plus classification helpers. It is up to the platform
-  firmware to turn the result into resource HOBs (which windows to report,
-  which firmware-owned ranges to carve out, and so on).
-
-  The library is SFI-mandatory: SfiGetMmap() never returns a failure. When
-  the bootloader has not published the SYST/MMAP tables in the legacy BIOS
-  area the library logs an error and asserts (CpuDeadLoop stop), because
-  every platform that links this library is an SFI platform. A MID SoC that
-  does not publish SFI tables (e.g. SoFIA) supplies its own memory map
-  library instance instead of linking this one.
+  Only made for devices that publish SFI tables in firmware, MID devices that do not have SFI will have to use their own memory mapping code.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -31,7 +20,7 @@
 #include <Uefi/UefiBaseType.h>
 
 //
-// SFI MMAP entry types (SFI 1.0, see sfi.h in the Linux kernel).
+// SFI MMAP entry types (SFI 1.0).
 //
 #define SFI_MMAP_TABLE_TYPE_RAM      7
 #define SFI_MMAP_TABLE_TYPE_RESERVED 6

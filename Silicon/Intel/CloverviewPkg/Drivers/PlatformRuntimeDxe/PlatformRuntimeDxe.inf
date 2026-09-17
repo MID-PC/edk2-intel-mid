@@ -1,17 +1,3 @@
-## @file
-#  Minimal Runtime Services stub for Clover Trail+ (Atom Z25xx).
-#
-#  Provides the Real Time Clock architectural protocol so the DXE Core can
-#  finish dispatching. There is no usable RTC once the primary bootloader is
-#  done with the SCU, so time is kept as a monotonic software clock.
-#
-#  It also keeps the SCU kernel watchdog stopped: the single stop issued in SEC
-#  is undone whenever the SCU services later IPC traffic, so the stop is
-#  re-issued periodically, at ReadyToBoot and at ExitBootServices.
-#
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
-
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = PlatformRuntimeDxe
@@ -26,7 +12,7 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
-  Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
+  CloverviewPkg/CloverviewPkg.dec
 
 [LibraryClasses]
   UefiDriverEntryPoint
@@ -43,8 +29,8 @@
   gEfiRealTimeClockArchProtocolGuid             ## PRODUCES
 
 [Guids]
-  gEfiEventExitBootServicesGuid                 ## CONSUMES ## Event
-  gEfiEventReadyToBootGuid                      ## CONSUMES ## Event
+  gEfiEventExitBootServicesGuid                 ## CONSUMES
+  gEfiEventReadyToBootGuid                      ## CONSUMES
 
 [FixedPcd]
   gCloverviewTokenSpaceGuid.PcdScuIpcBase
