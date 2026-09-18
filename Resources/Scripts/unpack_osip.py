@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause-Patent
-"""Extract the fixed pieces of a stock Intel MID OSIP boot image into a
-per-device ImageResources directory (hdr/sig/cmdline.txt/parameter) for
-later use by mkosip.py.  One-time step done while porting a device; the
-stock kernel/ramdisk payloads are never needed and are left behind.
-"""
+"""Extract hdr/sig/cmdline.txt/parameter from a stock OSIP boot image into
+a per-device ImageResources dir for mkosip.py (one-time porting step)."""
 
 import argparse
 import os

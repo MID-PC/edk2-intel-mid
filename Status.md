@@ -168,7 +168,7 @@
 | Audio                |               | ❌    |
 | GPU                  |               | ❌    |
 | Camera               |               | ❌    |
-| Display              |               | ✅    | 
+| Display              |               | ✅    |
 
 </td></tr>
 </table>

@@ -33,11 +33,10 @@ INF  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
 INF  MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
 INF  MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 !endif
-INF  MdeModulePkg/Logo/LogoDxe.inf
+INF  IntelPkg/Logo/LogoDxe.inf
 
 INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 INF  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
-INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
 INF  MdeModulePkg/Universal/DisplayEngineDxe/DisplayEngineDxe.inf
 INF  MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
 INF  MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
@@ -45,5 +44,3 @@ INF  MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 INF  FatPkg/EnhancedFatDxe/Fat.inf
 
 INF  MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
-INF  MdeModulePkg/Application/UiApp/UiApp.inf
-INF  ShellPkg/Application/Shell/Shell.inf

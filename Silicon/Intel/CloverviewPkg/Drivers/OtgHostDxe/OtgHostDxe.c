@@ -720,6 +720,7 @@ OtgHostDxeEntryPoint (
   mOtgOpBase  = Base + CT_CI_CAP_OFFSET + CapLength;
 
   // Retry up to ~500 ms and latch the first valid repeater identity
+  {
     STATIC UINT32  mUlpiVendor  = 0xFFFFFFFF;
     STATIC UINT32  mUlpiProduct = 0xFFFFFFFF;
     UINT32         Attempt;
@@ -763,6 +764,7 @@ OtgHostDxeEntryPoint (
     }
   }
 
+  {
     STATIC CONST UINT32  UlpiInit[][2] = {
       { 0x06, 0x20 },   // Function Control clear: leave PHY reset
       { 0x05, 0x40 },   // Function Control set:   SuspendM = 1

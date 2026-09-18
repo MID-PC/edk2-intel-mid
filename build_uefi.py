@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 ## SPDX-License-Identifier: BSD-2-Clause-Patent
 #
-# Root-level build orchestrator for this multi-device firmware repository.
-#
-# Mirrors the interface convention of Project Silicium's build_uefi.py
-# while delegating all edk2/pack logic to each device's per-device
-# Platforms/<device>Pkg/DeviceBuild.py.  Devices are auto-discovered by
-# globbing Platforms/*/DeviceBuild.py.
+# Root build orchestrator; delegates to Platforms/<pkg>/DeviceBuild.py
+# (devices auto-discovered by globbing Platforms/*/DeviceBuild.py).
 #
 # Usage:
 #   python3 build_uefi.py -d ducati                     # DEBUG (default)
 #   python3 build_uefi.py -d t00g -r RELEASE
 #   python3 build_uefi.py -d t00k --kdnet-usb           # KDNET-over-USB variant
-#   python3 build_uefi.py -d ducati -c                  # clean + build
-#   python3 build_uefi.py -d ducati -u                  # full sync + build:
-#       git pull + git submodule update + stuart setup + stuart update
+#   python3 build_uefi.py -d ducati -u                  # full sync + build
 #   python3 build_uefi.py -d t00g -- KDNET_USB=1 -j 8   # extra args after '--'
 #
 
@@ -28,9 +22,7 @@ import sys
 
 from pathlib import Path
 
-#
-# Paths (relative to repository root)
-#
+# Paths relative to repository root
 BUILD_PATH      = Path("Build")
 OUT_PATH        = Path("out")
 PLATFORM_PATH   = Path("Platforms")
@@ -64,7 +56,7 @@ def parse_arguments():
     parser.add_argument("--kdnet-usb", action="store_true",
                         help="Build the KDNET-over-USB debug variant.")
 
-    # Everything after '--' is forwarded to DeviceBuild.py verbatim.
+    # Everything after '--' goes to DeviceBuild.py verbatim.
     parser.add_argument("extra_args", nargs="*", metavar="ARGS",
                         help="Tokens passed through to DeviceBuild.py after '--' "
                              "(e.g. '-- KDNET_USB=1 -j 8'; KEY=VALUE overrides "
@@ -74,13 +66,12 @@ def parse_arguments():
 
 
 def discover_platforms():
-    """Return a dict mapping device name -> Platforms/<pkg> path for all
-    platforms that have a DeviceBuild.py."""
+    """Device name -> Platforms/<pkg> path for each platform with DeviceBuild.py."""
     devices = {}
     for dbuild in sorted(PLATFORM_PATH.glob("*/DeviceBuild.py")):
-        pkg_dir = dbuild.parent                   # Platforms/ducatiPkg
-        pkg_name = pkg_dir.name                   # ducatiPkg
-        device = pkg_name.removesuffix("Pkg")     # ducati
+        pkg_dir = dbuild.parent
+        pkg_name = pkg_dir.name
+        device = pkg_name.removesuffix("Pkg")
         devices[device] = pkg_dir
     return devices
 
@@ -107,13 +98,8 @@ def resolve_device(devices, requested):
 def update_local_repo():
     """Pull latest changes and sync git submodules.
 
-    'git submodule update' is safe for this workspace: Common/edk2 is a
-    gitlink kept as a manual checkout with edk2.patch applied in its working
-    tree, and git only touches submodules whose checked-out commit differs
-    from the gitlink pointer.  Since Common/edk2 sits at the recorded commit,
-    the update is a no-op and the uncommitted patch changes survive untouched.
-    Nested submodule work (the brotli bindings inside Common/edk2) is managed
-    by DeviceBuild.py's workspace preparation.
+    Safe: Common/edk2 sits at its recorded commit, so submodule update is a
+    no-op and the uncommitted edk2.patch edits survive untouched.
     """
     logger.info("==> Updating local repository")
     if subprocess.run(["git", "pull"]).returncode != 0:
@@ -126,26 +112,112 @@ def update_local_repo():
     return True
 
 
+def prepare_workspace():
+    workspace = Path(__file__).resolve().parent
+    edk2_dir = workspace / "Common" / "edk2"
+    patch_file = workspace / "Resources" / "edk2.patch"
+    ref_commit = "fc939c7b37"
+
+    if not patch_file.is_file():
+        logger.error(f"Missing {patch_file} - cannot prepare the edk2 tree.")
+        return 1
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-C", str(edk2_dir)] + list(args),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    if shutil.which("git") is None:
+        logger.error("no 'git' on PATH: needed to apply edk2.patch and init the "
+                     "brotli submodules (Git for Windows provides it on Windows).")
+        return 1
+
+    synced = subprocess.run(
+        ["git", "-C", str(workspace), "submodule", "update", "--init", "Common/edk2"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if synced.returncode != 0:
+        logger.error("failed to sync the Common/edk2 submodule to its recorded commit")
+        return 1
+
+    if git("apply", "--reverse", "--check", str(patch_file)).returncode == 0:
+        logger.info("==> edk2.patch already applied -> skipping")
+    elif git("apply", "--check", str(patch_file)).returncode == 0:
+        logger.info("==> Applying edk2.patch")
+        if git("apply", str(patch_file)).returncode != 0:
+            logger.error("git apply failed to apply edk2.patch")
+            return 1
+        logger.info("    applied (kept uncommitted in the edk2 working tree)")
+    elif git("apply", "--3way", "--check", str(patch_file)).returncode == 0:
+        logger.info("==> Applying edk2.patch (3-way, context drifted)")
+        if git("apply", "--3way", str(patch_file)).returncode != 0:
+            logger.error("git apply --3way failed to apply edk2.patch")
+            return 1
+    else:
+        logger.error("cannot apply edk2.patch to the edk2 working tree")
+        logger.error(f"    the patch is authored against edk2 {ref_commit}.")
+        logger.error(f'    to reset a dirty checkout and retry: git -C "{edk2_dir}" checkout -- .')
+        return 1
+
+    logger.info("==> Initializing brotli submodules")
+    r = git(
+        "submodule",
+        "update",
+        "--init",
+        "BaseTools/Source/C/BrotliCompress/brotli",
+        "MdePkg/Library/MipiSysTLib/mipisyst",
+        "MdeModulePkg/Library/BrotliCustomDecompressLib/brotli",
+    )
+    if r.returncode != 0:
+        logger.error(f"failed to initialize the brotli submodules in {edk2_dir}")
+        return 1
+
+    genfv = edk2_dir / "BaseTools" / "Source" / "C" / "bin" / ("GenFv.exe" if os.name == "nt" else "GenFv")
+    if not genfv.is_file() or not os.access(genfv, os.X_OK):
+        logger.info("==> Building BaseTools")
+        make = shutil.which("make")
+        if make is None:
+            logger.error("no 'make' on PATH: BaseTools needs GNU make (POSIX, or "
+                         "msys2/MSYS2 on Windows; VS2022 nmake is not wired up yet)")
+            return 1
+        make_ver = subprocess.run(
+            [make, "--version"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if make_ver.returncode != 0 or "GNU Make" not in (make_ver.stdout or ""):
+            logger.error(f"'{make}' is not GNU make: BaseTools needs GNU make "
+                         "(msys2/MSYS2 on Windows; VS2022 nmake is not wired up yet)")
+            return 1
+        r = subprocess.run(
+            [make, "-C", str(edk2_dir / "BaseTools"), "-j", str(os.cpu_count() or 1)]
+        )
+        if r.returncode != 0:
+            logger.error("BaseTools build failed")
+            return 1
+
+    return 0
+
+
 def _rmtree_onerror(func, path, exc_info):
-    """shutil.rmtree onerror handler: on Windows build outputs are sometimes
-    read-only; clear the attribute and retry before giving up."""
+    """rmtree onerror: clear read-only attr (Windows outputs) and retry."""
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
 
 def clean_build(device):
-    """Remove build artifacts for the given device only.
-
-    Only that device's Build/<device>Pkg tree and its output images are
-    removed; other devices' images in the shared out/ directory are kept.
-    """
+    """Remove only this device's Build/<pkg> tree and its out/ images."""
     pkg_name = f"{device}Pkg"
     build_dir = BUILD_PATH / pkg_name
     if build_dir.is_dir():
         logger.info(f"==> Removing {build_dir}")
         shutil.rmtree(build_dir, onerror=_rmtree_onerror)
 
-    # Remove this device's output images (shared out/ is left otherwise intact)
     for img in OUT_PATH.glob(f"boot_{device}_*.img"):
         logger.info(f"==> Removing {img}")
         img.unlink()
@@ -162,15 +234,12 @@ def run_device_script(script_path, build_mode, extra_args):
 
 
 def main():
-    # Pin CWD to the repository root: everything below (git pull, platform
-    # discovery, Build/, out/, DeviceBuild.py invocations) is root-relative
-    # and must resolve regardless of where this script was launched from.
+    # Pin CWD to repo root so all root-relative paths work from anywhere.
     os.chdir(Path(__file__).resolve().parent)
 
     setup_logger()
     args = parse_arguments()
 
-    # Discover and resolve device
     devices = discover_platforms()
     device = resolve_device(devices, args.device)
     pkg_dir = devices[device]
@@ -180,17 +249,14 @@ def main():
         logger.error(f"DeviceBuild.py not found at {script}")
         sys.exit(1)
 
-    # -- full workspace sync: git pull + submodule update, then stuart setup/update
     if args.update:
         if not update_local_repo():
             sys.exit(1)
 
-    # -- clean
     if args.clean:
         clean_build(device)
 
-    # -- stuart setup + update: always on --update (full sync), otherwise only
-    #    on a first build (no Build/<device>Pkg tree yet)
+    # stuart setup/update: on --update, else only first build (no Build/<pkg> tree)
     build_dir = BUILD_PATH / f"{device}Pkg"
     if args.update or not build_dir.is_dir():
         logger.info("==> stuart setup + update")
@@ -199,7 +265,10 @@ def main():
                 logger.error(f"{action} failed")
                 sys.exit(1)
 
-    # -- build
+    if prepare_workspace() != 0:
+        logger.error("workspace preparation failed")
+        sys.exit(1)
+
     extra_args = list(args.extra_args)
     if args.kdnet_usb:
         extra_args.append("KDNET_USB=1")
@@ -208,15 +277,6 @@ def main():
     if rc != 0:
         logger.error("Build failed")
         sys.exit(rc)
-
-    # -- summary (default target is DEBUG, enforced in SetPlatformEnv)
-    image = OUT_PATH / f"boot_{device}_{args.release or 'DEBUG'}.img"
-    if image.is_file():
-        logger.info("")
-        logger.info(f"  Output: {image} ({image.stat().st_size:,} bytes)")
-        logger.info(f"  Flash:  fastboot flash boot {image}")
-    logger.info("")
-
 
 if __name__ == "__main__":
     main()

@@ -1,27 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0+
 """
-Assemble an Intel MID "OSIP" boot image.
+Assemble an Intel MID "OSIP" boot image (layout mirrors mboot output):
 
-The layout mirrors what the mboot tool produces for these devices:
+  [512-byte header][optional signature block], then relative to the sig end
+  ("base"): cmdline at +0x100, LE32 kernel/ramdisk sizes + "parameter" at
+  +0x408 (+ fixed magic at +0x410 when signed), payload at +0x1000.
 
-    [OSIP header (512 bytes)][signature block (optional)]
-
-after which, relative to the end of the signature block ("base"):
-
-    base + 0x0100    command line (up to 1024 bytes)
-    base + 0x0400    LE32 kernel size, LE32 ramdisk size, 8-byte
-                     "parameter" field at +0x0408 and, for signed images,
-                     a fixed magic at +0x0410
-    base + 0x1000    payload (the firmware bootstub)
-
-The kernel/ramdisk slots are unused here: the firmware bootstub is what the
-bootloader enters directly, so they stay at zero size.  Device-specific
-hdr/sig/cmdline/parameter bits come from a per-device ImageResources
-directory (extracted once from the stock boot image while porting).
-
-The OSIP header carries the total number of sectors at offset 48 and an
-XOR checksum over its first 56 bytes at offset 7.
+Kernel/ramdisk slots stay zero-size (the bootloader enters the firmware
+bootstub directly); hdr/sig/cmdline/parameter come from per-device
+ImageResources.  Header: sector count at offset 48, XOR checksum over the
+first 56 bytes at offset 7.
 """
 
 import argparse
@@ -72,27 +61,22 @@ def main():
     img[0:len(hdr)] = hdr
     img[len(hdr):base] = sig
 
-    # Command line block
     img[base + 256:base + 256 + len(cmdline)] = cmdline
 
     # Kernel/ramdisk sizes are unused: the firmware is the bootstub payload
     struct.pack_into("<II", img, base + 1024, 0, 0)
 
-    # Platform parameters and, for signed images, the padding magic
+    # Parameter bytes; signed images get the fixed magic
     img[base + 1032:base + 1040] = param
     if sig:
         img[base + 1040:base + 1048] = SIGNED_MAGIC
 
-    # Payload goes into the bootstub slot
     img[base + 4096:base + 4096 + len(payload)] = payload
 
-    # Trailing padding
     img[img_size:] = b"\xff" * pad
 
-    # Update the sector count
     struct.pack_into("<I", img, 48, len(img) // 512 - 1)
 
-    # Update the XOR checksum over the first 56 header bytes
     chk = bytearray(img[:56])
     chk[7] = 0
     x = 0

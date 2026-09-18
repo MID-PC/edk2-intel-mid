@@ -3,7 +3,7 @@
  * AML/ASL+ Disassembler version 20251212 (64-bit version)
  * Copyright (c) 2000 - 2025 Intel Corporation
  * 
- * Disassembly of /home/nuc/source/edk2-intel-mid/Silicon/Intel/CloverviewPkg/Acpi/AcpiTables/Csrt.aml
+ * Disassembly of Csrt.aml
  *
  * ACPI Data Table [CSRT]
  *

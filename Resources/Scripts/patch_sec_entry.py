@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause-Patent
-"""Make an edk2 FD directly executable at offset 0.
-
-The FD starts with the FVSEC firmware volume header, whose first 16 bytes
-are the (unused) zero vector.  Patch a 'jmp rel32' there so that entering
-the binary at its very first byte lands on SecEntry (_ModuleEntryPoint,
-'cli; cld') inside the SEC TE image at the top of FVSEC.
-"""
+"""Patch a 'jmp rel32' at offset 0 of an edk2 FD (FVSEC header's unused
+zero vector) so entering at the first byte lands on SecEntry."""
 
 import argparse
 import struct

@@ -1,12 +1,3 @@
-## @file
-#  Raw ACPI table storage for Intel Atom Z25xx (Clover Trail+, Asus ZenFone 6 T00G).
-#
-#  The FILE_GUID is gEfiAcpiTableStorageGuid, so the compiled Dsdt.aml ends up
-#  in a raw FFS file that AcpiPlatformDxe locates with GetSectionFromAnyFv().
-#
-#  SPDX-License-Identifier: BSD-2-Clause-Patent
-##
-
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = AcpiTables
@@ -19,4 +10,4 @@
 
 [Packages]
   MdePkg/MdePkg.dec
-  Silicon/Intel/CloverviewPkg/CloverviewPkg.dec
+  CloverviewPkg/CloverviewPkg.dec

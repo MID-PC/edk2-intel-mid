@@ -1,6 +1,12 @@
 
 !include IntelPkg/IntelPkg.dsc.inc
 
+[BuildOptions]
+!ifdef KDNET_USB
+  CLANGPDB:*_*_*_ASLPP_FLAGS     = -DKDNET_USB
+  CLANGPDB:*_*_*_CC_FLAGS        = -DKDNET_USB
+!endif
+
 [Defines]
   #
   # Cloverview CPU variant selection
