@@ -32,14 +32,11 @@
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000|UINT32|0x00000003
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize|0x00040000|UINT32|0x00000004
 
-  ## Base of the permanent memory window handed to the PEI Core. Placed above
-  #  the firmware image and the SEC/PEI temporary RAM yet below the reserved
-  #  hole; not part of the SFI memory map because it is a firmware placement
-  #  decision, not a board property
+  ## Permanent memory window for the PEI Core: above the firmware image and
+  #  SEC/PEI temp RAM, below the reserved hole; not part of the SFI map
   gIntelMidTokenSpaceGuid.PcdPeiMemoryBase|0x02100000|UINT32|0x00000005
 
-  ## Legacy low RAM reported as system memory so the OS AP startup trampoline
-  #  has a usable real-mode window below 1 MiB (0x00000000-0x000FFFFF)
+  ## Legacy RAM below 1 MiB reported as system memory (AP startup trampoline)
   gIntelMidTokenSpaceGuid.PcdLegacyMemoryBase|0x00000000|UINT32|0x00000006
   gIntelMidTokenSpaceGuid.PcdLegacyMemorySize|0x00100000|UINT32|0x00000007
   gIntelMidTokenSpaceGuid.PcdLegacyReservedBase|0x00000000|UINT32|0x00000008
@@ -47,8 +44,7 @@
   gIntelMidTokenSpaceGuid.PcdLegacyTopBase|0x000A0000|UINT32|0x0000000A
   gIntelMidTokenSpaceGuid.PcdLegacyTopSize|0x00060000|UINT32|0x0000000B
 
-  ## Shared framebuffer console-state page (one 4 KiB page, reserved so no
-  #  phase can allocate over the serial-log cursor state)
+  ## Shared framebuffer console-state page; reserved so no phase allocates over it
   gIntelMidTokenSpaceGuid.PcdConsoleStateBase|0x3EEFD000|UINT32|0x0000000C
 
   ## PCI device MMIO windows for SfiMemoryMapLib

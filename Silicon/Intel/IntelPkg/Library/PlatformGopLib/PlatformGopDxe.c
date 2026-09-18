@@ -1,12 +1,4 @@
 /** @file
-  Fixed-mode Graphics Output Protocol for Clover Trail+ (Atom Z25xx).
-
-  The primary bootloader (and the stock bootstub it replaces) leaves the MIPI
-  panel initialized and scanning out of a fixed framebuffer. We simply describe
-  that framebuffer to the rest of UEFI, exposing exactly one mode:
-
-    0x3F000000, 544 x 960, 32 bpp (BlueGreenRedReserved)
-
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -22,11 +14,6 @@
 
 #define FB_BASE    ((EFI_PHYSICAL_ADDRESS)FixedPcdGet64 (PcdFrameBufferBase))
 #define FB_WIDTH   ((UINT32)FixedPcdGet32 (PcdFrameBufferWidth))
-//
-// Scanout stride in pixels. The panel is 540 pixels wide but the display pipe
-// scans out 544 pixels (2176 bytes) per line, so every row address must be
-// computed with the stride while only FB_WIDTH pixels are visible.
-//
 #define FB_STRIDE  ((UINT32)FixedPcdGet32 (PcdFrameBufferStride))
 #define FB_HEIGHT  ((UINT32)FixedPcdGet32 (PcdFrameBufferHeight))
 #define FB_BPP     ((UINT32)FixedPcdGet32 (PcdFrameBufferBpp))
@@ -92,9 +79,7 @@ GopSetMode (
     return EFI_UNSUPPORTED;
   }
 
-  //
-  // The mode is fixed and already active; nothing to program.
-  //
+  // Mode is fixed and already active; nothing to program.
   return EFI_SUCCESS;
 }
 

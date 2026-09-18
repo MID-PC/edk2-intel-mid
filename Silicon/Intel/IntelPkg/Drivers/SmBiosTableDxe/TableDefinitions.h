@@ -1,15 +1,3 @@
-/** @file
-  SMBIOS record templates and string packs for the Intel MID platform.
-
-  The device identity strings are replaced from the Intel MID package PCDs
-  (PcdSmbiosSystem*) and the CPU identity from the generation package
-  (PcdSmbiosProcessor*) at driver dispatch time (see SmBiosTable.c). Every
-  string slot is pre-filled with "Not Specified" so the structure string
-  references stay valid regardless of which PCDs differ from their defaults.
-
-  SPDX-License-Identifier: BSD-2-Clause-Patent
-**/
-
 #include <IndustryStandard/SmBios.h>
 #include <Library/PcdLib.h>
 
@@ -175,18 +163,6 @@ CHAR8  *mSmbiosType4Strings[] = {
   NULL
 };
 
-//
-// Cache records (Type 7). Cloverview (Saltwell) has fixed cache geometry per
-// core: L1I 32 KB 8-way, L1D 24 KB 6-way, L2 512 KB 8-way, and no L3. The
-// SMBIOS cache-associativity enum has no 6-way value, so L1D is reported as
-// "Unknown" instead of a wrong way count. The records mirror the cache set
-// the Silicium SMBIOS driver registers for its ARM parts, and Type 4 links
-// to them the same way (L1CacheHandle points at the L1 data cache).
-//
-// CacheConfiguration (word): bit7 Enabled, bits 6:5 Location (00 internal),
-// bit3 Socketed (0), bits 2:0 level (001 = L1, 010 = L2),
-// bits 9:8 operation mode (00 write-through, 01 write-back).
-//
 #define CACHE_CONFIG_L1_WT  0x0081
 #define CACHE_CONFIG_L1_WB  0x0181
 #define CACHE_CONFIG_L2_WB  0x0182

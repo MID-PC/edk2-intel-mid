@@ -1,38 +1,4 @@
 /** @file
-  Registers the Clover Trail+ (Atom Z25xx) physical SD card slot (mmc1 @
-  0xFFA58000) as a non-discoverable SDHCI device for MdeModulePkg's
-  SdMmcPciHcDxe, and installs an EDKII_SD_MMC_OVERRIDE producer.
-
-  Device mapping (iomem_A502CG.txt + ASUS kernel):
-    00:01.0 / 8086:08E5 / mmc0 / 0xFFA50000 = internal eMMC (not registered)
-    00:04.0 / 8086:08F9 / mmc1 / 0xFFA58000 = physical SD slot (this driver)
-    00:04.1 / 8086:08FA / mmc2 / 0xFFA48000 = Wi-Fi SDIO (not registered)
-
-  Bring-up follows clv_sd_setup() in the downstream platform_sdhci_pci.c:
-
-    1. Enable the VCCSDIO rail through the PMIC register 0xD5 using the SCU
-       IPC PCNTRL (0xFF) command, writing the literal VCCSDIO_NORMAL value
-       0x07. Masking the inherited value is wrong: an inherited VCCSDIO_OFF
-       value of 0x04 simply stays off, which is what leaves the bus dead and
-       produces CRC/end-bit errors on every command.
-    2. Put SD CMD and DAT0..3 into Langwell alternate function 1 on the core
-       GPIO bank (global GPIOs 138..141 and 146 = local core-bank pins
-       42..45 and 50). Without the mux the pads are still GPIOs and the data
-       lines return garbage -> Interrupt Status 0x8100 / Error Interrupt
-       Status 0x3.
-    3. Report the slot as embedded in the capability override so the generic
-       driver skips the broken card-detect line (SDHCI_QUIRK2_BAD_SD_CD) and
-       assumes media is present, and mask HighSpeed/UHS so the stack stays in
-       default speed at 3.3 V (MMC_CAP2_BROKEN_VOLTAGE).
-    4. Do NOT falsify the reported base clock. BaseClkFreq describes the
-       controller's physical input clock and is used to compute the SDHCI
-       divisor; halving it makes the driver program a divisor that is too
-       small, so a requested 25 MHz bus actually runs at 50 MHz and yields
-       exactly the CRC status 0x0003 seen here. Linux's
-       MMC_CAP2_BROKEN_MAX_CLK lowers the card clock, not the capability.
-       The clock is instead limited through the operating parameters.
-    5. Start conservatively at 1-bit / 12 MHz.
-
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -46,9 +12,7 @@
 #include <Library/PcdLib.h>
 #include <Protocol/SdMmcOverride.h>
 
-//
-// SCU IPC-1 register block (PcdScuIpcBase, 0xFF11C000).
-//
+// SCU IPC-1 register block (PcdScuIpcBase)
 #define SCU_IPC_COMMAND       0x00
 #define SCU_IPC_STATUS        0x04
 #define SCU_IPC_WRITE_BUFFER  0x80
@@ -63,9 +27,7 @@
 #define VCCSDIO_ADDR    0xD5
 #define VCCSDIO_NORMAL  0x07
 
-//
-// Langwell core GPIO bank (PcdGpioCoreBase, 0xFF13F000), global base 96.
-//
+// Langwell GPIO CORE bank (PcdGpioCoreBase)
 #define CLV_GPIO_GAFR_OFFSET  0x54
 #define CLV_GPIO_GPDR_OFFSET  0x0C
 #define CLV_SD_DAT0_LOCAL     42
@@ -74,18 +36,10 @@
 #define CLV_SD_DAT3_LOCAL     45
 #define CLV_SD_CMD_LOCAL      50
 #define CLV_GPIO_GPSR_OFFSET  0x18
-//
-// WLAN_EN is clv_gpio_1 global GPIO 170 = local core-bank pin 74
-// (get_gpio_by_name("WLAN_EN") in platform_sdhci_pci.c). The downstream
-// driver drives it high before the SDIO slot (mmc2) is usable; without it
-// the Broadcom SDIO function never answers, so Windows sees the host
-// controller but no card.
-//
+// WLAN_EN: global GPIO 170 = GPIO CORE pin 74
 #define CLV_WLAN_EN_LOCAL     74
 
-//
-// Raw SDHCI capability bits (the override hands us the 64-bit register).
-//
+// Raw SDHCI capability bits
 #define SDHCI_CAP_HIGH_SPEED  BIT21
 #define SDHCI_CAP_SLOT_MASK   (BIT30 | BIT31)
 #define SDHCI_CAP_EMBEDDED    BIT30
@@ -93,12 +47,7 @@
 #define SDHCI_CAP_SDR104      (1ULL << 33)
 #define SDHCI_CAP_DDR50       (1ULL << 34)
 
-//
-// Bus settings. Transfers are proven reliable, so use the full 4-bit bus at
-// the default-speed maximum of 25 MHz. HighSpeed/UHS stay masked in the
-// capability override (MMC_CAP2_BROKEN_VOLTAGE: no 1.8 V rail on this board),
-// so 25 MHz / 4-bit is the fastest legal mode for this slot.
-//
+// Bus settings: 4-bit / 25 MHz is the fastest legal mode; no 1.8 V rail on this board
 #define CT_SD_BUS_WIDTH   4
 #define CT_SD_CLOCK_MHZ   25
 
@@ -141,9 +90,7 @@ ScuPmicRead8 (
     return Status;
   }
 
-  //
-  // Linux pwr_reg_rdwr(): a read carries one little-endian UINT16 address.
-  //
+  // Linux pwr_reg_rdwr(): a read carries one little-endian UINT16 address
   MmioWrite32 (IpcBase + SCU_IPC_WRITE_BUFFER, Address);
   MmioWrite32 (
     IpcBase + SCU_IPC_COMMAND,
@@ -174,9 +121,7 @@ ScuPmicWrite8 (
     return Status;
   }
 
-  //
-  // Linux pwr_reg_rdwr(): write payload is UINT16 address followed by UINT8.
-  //
+  // Linux pwr_reg_rdwr(): write payload is UINT16 address followed by UINT8
   Payload = (UINT32)Address | ((UINT32)Value << 16);
   MmioWrite32 (IpcBase + SCU_IPC_WRITE_BUFFER, Payload);
   MmioWrite32 (
@@ -292,9 +237,7 @@ CloverviewConfigureSdPins (
 {
   UINTN  GpioBase;
 
-  //
-  // GPIOs 138..141 and 146 are local core-bank pins 42..45 and 50.
-  //
+  // GPIOs 138..141 and 146 are local CORE-bank pins 42..45 and 50
   GpioBase = (UINTN)FixedPcdGet32 (PcdGpioCoreBase);
   SetGpioAlt1Input (GpioBase, CLV_SD_DAT0_LOCAL);
   SetGpioAlt1Input (GpioBase, CLV_SD_DAT1_LOCAL);
@@ -305,8 +248,8 @@ CloverviewConfigureSdPins (
 }
 
 /**
-  Capability override: expose the slot as embedded (no card detect), drop
-  HighSpeed/UHS, and leave the physical base clock untouched.
+  Capability override: embedded (no card detect), no HighSpeed/UHS, base clock
+  untouched.
 **/
 STATIC
 EFI_STATUS
@@ -329,7 +272,7 @@ CtSdMmcCapability (
   Capability  = (UINT64 *)SdMmcHcSlotCapability;
   *Capability &= ~(UINT64)(SDHCI_CAP_HIGH_SPEED | SDHCI_CAP_SLOT_MASK |
                            SDHCI_CAP_SDR50 | SDHCI_CAP_SDR104 | SDHCI_CAP_DDR50);
-  *Capability |= SDHCI_CAP_EMBEDDED; // Skip broken card detect; assume inserted.
+  *Capability |= SDHCI_CAP_EMBEDDED;
 
   DEBUG ((
     DEBUG_VERBOSE,
@@ -340,9 +283,6 @@ CtSdMmcCapability (
   return EFI_SUCCESS;
 }
 
-/**
-  Operating parameter override: 1-bit, 12 MHz, driver strength type B.
-**/
 STATIC
 EFI_STATUS
 EFIAPI

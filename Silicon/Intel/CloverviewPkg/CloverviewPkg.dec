@@ -15,12 +15,10 @@
 
 [PcdsFixedAtBuild]
   ## SD host controller (mmc1, SD card slot) MMIO window
-  ##   ffa58000-ffa580ff : 0000:00:04.0 -> mmc1
   gCloverviewTokenSpaceGuid.PcdSdHostBase|0xFFA58000|UINT32|0x00000020
   gCloverviewTokenSpaceGuid.PcdSdHostSize|0x00001000|UINT32|0x00000021
 
-  ## USB OTG controller (OTG0, 00:02.3, "penwell_otg")
-  ##  ffa60000-ffa7ffff : 0000:00:02.3 -> penwell_otg
+  ## USB OTG controller (OTG0, 00:02.3 "penwell_otg")
   gCloverviewTokenSpaceGuid.PcdOtgHostBase|0xFFA60000|UINT32|0x00000024
   gCloverviewTokenSpaceGuid.PcdOtgHostSize|0x00001000|UINT32|0x00000025
 

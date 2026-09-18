@@ -1,19 +1,4 @@
 /** @file
-  Minimal Real Time Clock architectural protocol and SCU watchdog keeper for
-  Clover Trail+ (Atom Z25xx).
-
-  There is no usable RTC available to us after the primary bootloader hands
-  over, so time is emulated: a fixed epoch is advanced by a software counter.
-  This is enough for the DXE Core, the variable stack and UiApp/Shell to run.
-
-  In addition, this driver keeps the SCU kernel watchdog quiet. SEC stops it
-  once through IPC-1, but the SCU re-arms the kernel watchdog whenever it
-  services later IPC traffic (PCNTRL for VCCSDIO, reset library probes, etc.),
-  which is why the board reboots roughly 40 s after control is handed to an OS
-  loader that never talks to the SCU itself. The watchdog stop is therefore
-  re-issued periodically during boot services, at ReadyToBoot, and finally at
-  ExitBootServices, which is the last point at which this firmware runs.
-
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -29,11 +14,7 @@
 #include <Protocol/RealTimeClock.h>
 #include <Guid/EventGroup.h>
 
-//
-// Cloverview SCU IPC-1 block. Same encoding as the known-good SEC path:
-// command 0xF8 (IPCMSG_WATCHDOG_TIMER) with sub-command 1 (STOP) placed in
-// bits 15:12, i.e. 0x000010F8, and no payload at all (never touch WBUF0).
-//
+// SCU IPC-1: watchdog STOP = 0x000010F8 (cmd 0xF8, sub-command 1 in bits 15:12)
 #define SCU_IPC_CMD_OFFSET      0x00u
 #define SCU_IPC_STATUS_OFFSET   0x04u
 #define SCU_IPC_STATUS_BUSY     BIT0
@@ -41,9 +22,7 @@
 #define SCU_IPC_POLL_LIMIT      1000000u
 #define SCU_IPC_WATCHDOG_STOP   0x000010F8u
 
-//
-// Re-issue the watchdog stop every 5 seconds while boot services are alive.
-//
+// Re-issue the watchdog stop every 5s while boot services are alive
 #define WDT_KEEPER_PERIOD_100NS  (5 * 10 * 1000 * 1000ULL)
 
 STATIC EFI_EVENT  mWdtTimerEvent      = NULL;
@@ -53,26 +32,23 @@ STATIC UINT32     mWdtStopCount       = 0;
 STATIC UINT32     mWdtFailCount       = 0;
 
 STATIC EFI_TIME  mTime = {
-  2024,   // Year
-  1,      // Month
-  1,      // Day
-  0,      // Hour
-  0,      // Minute
-  0,      // Second
-  0,      // Pad1
-  0,      // Nanosecond
+  2024,
+  1,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
   EFI_UNSPECIFIED_TIMEZONE,
-  0,      // Daylight
-  0       // Pad2
+  0,
+  0
 };
 
 STATIC UINT32  mTicks = 0;
 
 /**
-  Wait until the SCU IPC-1 block is idle.
-
-  @retval TRUE   The IPC block is idle.
-  @retval FALSE  The IPC block stayed busy (or is not mapped).
+  Wait until the SCU IPC-1 block is idle; FALSE if busy or unmapped
 **/
 STATIC
 BOOLEAN
@@ -103,10 +79,7 @@ ScuIpcWaitNotBusy (
 }
 
 /**
-  Stop the SCU kernel watchdog through IPC-1.
-
-  @param[in]  Verbose  TRUE to log the outcome, FALSE for the silent periodic
-                       keeper (which would otherwise flood the framebuffer log).
+  Stop the SCU kernel watchdog; Verbose=FALSE keeps the periodic keeper quiet
 **/
 STATIC
 VOID
@@ -173,9 +146,6 @@ ScuStopWatchdog (
   }
 }
 
-/**
-  Periodic keeper: silently re-issue the watchdog stop while boot services run.
-**/
 STATIC
 VOID
 EFIAPI
@@ -187,9 +157,6 @@ WdtKeeperTick (
   ScuStopWatchdog (FALSE);
 }
 
-/**
-  ReadyToBoot: log the state once so the on-screen log shows it.
-**/
 STATIC
 VOID
 EFIAPI
@@ -202,8 +169,7 @@ WdtReadyToBoot (
 }
 
 /**
-  ExitBootServices: last chance to silence the watchdog before the OS, which
-  does not talk to the SCU at all, takes over.
+  ExitBootServices: last chance to stop the watchdog; the OS never talks to the SCU.
 **/
 STATIC
 VOID
@@ -213,10 +179,7 @@ WdtExitBootServices (
   IN VOID       *Context
   )
 {
-  //
-  // No DEBUG() here: the framebuffer console may not be safe to touch once the
-  // OS loader has taken the display, and this callback runs at TPL_NOTIFY.
-  //
+  // No DEBUG(); display may be OS-owned and this runs at TPL_NOTIFY
   if (mWdtTimerEvent != NULL) {
     gBS->SetTimer (mWdtTimerEvent, TimerCancel, 0);
   }
@@ -225,9 +188,6 @@ WdtExitBootServices (
   ScuStopWatchdog (FALSE);
 }
 
-/**
-  Return the current (emulated) time.
-**/
 EFI_STATUS
 EFIAPI
 PlatformGetTime (
@@ -239,9 +199,7 @@ PlatformGetTime (
     return EFI_INVALID_PARAMETER;
   }
 
-  //
-  // Advance one second per call so callers that wait on time make progress.
-  //
+  // Advance the counter so callers that wait on time make progress
   mTicks++;
   if ((mTicks % 4) == 0) {
     mTime.Second++;
@@ -270,9 +228,6 @@ PlatformGetTime (
   return EFI_SUCCESS;
 }
 
-/**
-  Set the current (emulated) time.
-**/
 EFI_STATUS
 EFIAPI
 PlatformSetTime (
@@ -308,10 +263,6 @@ PlatformSetWakeupTime (
   return EFI_UNSUPPORTED;
 }
 
-/**
-  Install the Real Time Clock architectural protocol and arm the SCU watchdog
-  keeper.
-**/
 EFI_STATUS
 EFIAPI
 PlatformRuntimeEntryPoint (
@@ -338,10 +289,7 @@ PlatformRuntimeEntryPoint (
 
   DEBUG ((DEBUG_INFO, "PlatformRuntimeDxe: emulated RTC installed\n"));
 
-  //
-  // Stop the watchdog now, then keep stopping it: SEC's single stop is undone
-  // whenever the SCU services later IPC traffic.
-  //
+  // Stop now and keep stopping (SEC's single stop is undone by later IPC traffic)
   ScuStopWatchdog (TRUE);
 
   Status = gBS->CreateEvent (

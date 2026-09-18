@@ -1,16 +1,3 @@
-/** @file
-  SMBIOS table templates for the Intel MID SMBIOS platform driver.
-
-  Structure of the SMBIOS records mirrors the Mu-Silicium platform
-  (Silicon/Silicium/SiliciumPkg/Drivers/SmBiosTableDxe): static templates with
-  a parallel CHAR8* string pack, filled from FixedAtBuild PCDs at dispatch time.
-
-  Device identity strings come from the Intel MID package PCDs
-  (PcdSmbiosSystem*); the device DSC overrides them. CPU/SoC identity comes
-  from the generation package (PcdSmbiosProcessor*).
-
-  SPDX-License-Identifier: BSD-2-Clause-Patent
-**/
 
 #ifndef SMBIOS_TABLE_H_
 #define SMBIOS_TABLE_H_

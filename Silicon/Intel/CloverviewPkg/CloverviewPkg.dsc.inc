@@ -17,9 +17,9 @@
 
 [PcdsFixedAtBuild]
   #
-  # Image / temporary RAM layout. 0x01101000 is where the primary bootloader
-  # hands control over to the bootstub
-  # Temporary RAM is put well above the image inside the 0x01000000-0x36FEFFFF System RAM window
+  # Image / temporary RAM layout.
+  # 0x01101000 is where the primary bootloader hands control over to the bootstub
+  # Temporary RAM is put well above the image inside the first System RAM window
   #
   gIntelMidTokenSpaceGuid.PcdFdBaseAddress|0x01101000
   gIntelMidTokenSpaceGuid.PcdFdSize|0x00200000
@@ -54,18 +54,18 @@
 
 [LibraryClasses]
   #
-  # SCU command based reset runtime
+  # SCU IPC command based reset runtime
   #
   ResetSystemLib|CloverviewPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
 
 [Components]
   #
-  # Cloverview SoC PEIM
+  # PEIM
   #
   CloverviewPkg/PlatformPei/PlatformPei.inf
 
   #
-  # Cloverview Platform Setup
+  # Platform Setup
   #
   CloverviewPkg/Drivers/PlatformRuntimeDxe/PlatformRuntimeDxe.inf
 

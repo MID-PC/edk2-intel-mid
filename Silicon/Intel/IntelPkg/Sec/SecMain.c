@@ -1,8 +1,4 @@
 /** @file
-  Generic Intel MID SEC phase.
-
-  SoC-specific work that must run before the PEI Core dispatches lives in the platform PEIM.
-
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -76,15 +72,11 @@ SecTemporaryRamSupport (
   CopyMem (NewStack, OldStack, StackSize);
 
   //
-  // Do NOT use SwitchStack() here: it ASSERTs (EntryPoint != NULL) in
-  // MdePkg/Library/BaseLib/SwitchStack.c line 52 and it never returns, while
-  // the Temporary RAM Support PPI must return to the PEI Core with the very
-  // same call frame, only relocated to permanent memory.
-  //
-  // Instead relocate the current stack frame exactly like
-  // OvmfPkg/Sec/SecMain.c does: capture the context, add the
-  // (new stack - old stack) delta to ESP/EBP and long-jump, so execution
-  // resumes right here but running on the copied stack in permanent memory.
+  // Using SwitchStack() here results in an ASSERT (EntryPoint != NULL, BaseLib
+  // SwitchStack.c)
+  // Instead relocate the frame like OvmfPkg/Sec/SecMain.c:
+  // capture context, add the (new stack - old stack) delta to ESP/EBP and
+  // long-jump, resuming right here on the copied stack.
   //
   StackDelta = (INTN)((UINTN)NewStack - (UINTN)OldStack);
 
@@ -189,7 +181,6 @@ SecStartup (
   // Print UEFI version message
   DEBUG ((EFI_D_WARN, "\n"));
   DEBUG ((EFI_D_WARN, "%s for %a %a\n", PcdGetPtr (PcdFirmwareVersionString), FixedPcdGetPtr (PcdSmbiosSystemManufacturer), FixedPcdGetPtr (PcdSmbiosSystemModel)));
-  DEBUG ((EFI_D_WARN, "Built at %a on %a\n",  __TIME__, __DATE__));
   DEBUG ((EFI_D_WARN, "\n"));
 
   DEBUG ((

@@ -207,9 +207,7 @@
 #
 [Components]
   #
-  # SEC is entered directly at the very start of the firmware image (offset 0);
-  # placed by [FV.FVSEC] in the platform FDF.
-  # On droidboot devices, IFWI loads the bootstub.
+  # On droidboot devices, IAFW loads the bootstub.
   # We replace the bootstub with the FD, and use patch_sec_entry.py to make the first instruction of the FD a direct jmp to SEC.
   #
   IntelPkg/Sec/SecMain.inf
@@ -225,11 +223,6 @@
   MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf {
     <LibraryClasses>
       PcdLib|MdePkg/Library/PeiPcdLib/PeiPcdLib.inf
-      #
-      # FVMAIN wraps FVDXE in an LZMA GUIDED section. Without these extraction
-      # handlers registered, ExtractGuidedSectionDecode() fails, DxeIpl never
-      # finds DxeCore and hands a NULL EntryPoint to SwitchStack().
-      #
       NULL|MdeModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
       NULL|MdeModulePkg/Library/PeiCrc32GuidedSectionExtractLib/PeiCrc32GuidedSectionExtractLib.inf
   }
@@ -292,7 +285,7 @@
   MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
   MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 !endif
-  MdeModulePkg/Logo/LogoDxe.inf
+  IntelPkg/Logo/LogoDxe.inf
 
   #
   # Generic drivers

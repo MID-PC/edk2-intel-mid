@@ -1,17 +1,3 @@
-/** @file
-  Publishes SMBIOS records for the Intel MID platform (Type 0/1/2/3/4/16/17/19).
-
-  Device identity is read from PcdSmbiosSystem* (set by the device DSC), the
-  processor identity from the generation package PCDs, and the memory topology
-  is derived from the EFI memory map.
-
-  The driver is dispatched by a depex on the SMBIOS protocol, which is produced
-  by MdeModulePkg/Universal/SmbiosDxe (the SMBIOS 3.0 entry point is chosen by
-  PcdSmbiosVersion/PcdSmbiosEntryPointProvideMethod).
-
-  SPDX-License-Identifier: BSD-2-Clause-Patent
-**/
-
 #include <IndustryStandard/SmBios.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -23,6 +9,7 @@
 #include <Library/UefiDriverEntryPoint.h>
 #include <Protocol/Smbios.h>
 
+#include "TableDefinitions.h"
 #include "SmBiosTable.h"
 
 STATIC CHAR8  mBiosVendor[64];
@@ -171,11 +158,7 @@ UpdateSmBiosType4 (
   CopyMem (&mSmbiosType4.ProcessorId.Signature, &CpuSignature, sizeof (UINT32));
   CopyMem (&mSmbiosType4.ProcessorId.FeatureFlags, &CpuFeatureFlags, sizeof (UINT32));
 
-  //
-  // Cloverview comes in two thread bins: the Z2520 (2 threads, no Hyper
-  // Threading) and the Z2560/Z2580 (4 threads). Ask the silicon rather than
-  // hardcoding the SKU; CPUID.1 EBX[23:16] is the logical processor count.
-  //
+  // account for non-hyper threading CPUs
   ThreadCount = (UINT16)((Ebx >> 16) & 0xFF);
   if ((ThreadCount != 2) && (ThreadCount != 4)) {
     ThreadCount = 2;
@@ -298,16 +281,14 @@ UpdateSmBiosMemory (
   }
 
   //
-  // SMBIOS 3.2 memory device details: LPDDR2 is plain DRAM (no dedicated
-  // enum value), and the extended size fields are byte counts.
+  // SMBIOS 3.2 memory device details
   //
   mSmbiosType17.MemoryTechnology                     = MemoryTechnologyDram;
   mSmbiosType17.MemoryOperatingModeCapability.Bits.VolatileMemory = 1;
   mSmbiosType17.VolatileSize                         = MemorySize;
 
   //
-  // Memory Array Mapped Address covers the conventional-memory window as
-  // reported by the EFI memory map, in 1 KB units.
+  // Memory Array Mapped Address
   //
   mSmbiosType19.StartingAddress = (UINT32)(MemoryBase >> 10);
   mSmbiosType19.EndingAddress   = (UINT32)(RShiftU64 (MemoryBase + MemorySize - 1, 10));
@@ -331,19 +312,17 @@ RegisterTable (
   UINTN                    Index;
 
   //
-  // The SMBIOS protocol expects the string pack as a contiguous byte area
-  // directly after the formatted section, so assemble the record into a
-  // fresh buffer of the right size instead of passing the template struct.
+  // The SMBIOS protocol wants the string pack as a contiguous byte area right
+  // after the formatted section, assemble the record into a fresh buffer
+  // instead of passing the template struct.
   //
   RecordSize = TableHeader->Length;
   if (StringPack == NULL || StringPack[0] == NULL) {
-    // Two terminator bytes for a record without strings.
     RecordSize += 2;
   } else {
     for (Index = 0; StringPack[Index] != NULL; Index++) {
       RecordSize += AsciiStrSize (StringPack[Index]);
     }
-    // One extra terminator byte between the strings and the final double-null.
     RecordSize += 1;
   }
 
@@ -394,14 +373,7 @@ RegisterSmBiosTables (
   EFI_SMBIOS_HANDLE   L1DataCacheHandle;
   EFI_SMBIOS_HANDLE   L2CacheHandle;
 
-  //
-  // Register the system/BIOS records first so the Type 2 chassis handle can
-  // be linked. The Type 3 handle and the Type 16 memory array handle are only
-  // known after the referenced record has been registered, so the memory
-  // records are registered last. Cache records are registered before Type 4
-  // so its L1/L2 cache handles resolve to real handles (L1 points at the L1
-  // data cache, the SMBIOS convention; L3 stays PI_RESERVED - no L3 here).
-  //
+  // Register system/BIOS records first so Type 2 can link the chassis handle
   Status = RegisterTable ((EFI_SMBIOS_TABLE_HEADER *)&mSmbiosType0, mSmbiosType0Strings, NULL);
   if (EFI_ERROR (Status)) {
     return Status;

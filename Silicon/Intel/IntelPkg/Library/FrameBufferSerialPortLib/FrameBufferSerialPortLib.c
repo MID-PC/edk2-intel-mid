@@ -1,11 +1,4 @@
 /** @file
-  SerialPortLib implementation that renders debug output into the fixed
-  framebuffer of an Atom Z25xx (Clover Trail+) phone platform.
-
-  The primary bootloader leaves the panel initialized and scanning out of
-  PcdFrameBufferBase (0x3F000000, 544x960, 4 bytes per pixel). We therefore
-  only need to draw glyphs; no display hardware programming is performed.
-
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -14,6 +7,8 @@
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PcdLib.h>
+
+#include "Font8x16.h"
 
 extern CONST UINT8 gFont8x16[95][16];
 
@@ -24,31 +19,16 @@ extern CONST UINT8 gFont8x16[95][16];
 #define FB_WIDTH   ((UINTN)FixedPcdGet32 (PcdFrameBufferWidth))
 #define FB_HEIGHT  ((UINTN)FixedPcdGet32 (PcdFrameBufferHeight))
 #define FB_BPP     ((UINTN)FixedPcdGet32 (PcdFrameBufferBpp))
-//
-// Scanout stride in pixels: the panel shows 540 columns but the display pipe
-// advances 544 pixels (2176 bytes) per scanline, so row addressing must use
-// the stride while clipping still uses FB_WIDTH.
-//
 #define FB_STRIDE  ((UINTN)FixedPcdGet32 (PcdFrameBufferStride))
 #define FB_PITCH   (FB_STRIDE * FB_BPP)
 
 #define TEXT_COLS  (FB_WIDTH / GLYPH_WIDTH)
 #define TEXT_ROWS  (FB_HEIGHT / GLYPH_HEIGHT)
 
-//
-// Number of CpuPause() iterations inserted after every completed log line so
-// the output is readable on the panel (there is no scrollback and no host
-// serial port here). On a ~1.6 GHz Z2560 this is roughly a tenth of a second
-// per line. Set to 0 for full-speed logging.
-//
 #define FB_LOG_LINE_DELAY_LOOPS  1000000
 
-//
-// Cursor state. This library is used from SEC/PEI (where globals live in the
-// read-only firmware image) as well as from DXE. To stay functional in both
-// phases the cursor is kept in a small writable scratch area at the very end
-// of the framebuffer region, which is RAM and always writable.
-//
+// Cursor state
+// Reserved as PcdConsoleStateBase, because it runs in every UEFI phase
 typedef struct {
   UINT32    Signature;
   UINT32    Col;
@@ -56,39 +36,6 @@ typedef struct {
 } FB_CONSOLE_STATE;
 
 #define FB_CONSOLE_SIGNATURE  SIGNATURE_32 ('C', 'T', 'F', 'B')
-
-//
-// The memory immediately after the visible framebuffer is NOT guaranteed to be
-// writable RAM on this platform. When those writes are dropped, the signature
-// never matches, so the cursor is reset to (0,0) for every single character:
-// the screen gets cleared and no text is ever visible. Because this firmware is
-// loaded into DRAM at PcdFdBaseAddress (SEC/PEI execute from RAM) and DXE
-// modules are relocated into RAM, a plain writable global is valid in every
-// phase.
-//
-//
-// A module-local global is NOT usable here: every phase and every module gets
-// its own private copy of it. SEC, PEI Core, each PEIM, the DXE Core and each
-// DXE driver would therefore each start with Signature == 0, so their first
-// DEBUG() call runs SerialPortInitialize()'s "first use" path again, resets the
-// cursor to row 6 and re-clears the whole log area. That is exactly the
-// "nothing appears after HandOffToDxeCore()" symptom: DXE Core and every driver
-// after it wipe the log region and overwrite each other at row 6.
-//
-// Keep the cursor in one fixed scratch location shared by all phases. 0x020F0000
-// sits inside the 0x01000000-0x02100000 bootloader-owned window that PlatformPei
-// already covers with a reserved allocation HOB, above the SEC/PEI temporary RAM
-// (0x02000000 + 0x40000) and below permanent PEI memory (0x02100000), so nothing
-// else ever writes there and it is real, writable DRAM in every phase.
-//
-//
-// RELOCATED from 0x020F0000: that low-DRAM page is scratch for the primary
-// bootloader and is also allocated over by the Windows boot loader, which
-// corrupted the shared cursor state on most boots. The new base is the top of
-// the high DRAM island (0x379FE000..0x3EEFF000); PlatformPei reserves the
-// PcdConsoleStateBase page + 4 KiB as EfiReservedMemoryType (console state),
-// keeping this consumer in sync with the reservation.
-//
 
 STATIC
 FB_CONSOLE_STATE *
@@ -147,20 +94,7 @@ ScrollUp (
 {
   FB_CONSOLE_STATE  *State;
 
-  //
-  // Do NOT scroll by copying the framebuffer onto itself. 0x3F000000 is an
-  // uncached MMIO aperture of the display controller: CopyMem() READS it back
-  // (rep movsd) and reads of this aperture do not return the written pixel
-  // data on Clover Trail+. The result is that the moment enough output is
-  // produced to reach the bottom text row - which happens immediately once the
-  // DXE Core starts dumping HOBs/allocations - the whole panel gets filled with
-  // noise. That is exactly the "screen full of garbage right after
-  // HandOffToDxeCore()" symptom: DxeCore IS running fine, only the console
-  // scroll is destroying the screen.
-  //
-  // Wrap instead of scrolling: clear the log area (write-only) and restart at
-  // its first row. No framebuffer reads are ever performed.
-  //
+  // Fill the log area (write-only) and restart at its first row
   FillRect (
     0,
     0,
@@ -169,11 +103,8 @@ ScrollUp (
     FixedPcdGet32 (PcdFrameBufferLogBgColor)
     );
 
-  //
   // PutChar() decrements Row once after each ScrollUp() call, so set 1 here
-  // to land on row 0 - the log now owns the whole panel, there is no beacon
-  // band to skip.
-  //
+  // to land on row 0 - the log owns the entire framebuffer now
   State            = (FB_CONSOLE_STATE *)(UINTN)FixedPcdGet32 (PcdConsoleStateBase);
   State->Signature = FB_CONSOLE_SIGNATURE;
   State->Col       = 0;
@@ -286,11 +217,7 @@ SerialPortInitialize (
 
   State = GetConsoleState ();
 
-  //
-  // Clear the whole panel once, on first use. SEC no longer paints anything
-  // into the framebuffer before calling in here, so there is no beacon band
-  // to preserve - the log owns every row starting at 0.
-  //
+  // Clear the framebuffer before logging anything
   if ((State->Col == 0) && (State->Row == 0)) {
     FillRect (
       0,
@@ -323,13 +250,10 @@ SerialPortWrite (
   for (Index = 0; Index < NumberOfBytes; Index++) {
     PutChar ((CHAR8)Buffer[Index]);
 
-    //
-    // Throttle the log so it can actually be read/photographed on the panel.
-    // There is no dependable time source in every phase here (SEC runs before
-    // the APIC timer is programmed and TimerLib must not be pulled into this
-    // library), so use a bounded busy-wait after each completed line. Set
-    // FB_LOG_LINE_DELAY_LOOPS to 0 to restore full-speed logging.
-    //
+    // Busy-wait throttle so the log can actually be read on the panel; there
+    // is no dependable time source in every phase (SEC runs before the APIC
+    // timer is programmed, and TimerLib must not be pulled into this
+    // library). Set FB_LOG_LINE_DELAY_LOOPS to 0 for full speed.
     if ((CHAR8)Buffer[Index] == '\n') {
       volatile UINT32  Spin;
 

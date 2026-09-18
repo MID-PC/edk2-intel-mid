@@ -8,7 +8,7 @@
 
 [Sources]
   SmBiosTable.c
-  TableDefinitions.c
+  TableDefinitions.h
   SmBiosTable.h
 
 [Packages]

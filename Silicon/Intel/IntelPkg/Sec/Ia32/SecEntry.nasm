@@ -113,7 +113,7 @@ GdtDescriptor:
 
 ;
 ; Base of the FV that carries the PEI Core. Patched by GenFv through the
-; FDF "gIntelMidTokenSpaceGuid.PcdFdBaseAddress" arithmetic below; we simply
+; FDF PcdFdBaseAddress arithmetic below; we simply
 ; keep it as a relocatable dword the C code can read.
 ;
 global ASM_PFX(gBootFirmwareVolumeBase)

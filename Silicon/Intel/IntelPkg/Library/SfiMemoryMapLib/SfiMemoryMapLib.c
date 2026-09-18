@@ -1,24 +1,4 @@
 /** @file
-  SFI (Simple Firmware Interface) memory map discovery.
-
-  The primary bootloader of an Intel MID publishes a SYST table in the legacy
-  BIOS area (0x000E0000-0x00100000) whose pointer list leads to its other SFI
-  tables, among them MMAP. The MMAP table describes the whole DRAM/MMIO layout
-  (types 7 = conventional RAM, 6 = reserved, 11 = MMIO). Reading it lets the
-  reported firmware memory map follow the bootloader's view of the board (RAM
-  size, reserved windows) instead of a hard-coded layout.
-
-  The search procedure, table layout and validation follow the SFI 1.0
-  specification and mirror the Linux kernel reference implementation
-  (drivers/sfi/sfi_core.c), which is shared across all Intel Atom MID SoC
-  generations (Menlow/Moorestown, Medfield, Cloverview, ...).
-
-  This library REQUIRES a bootloader-published SFI table: when the SYST/MMAP
-  tables cannot be found it logs an error and asserts (CpuDeadLoop stop).
-  Every platform that links this library is an SFI platform; a MID SoC that
-  does not publish SFI tables (e.g. SoFIA) supplies its own memory map
-  library instead.
-
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -34,10 +14,7 @@
 #define SFI_SIG_SYST       "SYST"
 #define SFI_SIG_MMAP       "MMAP"
 
-//
-// Number of pointer entries a SYST table can carry given the search-window
-// bound enforced on every followed pointer.
-//
+// SYST pointer entries bounded by the search window.
 #define SFI_SYST_MAX_POINTERS  \
   (SFI_SEARCH_SIZE / sizeof (UINT64))
 
@@ -46,9 +23,8 @@
 
   @param[in] Header  Table header to validate.
 
-  @retval TRUE   The header is a self-consistent SFI table (length within the
-                 search window and a correct 8-bit checksum).
-  @retval FALSE  Length, bounds or checksum sanity failed.
+  @retval TRUE   Length within the search window and correct checksum.
+  @retval FALSE  Length, bounds or checksum failed.
 **/
 STATIC
 BOOLEAN
@@ -63,18 +39,13 @@ SfiTableIsValid (
 
   TableAddr = (UINTN)Header;
 
-  //
-  // The whole table must fit inside the legacy SFI area and be no smaller
-  // than its own header.
-  //
+  // Table must fit inside the legacy SFI area
   if ((Header->Len < sizeof (*Header)) ||
       (Header->Len > (SFI_SEARCH_BASE + SFI_SEARCH_SIZE - TableAddr))) {
     return FALSE;
   }
 
-  //
-  // SFI tables end with a checksum that makes all bytes sum to zero.
-  //
+  // SFI checksum: all bytes must sum to zero
   Bytes = (CONST UINT8 *)Header;
   Sum   = 0;
   for (Index = 0; Index < Header->Len; Index++) {
@@ -105,10 +76,8 @@ SfiTableIs (
 }
 
 /**
-  Scan the legacy BIOS area for a table with the requested SFI signature.
-
-  The spec requires a 16-byte-aligned search of 0x000E0000-0x00100000,
-  starting at the low address, stopping at the first valid table.
+  Scan the legacy BIOS area for the first valid table with the given
+  signature (16-byte-aligned walk of 0x000E0000-0x00100000).
 
   @param[in] Signature  Four-character table signature (e.g. "SYST").
 
@@ -139,12 +108,10 @@ SfiFindTable (
 /**
   Halt on a missing SFI table.
 
-  The platforms that link this library are SFI platforms; a primary
-  bootloader that hands over without publishing SYST/MMAP in the legacy BIOS
-  area is a firmware defect and the platform cannot describe its own memory.
-  Log, assert, and stop instead of letting a consumer fall into a fabricated
-  map. Devices that genuinely have no SFI (e.g. SoFIA) link a different memory
-  map library, so this branch is never expected.
+  All platforms linking this library are SFI platforms; a bootloader that
+  hands over without SYST/MMAP is a firmware defect. Log, assert, and stop
+  rather than fabricate a memory map. Non-SFI SoCs link a
+  different library, so this branch is never expected.
 
   Never returns.
 **/
@@ -196,10 +163,7 @@ SfiGetMmap (
     Pointer = (CONST UINT64 *)((UINTN)Syst + sizeof (*Syst) +
                                Index * sizeof (UINT64));
 
-    //
-    // Only follow pointers that stay inside the legacy SFI area; anything
-    // else could be garbage pointing at unimplemented IO space.
-    //
+    // Only follow pointers inside the legacy SFI area; others could be garbage.
     TableAddr = *Pointer;
     if ((TableAddr < SFI_SEARCH_BASE) ||
         (TableAddr > (SFI_SEARCH_BASE + SFI_SEARCH_SIZE -
@@ -227,17 +191,10 @@ SfiGetMmap (
     return EFI_SUCCESS;
   }
 
-  //
-  // SYST was found but no pointer led to a valid MMAP table: the bootloader
-  // published an incomplete table set. Same firmware defect as a missing
-  // table - stop.
-  //
+  // SYST found but no pointer led to a valid MMAP =  incomplete table set
   SfiMmapMissing ();
 
-  //
-  // Unreachable: SfiMmapMissing() never returns. Kept so the EFI_STATUS
-  // return contract is explicit to tools/compilers.
-  //
+  // Unreachable (SfiMmapMissing never returns); kept for the return contract
   return EFI_NOT_FOUND;
 }
 
@@ -311,10 +268,7 @@ SfiMmapBuildMmioList (
     Mmio[Count++] = DeviceRegions[Index];
   }
 
-  //
-  // Keep the merged list sorted by base so debug output reads in address
-  // order. Stable insertion sort (equal bases keep their insertion order).
-  //
+  // Stable insertion sort by base so equal bases keep insertion order.
   for (Index = 1; Index < Count; Index++) {
     Key     = Mmio[Index];
     SortPos = (INTN)(Index - 1);

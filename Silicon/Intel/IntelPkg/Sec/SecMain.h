@@ -1,6 +1,4 @@
 /** @file
-  Definitions for the generic Intel MID SEC phase.
-
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
@@ -22,10 +20,10 @@
 
   Called from Ia32/SecEntry.nasm with a temporary stack already in place.
 
-  @param[in] SizeOfRam      Size of the temporary RAM region.
-  @param[in] TempRamBase    Base of the temporary RAM region.
-  @param[in] BootFirmwareVolume  Base of the boot firmware volume that carries
-                                 the PEI Core.
+  @param[in] SizeOfRam     Size of the temporary RAM region.
+  @param[in] TempRamBase   Base of the temporary RAM region.
+  @param[in] BootFirmwareVolume  Base of the boot firmware volume carrying the
+                                 PEI Core.
 **/
 VOID
 EFIAPI

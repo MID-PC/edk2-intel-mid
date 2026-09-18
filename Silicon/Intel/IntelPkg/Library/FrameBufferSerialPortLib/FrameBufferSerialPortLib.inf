@@ -8,7 +8,7 @@
 
 [Sources]
   FrameBufferSerialPortLib.c
-  Font8x16.c
+  Font8x16.h
 
 [Packages]
   MdePkg/MdePkg.dec

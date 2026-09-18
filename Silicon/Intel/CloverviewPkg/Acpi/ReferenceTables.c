@@ -1,16 +1,9 @@
 /** @file
-  Reference copies of the Cloverview ACPI tables that are deliberately NOT
-  published.
-
-  This file is NOT part of any build. During bring-up these blobs were each
-  tried and each produced HAL_INITIALIZATION_FAILED (or, for HPET/MTMR/VRTC,
-  were ruled out because the hardware does not back them). They are preserved
-  here so the bytes and the reasoning do not have to be re-derived; AcpiPlatformDxe
-  installs only FACS, DSDT, FADT and (in the KDNET build) DBG2.
-
-  If a future experiment wants one of them back, resurrect it as a .aslc table
-  in Acpi/AcpiTables/ (Fadt.aslc / Madt.aslc show the pattern) rather than as a
-  static blob in the installer.
+  Reference copies of the Cloverview ACPI tables deliberately NOT published:
+  each was tried in bring-up and produced HAL_INITIALIZATION_FAILED (or the
+  hardware does not back it). Preserved so the bytes and reasoning never need
+  re-deriving. To re-enable one, resurrect it as a .aslc table in
+  Acpi/AcpiTables/ rather than a static blob.
 
   Copyright (c) 2026, CloverTrailPkg contributors
   SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -22,12 +15,9 @@
 #include <Library/UefiBootServicesTableLib.h>
 
 //
-// HPET (Z2760-only): 56 bytes, hardware block ID 0x80862301, timer block at
-// 0xFF11A000. The A502CG has NO HPET block (iomem_A502CG.txt: 0xFF119000 is
-// langwell_gpio, 0xFF11C000 intel_scu_ipc, 0xFF11D000 the PMU; no 0xFF11Axxx
-// and no SFI HPET entry). Publishing a non-existent block made the HAL read
-// unimplemented MMIO and bugcheck. Without the table the HAL falls back to
-// the MTMR sources, which is what the stock Clover Trail+ phone firmware does.
+// HPET (Z2760-only @ 0xFF11A000): the A502CG has no HPET block; publishing one
+// made the HAL read unimplemented MMIO and bugcheck. Without it the HAL falls
+// back to MTMR, as the stock Clover Trail+ phone firmware does.
 //
 STATIC CONST UINT8  ReferenceHpet[] = {
   0x48, 0x50, 0x45, 0x54, 0x38, 0x00, 0x00, 0x00, 0x01, 0x00, 0x49, 0x4E,
@@ -38,11 +28,9 @@ STATIC CONST UINT8  ReferenceHpet[] = {
 };
 
 //
-// MTMR (regenerated from THIS board's SFI table, NOT the Z2760 copy): 0x74
-// bytes, four MID timers at 0xFF11B800/0xFF11B814/0xFF11B878/0xFF11B88C at
-// 19.2 MHz (0x0124F800) with IRQs 0/1/6/7. The Z2760 copy advertised two
-// timers at ~51.8 MHz, so the HAL programmed a wrong tick rate and no matching
-// interrupt. Kept for experiments; not installed today.
+// MTMR (from THIS board's SFI, NOT the Z2760 copy, whose ~51.8 MHz rate was
+// wrong): four MID timers at 0xFF11B800/0xFF11B814/0xFF11B878/0xFF11B88C,
+// 19.2 MHz, IRQs 0/1/6/7.
 //
 STATIC CONST UINT8  ReferenceMtmr[] = {
   0x4D, 0x54, 0x4D, 0x52, 0x74, 0x00, 0x00, 0x00, 0x01, 0x00, 0x49, 0x4E,
@@ -57,9 +45,7 @@ STATIC CONST UINT8  ReferenceMtmr[] = {
   0x00, 0xF8, 0x24, 0x01, 0x07, 0x00, 0x00, 0x00
 };
 
-//
-// VRTC: 52 bytes, vRTC at 0xFF108C00 on IRQ 9. Not installed today.
-//
+// VRTC: vRTC at 0xFF108C00, IRQ 9.
 STATIC CONST UINT8  ReferenceVrtc[] = {
   0x56, 0x52, 0x54, 0x43, 0x34, 0x00, 0x00, 0x00, 0x01, 0x00, 0x49, 0x4E,
   0x54, 0x45, 0x4C, 0x20, 0x4C, 0x41, 0x4E, 0x46, 0x4F, 0x52, 0x44, 0x43,
@@ -69,11 +55,8 @@ STATIC CONST UINT8  ReferenceVrtc[] = {
 };
 
 //
-// CSRT: 0x17C bytes (the stock 380-byte file's trailing 24 zeros are padding),
-// the two DMA resource groups the Clover Trail Windows drivers bind to: the
-// HSU/UART DMA at 0xFFA28400 (GSI 0x3B, 10 channels) and the SoC DMA
-// controller at 0xFF13E000 (GSI 0x71, 8 channels). Both windows exist on the
-// A502CG. Not installed today.
+// CSRT: the two DMA groups Windows drivers bind to: HSU/UART DMA at 0xFFA28400
+// (GSI 0x3B, 10 ch) and SoC DMA at 0xFF13E000 (GSI 0x71, 8 ch).
 //
 STATIC CONST UINT8  ReferenceCsrt[] = {
   0x43, 0x53, 0x52, 0x54, 0x7C, 0x01, 0x00, 0x00, 0x00, 0x00, 0x49, 0x4E,
@@ -111,13 +94,9 @@ STATIC CONST UINT8  ReferenceCsrt[] = {
 };
 
 //
-// MCFG: PCI MMCONFIG for THIS board (segment 0, bus 00-00) at 0x3EF00000
-// (MCFG_BASE_ADDRESS in iomap.h; SFI MCFG + Linux "PCI: MMCONFIG ... at
-// [mem 0x3ef00000]" confirm it). NOT the Z2760's 0xE0000000. Publishing MCFG
-// together with the other post-baseline tables caused HAL_INITIALIZATION_FAILED;
-// the Dsdt2.asl variant of the DSDT is known-working on the Asus A502CG with
-// MCFG published, so this may be part of a future table re-enable - but it is
-// not installed today.
+// MCFG for THIS board (segment 0, bus 00-00) at 0x3EF00000, NOT the Z2760's
+// 0xE0000000. Publishing it with the post-baseline tables caused
+// HAL_INITIALIZATION_FAILED, though a future table re-enable may include it.
 //
 #pragma pack(1)
 typedef struct {
@@ -149,14 +128,9 @@ STATIC CONST CT_REFERENCE_MCFG_TABLE  ReferenceMcfg = {
   { 0x3EF00000ULL, 0, 0, 0, 0 }
 };
 
-//
-// The old AcpiPlatformDxe also carried a helper that copied a blob into ACPI
-// NVS pages below 4 GB so physical addresses in the FADT stay valid for the
-// OS. FACS/DSDT no longer need it (EFI_ACPI_TABLE_PROTOCOL relocates and
-// copies them itself, and AcpiTableDxe rewrites the FADT pointers), but it is
-// kept below for reference in case a raw table is ever pointed at by physical
-// address again.
-//
+// Kept for reference: copied raw tables into ACPI NVS below 4 GB so FADT
+// physical addresses stay valid; EFI_ACPI_TABLE_PROTOCOL + AcpiTableDxe now
+// handle that themselves.
 STATIC __attribute__ ((unused)) VOID *
 CtReferenceAllocateAcpiNvsCopy (
   IN VOID   *Source,
