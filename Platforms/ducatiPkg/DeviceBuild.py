@@ -130,7 +130,7 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
         self.env.SetValue("ACTIVE_PLATFORM", f"Platforms/{PACKAGE_NAME}/{PACKAGE_NAME}.dsc", "Platform Hardcoded")
         self.env.SetValue("TARGET_ARCH", "IA32", "Platform Hardcoded")
         self.env.SetValue("TOOL_CHAIN_TAG", "CLANGPDB", "Platform Hardcoded - default toolchain")
-        self.env.SetValue("TARGET", "DEBUG", "Platform Hardcoded - default target")
+        self.env.SetValue("TARGET", "RELEASE", "Platform Hardcoded - default target")
 
         jobs = self.build_jobs if self.build_jobs else str(os.cpu_count() or 1)
         self.env.SetValue("MAX_CONCURRENT_THREAD_NUMBER", jobs, "From command line or host CPU count")

@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0+
-"""
-Assemble an Intel MID "OSIP" boot image (layout mirrors mboot output):
-
-  [512-byte header][optional signature block], then relative to the sig end
-  ("base"): cmdline at +0x100, LE32 kernel/ramdisk sizes + "parameter" at
-  +0x408 (+ fixed magic at +0x410 when signed), payload at +0x1000.
-
-Kernel/ramdisk slots stay zero-size (the bootloader enters the firmware
-bootstub directly); hdr/sig/cmdline/parameter come from per-device
-ImageResources.  Header: sector count at offset 48, XOR checksum over the
-first 56 bytes at offset 7.
-"""
-
 import argparse
 import os
 import struct
@@ -63,7 +49,7 @@ def main():
 
     img[base + 256:base + 256 + len(cmdline)] = cmdline
 
-    # Kernel/ramdisk sizes are unused: the firmware is the bootstub payload
+    # Kernel/ramdisk sizes are unused: the FD is the bootstub payload
     struct.pack_into("<II", img, base + 1024, 0, 0)
 
     # Parameter bytes; signed images get the fixed magic

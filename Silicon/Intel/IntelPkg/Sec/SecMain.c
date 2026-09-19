@@ -180,7 +180,8 @@ SecStartup (
 
   // Print UEFI version message
   DEBUG ((EFI_D_WARN, "\n"));
-  DEBUG ((EFI_D_WARN, "%s for %a %a\n", PcdGetPtr (PcdFirmwareVersionString), FixedPcdGetPtr (PcdSmbiosSystemManufacturer), FixedPcdGetPtr (PcdSmbiosSystemModel)));
+  DEBUG ((EFI_D_WARN, "edk2-intel-mid v%s for %a %a\n", PcdGetPtr (PcdFirmwareVersionString), FixedPcdGetPtr (PcdSmbiosSystemManufacturer), FixedPcdGetPtr (PcdSmbiosSystemModel)));
+  DEBUG ((EFI_D_WARN, "Built at %a on %a\n",  __TIME__, __DATE__));
   DEBUG ((EFI_D_WARN, "\n"));
 
   DEBUG ((

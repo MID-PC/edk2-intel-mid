@@ -1,8 +1,8 @@
 
 # Compile flags
 [BuildOptions]
-  CLANGPDB:DEBUG_*_*_CC_FLAGS    = -Og
-  CLANGPDB:RELEASE_*_*_CC_FLAGS  = -DMDEPKG_NDEBUG
+  CLANGPDB:*_*_*_CC_FLAGS        = -D CLANG
+  CLANGPDB:RELEASE_*_*_CC_FLAGS  = -D MDEPKG_NDEBUG
   CLANGPDB:*_*_IA32_CC_FLAGS     = -march=i686 -mtune=atom
 
 [BuildOptions.common.EDKII.SEC]
@@ -160,7 +160,8 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerMenuFile|{ 0x21, 0xaa, 0x2c, 0x46, 0x14, 0x76, 0x03, 0x45, 0x83, 0x6e, 0x8a, 0xb6, 0xf4, 0x66, 0x23, 0x31 }
 
   # Firmware Version
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"edk2-intel-mid v0.1"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor|L"edk2-intel-mid"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"0.1"
 
   #
   # Debug
@@ -298,6 +299,7 @@
   MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
   MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   FatPkg/EnhancedFatDxe/Fat.inf
+  MdeModulePkg/Universal/Disk/UdfDxe/UdfDxe.inf
 
   #
   # UiApp (UEFI setup) and EFI Shell

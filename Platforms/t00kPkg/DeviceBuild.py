@@ -23,7 +23,7 @@ DEVICE_NAME = "t00k"
 FD_NAME = "T00K"
 
 def _fd_name_from_fdf(fdf_path: str) -> str:
-    """Read the [FD.*] block name from the platform FDF."""
+    # Read the [FD.*] block name from the platform FDF
     with open(fdf_path, "r", encoding="utf-8", errors="replace") as fh:
         for line in fh:
             m = re.match(r"^\s*\[FD\.([A-Za-z0-9_]+)\]\s*$", line)
@@ -37,13 +37,8 @@ class CommonPlatform:
     PackagesSupported = (PACKAGE_NAME,)
     ArchSupported = ("IA32",)
     TargetsSupported = ("DEBUG", "RELEASE")
-    # 'edk2-build' scope must NOT be active: it pulls a mu_nasm nuget ext dep
-    # (nasm_ext_dep.yaml), replacing the host NASM this platform always used.
-    Scopes = ("t00k", "gcc_ia32_linux")
-    # Repo root: script -> Pkg -> Platforms -> root (3x dirname)
+    Scopes = ("ducati", "gcc_ia32_linux")
     WorkspaceRoot = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    # Root searched first by BaseTools; "Platforms" resolves the pkg by bare
-    # name, "Common/edk2" carries edk2 pkgs. Mirrors PACKAGES_PATH=$ROOT:$EDK2.
     PackagesPath = (
         "Platforms",
         "Silicon/Intel",
@@ -51,7 +46,7 @@ class CommonPlatform:
     )
 
 
-# Derive FDF [FD.*] name at import; falls back to FD_NAME if unavailable.
+# Derive FDF [FD.*] name at import; fall back to FD_NAME if unavailable
 _fdf_path = os.path.join(CommonPlatform.WorkspaceRoot, "Platforms", PACKAGE_NAME, f"{PACKAGE_NAME}.fdf")
 if os.path.isfile(_fdf_path):
     FD_NAME = _fd_name_from_fdf(_fdf_path)
@@ -104,7 +99,7 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
     def AddCommandLineOptions(self, parserObj):
         parserObj.add_argument(
             "-j", "--jobs", dest="build_jobs", type=str, default=None,
-            help="Optional - number of parallel edk2 build jobs (default: host CPU count).",
+            help="Optional - number of parallel edk2 build jobs (default: host CPU count)",
         )
 
     def RetrieveCommandLineOptions(self, args):
@@ -132,40 +127,33 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
         ws = self.GetWorkspaceRoot()
 
         self.env.SetValue("PRODUCT_NAME", DEVICE_NAME, "Platform Hardcoded")
-        # Root-relative; BaseTools resolves against WORKSPACE first.
         self.env.SetValue("ACTIVE_PLATFORM", f"Platforms/{PACKAGE_NAME}/{PACKAGE_NAME}.dsc", "Platform Hardcoded")
         self.env.SetValue("TARGET_ARCH", "IA32", "Platform Hardcoded")
         self.env.SetValue("TOOL_CHAIN_TAG", "CLANGPDB", "Platform Hardcoded - default toolchain")
-        # CLI 'TARGET=...' wins: stuart applies CLI tokens first (non-overridable).
-        self.env.SetValue("TARGET", "DEBUG", "Platform Hardcoded - default target")
+        self.env.SetValue("TARGET", "RELEASE", "Platform Hardcoded - default target")
 
         jobs = self.build_jobs if self.build_jobs else str(os.cpu_count() or 1)
         self.env.SetValue("MAX_CONCURRENT_THREAD_NUMBER", jobs, "From command line or host CPU count")
 
         base_tools = os.path.join(ws, "Common", "edk2", "BaseTools")
         self.env.SetValue("EDK_TOOLS_PATH", base_tools, "Platform Hardcoded")
-
-        # BaseTools on PATH: BinWrappers ('build') + Source/C/bin (GenFv, ...).
         wrappers = "BinWrappers/PosixLike" if os.name != "nt" else "BinWrappers"
         path_additions = [
             os.path.join(base_tools, wrappers),
             os.path.join(base_tools, "Source", "C", "bin"),
         ]
         os.environ["PATH"] = os.pathsep.join(path_additions + [os.environ.get("PATH", "")])
-
-        # .nasm sources use bare 'nasm' via PATH (NASM_PREFIX unset); fail early.
         if shutil.which("nasm") is None:
-            logging.critical("nasm not found on PATH: the platform assembles .nasm "
-                             "sources.  Install NASM and add it to PATH.")
+            logging.critical("nasm not found in PATH")
             return 1
 
-        # KDNET_USB=1: define only when requested, so DSC/FDF '!ifdef' gating holds.
+        # KDNET_USB
         if self.env.GetValue("KDNET_USB") == "1":
             self.env.SetValue("BLD_*_KDNET_USB", "1", "Platform Hardcoded (KDNET_USB=1)")
 
         return 0
 
-    # Boot image packing (was pack_image.sh's job)
+    # Boot image packing
     def PlatformPostBuild(self):
         ws = self.GetWorkspaceRoot()
         target = self.env.GetValue("TARGET")
@@ -186,12 +174,10 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
         for f in ("hdr", "sig", "cmdline.txt", "parameter"):
             if not os.path.isfile(os.path.join(osip_dir, f)):
                 logging.critical(f"missing {os.path.join(osip_dir, f)}")
-                logging.critical("        unpack the stock boot image once while porting:")
+                logging.critical("        unpack the stock boot image once:")
                 logging.critical(f"        python3 Resources/Scripts/unpack_osip.py boot.img {osip_dir}")
                 return 1
 
-        # Patch a 'jmp rel32' at offset 0 (FVSEC header's unused zero vector)
-        # so the binary is directly executable at its first byte (-> SecEntry).
         logging.info("==> Patching SEC entry jump at offset 0")
         patch = subprocess.run(
             [sys.executable, os.path.join(ws, "Resources", "Scripts", "patch_sec_entry.py"), fd_path],
@@ -230,7 +216,6 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
         return 0
 
     def FlashRomImage(self):
-        # No on-device flashing; the fastboot hint above is enough.
         return 0
 
 
@@ -241,8 +226,6 @@ if __name__ == "__main__":
     from edk2toolext.invocables.edk2_setup import Edk2PlatformSetup
     from edk2toolext.invocables.edk2_update import Edk2Update
 
-    # Pin CWD to the workspace root: stuart resolves '-c' config and
-    # PackagesPath against CWD; relpath() fails cross-drive on Windows.
     os.chdir(CommonPlatform.WorkspaceRoot)
     SCRIPT_PATH = os.path.relpath(__file__)
 

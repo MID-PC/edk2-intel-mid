@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: BSD-2-Clause-Patent
-"""Extract hdr/sig/cmdline.txt/parameter from a stock OSIP boot image into
-a per-device ImageResources dir for mkosip.py (one-time porting step)."""
-
 import argparse
 import os
 import struct
 import sys
 
-SIG_SIZE = 480  # signature block between the 512-byte header and base
+SIG_SIZE = 480  # OSIP signature block between the 512-byte header and base
 
 
 def main():
@@ -16,7 +12,7 @@ def main():
     ap.add_argument("image", help="stock OSIP boot image (e.g. boot_sign.bin)")
     ap.add_argument("outdir",
                     help="destination directory "
-                         "(e.g. Platforms/<dev>Pkg/ImageResources)")
+                         "(e.g. Platforms/<device codename>Pkg/ImageResources)")
     args = ap.parse_args()
 
     img = open(args.image, "rb").read()

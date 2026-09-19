@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: BSD-2-Clause-Patent
-"""Patch a 'jmp rel32' at offset 0 of an edk2 FD (FVSEC header's unused
-zero vector) so entering at the first byte lands on SecEntry."""
-
 import argparse
 import struct
 import sys
