@@ -391,9 +391,33 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 If ((Arg0 == 0x08))
                 {
                     AVBL = Arg1
+					If ((Arg1 == One))
+					{
+						HRST = Zero
+						Sleep (0x0A)
+						HRST = One
+						Sleep (0xC8)
+					}
                 }
             }
 
+			Name (HTRS, ResourceTemplate ()
+			{
+				GpioIo (Exclusive, PullDefault, 0x0000, 0x0000,
+					IoRestrictionOutputOnly, "\\_SB.GPO1", 0x00,
+					ResourceConsumer, ,
+					)
+					{
+						0x0042      // ts_rst (CORE pin 0x42)
+					}
+			})
+			OperationRegion (HGPO, GeneralPurposeIo, Zero, 0x0C)
+			Field (\_SB.GPO1.HGPO, ByteAcc, NoLock, Preserve)
+			{
+				Connection (HTRS),
+				HRST, 1
+			}
+			
             Name (GMOD, ResourceTemplate ()
             {
                 GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
@@ -410,6 +434,41 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
                 WLEN,   1,
             }
         }
+
+		Device (I2C0)
+		{
+			Name (_HID, "INT33B1")
+			Name (_CID, "INT33B1")
+			Name (_UID, One)
+			Name (_DEP, Package (0x02) { \_SB.PEP, \_SB.IPC })
+			Method (_HRV, 0, NotSerialized) { Return (\STEP) }
+			Method (_STA, 0, NotSerialized) { Return (0x0F) }
+			Method (_CRS, 0, NotSerialized)
+			{
+				Name (RBUF, ResourceTemplate ()
+				{
+					Memory32Fixed (ReadWrite, 0xFF138000, 0x00000400)
+					Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, ) { 0x0A }
+				})
+				Return (RBUF)
+			}
+
+			Device (TOUC)
+			{
+				Name (_HID, "SYNA6000") 
+				Name (_UID, One)
+				Name (_DDN, "ASUS A600CG Synaptics DSX Touchscreen")
+				Name (_DEP, Package (0x02) { \_SB.GPO0, \_SB.GPO1 })
+				Method (_STA, 0, NotSerialized) { Return (0x0F) }
+				Name (_CRS, ResourceTemplate ()
+				{
+					I2cSerialBus (0x0020, ControllerInitiated, 100000,
+						AddressingMode7Bit, "\\_SB.I2C0", 0x00, ResourceConsumer, ,)
+					GpioInt (Level, ActiveLow, ExclusiveAndWake, PullUp, 0x0000,
+						"\\_SB.GPO0", 0x00, ResourceConsumer, ,) { 0x003E }
+				})
+			}
+		}
 
         Device (GDMS) // Super IO DMA
         {
