@@ -2,7 +2,7 @@
 
 ## Description
 
-This project focuses on making Intel Atom-based Android-only devices run Windows, Linux and other x86 UEFI operating systems using custom UEFI firmware.
+This project focuses on making Intel Atom-based Android-only devices that never had official BIOS/UEFI support run Windows, Linux and other x86 UEFI operating systems using custom UEFI firmware.
 
 ## Resources
 
@@ -16,8 +16,9 @@ Dependencies:
 - git
 - LLVM/Clang
   (CLANGPDB is the only supported toolchain)
-- GNU make
+- GNU make (for edk2 BaseTools)
 - NASM
+- acpica/IASL (for DSDT compilation)
 - The Python packages listed in pip-requirements.txt
 
 Install the Python packages:

@@ -37,7 +37,7 @@ class CommonPlatform:
     PackagesSupported = (PACKAGE_NAME,)
     ArchSupported = ("IA32",)
     TargetsSupported = ("DEBUG", "RELEASE")
-    Scopes = ("ducati", "gcc_ia32_linux")
+    Scopes = ("t00g", "gcc_ia32_linux")
     WorkspaceRoot = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     PackagesPath = (
         "Platforms",

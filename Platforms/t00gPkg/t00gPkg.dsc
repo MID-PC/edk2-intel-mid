@@ -8,7 +8,7 @@
   SUPPORTED_ARCHITECTURES        = IA32
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
-  FLASH_DEFINITION               = Platforms/t00gPkg/t00gPkg.fdf
+  FLASH_DEFINITION               = t00gPkg/t00gPkg.fdf
 
   DEFINE SHELL_TYPE              = BUILD_SHELL
   #
@@ -40,4 +40,4 @@
 [Components]
   # ACPI
   CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
-  Platforms/t00gPkg/AcpiPlatformDxe/AcpiTables.inf
+  t00gPkg/AcpiPlatformDxe/AcpiTables.inf
