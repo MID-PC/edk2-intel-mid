@@ -207,8 +207,7 @@ PlatformBootManagerBeforeConsole (
       InputDevicePath = DevicePathFromHandle (Handles[Index]);
       if (InputDevicePath == NULL) {
         //
-        // ConSplitterDxe's own virtual gST->ConIn handle carries no device
-        // path; skip it
+        // ConSplitterDxe's own virtual gST->ConIn handle carries no device path; skip it
         //
         continue;
       }
@@ -250,8 +249,7 @@ PlatformBootManagerBeforeConsole (
     PreviousCount = HandleCount;
 
     //
-    // Give UsbBusDxe a moment to bring up hub-attached devices before
-    // re-scanning.
+    // Give UsbBusDxe a moment to bring up hub-attached devices before re-scanning.
     //
     gBS->Stall (100 * 1000);
   }
@@ -375,7 +373,7 @@ PlatformBootManagerAfterConsole (
   RegisterFvBootOption (&gUefiShellFileGuid, L"UEFI Shell", (UINTN)-1);
 
   //
-  // Register ESC as a hotkey that jumps into the UEFI Setup (UiApp)
+  // Register ESC as a hotkey that jumps into BootManagerMenuApp
   //
   {
     EFI_BOOT_MANAGER_LOAD_OPTION  BootManagerMenu;
@@ -389,7 +387,7 @@ PlatformBootManagerAfterConsole (
     if (EFI_ERROR (Status)) {
       DEBUG ((
         DEBUG_WARN,
-        "PlatformBds: cannot find Boot Manager Menu, ESC hotkey skipped (%r)\n",
+        "PlatformBds: cannot find BootManagerMenuApp, ESC hotkey skipped (%r)\n",
         Status
         ));
     } else {
@@ -449,7 +447,8 @@ PlatformBootManagerWaitCallback (
 }
 
 /**
-  Called when no boot option could be started. Boot the Shell, never UiApp.
+  Called when no boot option could be started. Boot the Shell, never the
+  boot menu.
 **/
 VOID
 EFIAPI
