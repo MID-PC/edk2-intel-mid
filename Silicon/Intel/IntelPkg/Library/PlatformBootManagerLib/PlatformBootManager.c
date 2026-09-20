@@ -12,6 +12,7 @@
 #include <Library/PcdLib.h>
 #include <Library/PrintLib.h>
 #include <Library/BootLogoLib.h>
+#include <Protocol/DevicePath.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/LoadedImage.h>
 #include <Protocol/SimpleTextIn.h>
@@ -257,6 +258,72 @@ PlatformBootManagerBeforeConsole (
 }
 
 /**
+  Check whether a device path contains a USB messaging node.
+
+  A USB device (fixed or removable) is identified by a USB, USB Class or
+  USB WWID messaging device path node anywhere in its device path.
+
+  @param  DevicePath  The device path to inspect.
+
+  @retval TRUE   The device path contains a USB node.
+  @retval FALSE  Otherwise (including a NULL device path).
+**/
+STATIC
+BOOLEAN
+IsUsbDevicePath (
+  IN EFI_DEVICE_PATH_PROTOCOL  *DevicePath
+  )
+{
+  if (DevicePath == NULL) {
+    return FALSE;
+  }
+
+  while (!IsDevicePathEnd (DevicePath)) {
+    if ((DevicePathType (DevicePath) == MESSAGING_DEVICE_PATH) &&
+        ((DevicePathSubType (DevicePath) == MSG_USB_DP) ||
+         (DevicePathSubType (DevicePath) == MSG_USB_CLASS_DP) ||
+         (DevicePathSubType (DevicePath) == MSG_USB_WWID_DP))) {
+      return TRUE;
+    }
+
+    DevicePath = NextDevicePathNode (DevicePath);
+  }
+
+  return FALSE;
+}
+
+/**
+  SORT_COMPARE callback that puts every USB boot option ahead of all others.
+
+  @param  Buffer1  Pointer to the first EFI_BOOT_MANAGER_LOAD_OPTION.
+  @param  Buffer2  Pointer to the second EFI_BOOT_MANAGER_LOAD_OPTION.
+
+  @retval <0  Buffer1 is on USB and Buffer2 is not.
+  @retval >0  Buffer2 is on USB and Buffer1 is not.
+  @retval 0   Both options are on the same side of the USB boundary.
+**/
+STATIC
+INTN
+EFIAPI
+CompareUsbBootOption (
+  IN CONST VOID  *Buffer1,
+  IN CONST VOID  *Buffer2
+  )
+{
+  CONST EFI_BOOT_MANAGER_LOAD_OPTION  *Option1;
+  CONST EFI_BOOT_MANAGER_LOAD_OPTION  *Option2;
+
+  Option1 = (CONST EFI_BOOT_MANAGER_LOAD_OPTION *)Buffer1;
+  Option2 = (CONST EFI_BOOT_MANAGER_LOAD_OPTION *)Buffer2;
+
+  if (IsUsbDevicePath (Option1->FilePath)) {
+    return IsUsbDevicePath (Option2->FilePath) ? 0 : -1;
+  }
+
+  return IsUsbDevicePath (Option2->FilePath) ? 1 : 0;
+}
+
+/**
   Called after the console is connected.
 **/
 VOID
@@ -296,6 +363,11 @@ PlatformBootManagerAfterConsole (
   // Pick up whatever real boot options exist on the platform first
   //
   EfiBootManagerRefreshAllBootOption ();
+
+  //
+  // Force USB boot options above every other one
+  //
+  EfiBootManagerSortLoadOptionVariable (LoadOptionTypeBoot, (SORT_COMPARE)CompareUsbBootOption);
 
   //
   // Register the built-in UEFI Shell as a persistent fallback boot option
@@ -369,7 +441,7 @@ PlatformBootManagerWaitCallback (
   BootLogoUpdateProgress (
     White.Pixel,
     Black.Pixel,
-    L"Press ESC for boot menu",
+    L"[ESC] - Boot Menu",
     White.Pixel,
     (TimeoutInitial - TimeoutRemain) * 100 / TimeoutInitial,
     0
