@@ -74,7 +74,7 @@ Coming Soon
 
 [TianoCore EDK II](https://www.tianocore.org/) - the base for this project <br>
 [Project Silicium](https://github.com/Project-Silicium/) - the inspiration and general idea <br>
-[marohinmark](https://github.com/v1-727/) - initial proof of concept on the Asus Zenfone 5 Lite (t00k) <br>
+[v1-727](https://github.com/v1-727/) - initial proof of concept on the Asus Zenfone 5 Lite (t00k) <br>
 [NUC](https://github.com/iNUCi/) - repo refactor to support multiple devices and Intel Atom SoCs <br>
 [Glitchy](https://github.com/Glitchythedev) - Project logo design <br>
 
