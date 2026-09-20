@@ -322,6 +322,51 @@ CompareUsbBootOption (
 }
 
 /**
+  Erase the lower half of the screen after BDS timeout.
+**/
+STATIC
+VOID
+EFIAPI
+ClearBootProgressUi (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  EFI_GRAPHICS_OUTPUT_PROTOCOL  *GraphicsOutput;
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL FillColor;
+  UINT32                        SizeOfX;
+  UINT32                        SizeOfY;
+  EFI_STATUS                    Status;
+
+  Status = gBS->HandleProtocol (
+                  gST->ConsoleOutHandle,
+                  &gEfiGraphicsOutputProtocolGuid,
+                  (VOID **)&GraphicsOutput
+                  );
+  if (EFI_ERROR (Status)) {
+    return;
+  }
+
+  SizeOfX = GraphicsOutput->Mode->Info->HorizontalResolution;
+  SizeOfY = GraphicsOutput->Mode->Info->VerticalResolution;
+
+  ZeroMem (&FillColor, sizeof (FillColor));
+
+  GraphicsOutput->Blt (
+                   GraphicsOutput,
+                   &FillColor,
+                   EfiBltVideoFill,
+                   0,
+                   0,
+                   0,
+                   SizeOfY * 9 / 10,
+                   SizeOfX,
+                   SizeOfY - SizeOfY * 9 / 10,
+                   SizeOfX * sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL)
+                   );
+}
+
+/**
   Called after the console is connected.
 **/
 VOID
@@ -408,6 +453,24 @@ PlatformBootManagerAfterConsole (
       EfiBootManagerFreeLoadOption (&BootManagerMenu);
     }
   }
+
+  //
+  // Erase the "[ESC] - Boot Menu" hint right after the BDS timeout finishes
+  //
+  {
+    EFI_EVENT  ReadyToBootEvent;
+    EFI_STATUS Status;
+
+    Status = gBS->CreateEventEx (
+                    EVT_NOTIFY_SIGNAL,
+                    TPL_CALLBACK,
+                    ClearBootProgressUi,
+                    NULL,
+                    &gEfiEventReadyToBootGuid,
+                    &ReadyToBootEvent
+                    );
+    ASSERT_EFI_ERROR (Status);
+  }
 }
 
 /**
@@ -441,7 +504,7 @@ PlatformBootManagerWaitCallback (
     Black.Pixel,
     L"[ESC] - Boot Menu",
     White.Pixel,
-    (TimeoutInitial - TimeoutRemain) * 100 / TimeoutInitial,
+    0,
     0
     );
 }
