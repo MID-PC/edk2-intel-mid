@@ -109,6 +109,10 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 Name (RBUF, ResourceTemplate ()
                 {
                     Memory32Fixed (ReadWrite,
+                        0xFFAC0000,
+                        0x00004000,
+                        )
+                    Memory32Fixed (ReadWrite,
                         0xFFA22000,         // BAR0: SST shim / registers
                         0x00000400,
                         )
@@ -151,7 +155,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             }
             Method (_STA, 0, NotSerialized)
             {
-                Return (Zero)
+                Return (0x0F)
             }
         }
 
@@ -962,17 +966,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                             AddressingMode7Bit, "\\_SB.I2C1",
                             0x00, ResourceConsumer, , Exclusive,
                             )
-                        GpioInt (Edge, ActiveBoth, SharedAndWake, PullNone, 0x0000,
+                        GpioInt (Edge, ActiveHigh, ExclusiveAndWake, PullNone, 0x0000,
                             "\\_SB.GPO0", 0x00, ResourceConsumer, ,
                             )
                             {   // gpio_codec_int (AON pin 32)
-                                0x00000020
-                            }
-                        GpioIo (Shared, PullDefault, 0x0000, 0x0000, IoRestrictionInputOnly,
-                            "\\_SB.GPO0", 0x00, ResourceConsumer, ,
-                            )
-                            {   // gpio_codec_int (AON pin 32)
-                                0x00000020
+                                0x00000022
                             }
                     })
                     Return (RBUF)
@@ -1186,7 +1184,6 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 Name (_HID, "BMA250E")
                 Name (_CID, "BMA250E")
                 Name (_UID, One)
-                Name (_DEP, Package (0x01) { \_SB.GPO0 })
                 Method (_STA, 0, NotSerialized)
                 {
                     Return (0x0F)
@@ -1200,7 +1197,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                             AddressingMode7Bit, "\\_SB.I2C5",
                             0x00, ResourceConsumer, , Exclusive,
                             )
-                        GpioInt (Level, ActiveLow, Exclusive, PullUp, 0x0000,
+                        GpioInt (Level, ActiveHigh, Exclusive, PullNone, 0x0000,
                             "\\_SB.GPO0", 0x00, ResourceConsumer, ,
                             )
                             {
@@ -1208,6 +1205,31 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                             }
                     })
                     Return (RBUF)
+                }
+
+                // Sensor-device _DSM (Microsoft sensor ACPI contract, GUID 7681541e-8827-4239-8d9d-36be7fe12542)
+                // Taken from Chuwi Vi8 ACPI dumps, changed according to ducati's Android sensor_hal_config_az2.xml
+                Method (_DSM, 4, NotSerialized)
+                {
+                    If ((Arg0 == ToUUID ("7681541e-8827-4239-8d9d-36be7fe12542")))
+                    {
+                        If ((Arg2 == Zero))
+                        {
+                            Return (Buffer (One)  { 0x03 })
+                        }
+                        If ((Arg2 == One))
+                        {
+                            Return (Buffer (0x04) { 0x00, 0x00, 0x01, 0x00 })
+                        }
+                        If ((Arg2 == 0x02))
+                        {
+                            Return (Buffer (0x04) { 0x00, 0x00, 0x01, 0x01 })
+                        }
+                    }
+                    Else
+                    {
+                        Return (Buffer (One) { 0x00 })
+                    }
                 }
             }
         }

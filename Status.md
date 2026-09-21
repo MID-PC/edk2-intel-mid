@@ -21,7 +21,7 @@
 
 **Codename:** t00k
 
-**Maintainer:** [marohinmark](https://github.com/v1-727/)
+**Maintainer:** [v1-727](https://github.com/v1-727/)
 
 ### UEFI Status
 
@@ -101,7 +101,7 @@
 | SD Card              |               | ✅    |
 | Side Buttons         |               | ❌    |
 | Light Sensor         |               | ❌    |
-| Accelerometer Sensor |               | ❌    |
+| Accelerometer Sensor |               | ✅    |
 | Temperature Sensor   |               | ❌    |
 | Battery              |               | ❌    |
 | USB Host Mode        |               | ✅    |
@@ -129,7 +129,7 @@
 
 **Codename:** t00g
 
-**Maintainer:** [marohinmark](https://github.com/v1-727/)
+**Maintainer:** [v1-727](https://github.com/v1-727/)
 
 ### UEFI Status
 
