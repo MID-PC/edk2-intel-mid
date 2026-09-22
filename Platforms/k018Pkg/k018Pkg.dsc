@@ -1,14 +1,14 @@
 
 [Defines]
-  PLATFORM_NAME                  = tf103cgPkg
-  PLATFORM_GUID                  = 5D6E7F80-9AB1-4C2D-8E3F-405162738495
+  PLATFORM_NAME                  = k018Pkg
+  PLATFORM_GUID                  = 5944194D-373F-43D9-9058-C2E537F705AB
   PLATFORM_VERSION               = 0.10
   DSC_SPECIFICATION              = 0x00010005
-  OUTPUT_DIRECTORY               = Build/tf103cg/Pkg
+  OUTPUT_DIRECTORY               = Build/k018/Pkg
   SUPPORTED_ARCHITECTURES        = IA32
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
-  FLASH_DEFINITION               = tf103cgPkg/tf103cgPkg.fdf
+  FLASH_DEFINITION               = k018Pkg/k018Pkg.fdf
 
   DEFINE SHELL_TYPE              = BUILD_SHELL
   #
@@ -32,11 +32,11 @@
   # SMBIOS
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemManufacturer|"ASUS"
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemModel|"Transformer TF103CG"
-  gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailModel|"tf103cg"
+  gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailModel|"k018"
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailSku|"TF103CG"
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemBoardModel|"TF103CG"
 
 [Components]
   # ACPI
   CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
-  tf103cgPkg/AcpiPlatformDxe/AcpiTables.inf
+  k018Pkg/AcpiPlatformDxe/AcpiTables.inf

@@ -18,9 +18,9 @@ from edk2toolext.invocables.edk2_pr_eval import PrEvalSettingsManager
 from edk2toolext.invocables.edk2_setup import RequiredSubmodule, SetupSettingsManager
 from edk2toolext.invocables.edk2_update import UpdateSettingsManager
 
-PACKAGE_NAME = "tf103cgPkg"
-DEVICE_NAME = "tf103cg"
-FD_NAME = "TF103CG"
+PACKAGE_NAME = "k018Pkg"
+DEVICE_NAME = "k018"
+FD_NAME = "K018"
 
 def _fd_name_from_fdf(fdf_path: str) -> str:
     # Read the [FD.*] block name from the platform FDF
@@ -37,7 +37,7 @@ class CommonPlatform:
     PackagesSupported = (PACKAGE_NAME,)
     ArchSupported = ("IA32",)
     TargetsSupported = ("DEBUG", "RELEASE")
-    Scopes = ("tf103cg", "gcc_ia32_linux")
+    Scopes = ("k018", "gcc_ia32_linux")
     WorkspaceRoot = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     PackagesPath = (
         "Platforms",

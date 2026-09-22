@@ -1,5 +1,5 @@
 
-[FD.TF103CG]
+[FD.K018]
 BaseAddress   = 0x01101000 | gIntelMidTokenSpaceGuid.PcdFdBaseAddress
 Size          = 0x00200000 | gIntelMidTokenSpaceGuid.PcdFdSize
 ErasePolarity = 1
@@ -96,7 +96,7 @@ APRIORI DXE {
 !include CloverviewPkg/DXE.fdf.inc
 
 # ACPI
-INF  RuleOverride = ACPITABLE tf103cgPkg/AcpiPlatformDxe/AcpiTables.inf
+INF  RuleOverride = ACPITABLE k018Pkg/AcpiPlatformDxe/AcpiTables.inf
 FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
   SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Facs.aml
   SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Facp.aml
