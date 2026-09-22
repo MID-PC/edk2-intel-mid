@@ -93,7 +93,7 @@ APRIORI DXE {
 }
 
 # DXE drivers
-!include t00kPkg/Include/DXE.inc
+!include CloverviewPkg/DXE.fdf.inc
 
 # ACPI
 INF  RuleOverride = ACPITABLE t00kPkg/AcpiPlatformDxe/AcpiTables.inf
