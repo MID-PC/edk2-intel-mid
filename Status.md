@@ -118,6 +118,56 @@
 
 </td></tr>
 </table>
+
+## ASUS Transformer TF103CG
+
+<img align="right" src="Resources/Pictures/ASUS-Transformer-TF103CG.png" width="400" alt="Preview">
+
+**Codename:** tf103cg
+
+**Maintainer:** [icyllite](https://github.com/icyllite/)
+
+### UEFI Status
+
+| Feature            | Description    | State |
+|:-------------------|:---------------|:-----:|
+| Display            |                | ✅    |
+| Internal Storage   |                | ❌    |
+| SD Card            |                | ✅    |
+| Side Buttons       |                | ❌    |
+| USB Host Mode      |                | ✅    |
+| Windows Boot       |                | ✅    |
+| Linux Boot         |                | ❌    |
+
+### OS Status
+
+<table>
+<tr><th>Windows</th></tr>
+<tr><td>
+
+| Feature              | Description   | State |
+|:---------------------|:--------------|:-----:|
+| Internal Storage     |               | ❌    |
+| SD Card              |               | ✅    |
+| Side Buttons         |               | ❌    |
+| Light Sensor         |               | ❌    |
+| Accelerometer Sensor |               | ✅    |
+| Temperature Sensor   |               | ❌    |
+| Battery              |               | ❌    |
+| USB Host Mode        |               | ✅    |
+| Charging             |               | ❌    |
+| WLAN                 |               | ✅    |
+| CPU                  |               | ✅    |
+| Touchscreen          |               | ✅    |
+| Bluetooth            |               | ❌    |
+| GPS                  |               | ❌    |
+| Audio                |               | ❌    |
+| GPU                  |               | ❌    |
+| Camera               |               | ❌    |
+| Display              |               | ✅    | 
+
+</td></tr>
+</table>
 </details>
 
 <details>
