@@ -7,6 +7,7 @@ This project focuses on making Intel Atom-based Android-only devices that never 
 ## Resources
 
 - [Device support status](Status.md)
+- [Discord server](https://discord.gg/JcbAUQQqf3)
 
 ## Requirements
 

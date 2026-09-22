@@ -123,7 +123,7 @@
 
 <img align="right" src="Resources/Pictures/ASUS-Transformer-TF103CG.png" width="400" alt="Preview">
 
-**Codename:** tf103cg
+**Codename:** k018
 
 **Maintainer:** [icyllite](https://github.com/icyllite/)
 
