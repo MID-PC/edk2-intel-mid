@@ -193,70 +193,6 @@ DisableScuWatchdog (
 }
 
 /**
-  Enable the XD (execute-disable) feature before any page tables exist
-**/
-STATIC
-VOID
-EnableExecuteDisable (
-  VOID
-  )
-{
-  UINT32  RegEax;
-  UINT32  RegEdx;
-  UINTN   Family;
-  UINTN   Model;
-  UINT64  MiscEnable;
-
-  Family = 0;
-  Model  = 0;
-  AsmCpuid (0x1, &RegEax, NULL, NULL, &RegEdx);
-  if ((RegEdx & BIT9) != 0) {                       // have full leaf 1
-    Family = (RegEax >> 8) & 0xF;                   // bits 11:8
-    if (Family == 6) {
-      Model = ((RegEax >> 16) & 0xF) << 4 |         // extended model, bits 19:16
-              ((RegEax >> 4) & 0xF);                //          model, bits 7:4
-    }
-
-    if ((Family > 6) || ((Family == 6) && (Model >= 0x0D))) {
-      MiscEnable = AsmReadMsr64 (0x1A0);
-      if ((MiscEnable & BIT34) != 0) {
-        AsmWriteMsr64 (0x1A0, MiscEnable & ~BIT34);
-        MiscEnable = AsmReadMsr64 (0x1A0);
-        if ((MiscEnable & BIT34) == 0) {
-          DEBUG ((
-            DEBUG_ERROR,
-            "PlatformPei: XD enabled, IA32_MISC_ENABLE now 0x%08x%08x (XD-disable=0)\n",
-            (UINT32)RShiftU64 (MiscEnable, 32),
-            (UINT32)MiscEnable
-            ));
-        } else {
-          DEBUG ((
-            DEBUG_ERROR,
-            "PlatformPei: XD clear refused by silicon, IA32_MISC_ENABLE 0x%08x%08x (XD-disable=1)\n",
-            (UINT32)RShiftU64 (MiscEnable, 32),
-            (UINT32)MiscEnable
-            ));
-        }
-      } else {
-        DEBUG ((
-          DEBUG_ERROR,
-          "PlatformPei: XD already enabled, IA32_MISC_ENABLE now 0x%08x%08x (XD-disable=0)\n",
-          (UINT32)RShiftU64 (MiscEnable, 32),
-          (UINT32)MiscEnable
-          ));
-      }
-    } else {
-      DEBUG ((
-        DEBUG_ERROR,
-        "PlatformPei: XD not touched (family %d model %d), EDB requires >= 6/0xd\n",
-        (UINT32)Family,
-        (UINT32)Model
-        ));
-    }
-  }
-}
-
-/**
   SfiMemoryMapLib memory map install
 **/
 STATIC
@@ -612,8 +548,6 @@ PlatformPeiEntryPoint (
   EFI_STATUS  Status;
 
   DEBUG ((DEBUG_INFO, "PlatformPei: Cloverview PEIM entry\n"));
-
-  EnableExecuteDisable ();
 
   // IAFW leaves the APIC timer init count at 0
   InitializeApicTimer (1, MAX_UINT32, TRUE, 0);
