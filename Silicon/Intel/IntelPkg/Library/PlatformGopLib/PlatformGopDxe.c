@@ -11,6 +11,7 @@
 #include <Library/DebugLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/PcdLib.h>
+#include <Library/FrameBufferBltLib.h>
 
 #define FB_BASE    ((EFI_PHYSICAL_ADDRESS)FixedPcdGet64 (PcdFrameBufferBase))
 #define FB_WIDTH   ((UINT32)FixedPcdGet32 (PcdFrameBufferWidth))
@@ -39,6 +40,7 @@ STATIC PLATFORM_GOP_DEVICE_PATH  mGopDevicePath = {
 
 STATIC EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  mModeInfo;
 STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE     mMode;
+STATIC FRAME_BUFFER_CONFIGURE                *mFrameBufferConfigure;
 
 STATIC
 EFI_STATUS
@@ -79,7 +81,9 @@ GopSetMode (
     return EFI_UNSUPPORTED;
   }
 
+  //
   // Mode is fixed and already active; nothing to program.
+  //
   return EFI_SUCCESS;
 }
 
@@ -99,95 +103,25 @@ GopBlt (
   IN UINTN                              Delta         OPTIONAL
   )
 {
-  UINTN                            Row;
-  UINTN                            Col;
-  UINTN                            Pitch;
-  UINTN                            BltPitch;
-  UINT32                           *Screen;
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *Line;
-  UINT32                           Color;
-
-  if ((Width == 0) || (Height == 0)) {
+  //
+  // Delegate all Blt operations to FrameBufferBltLib
+  //
+  if ((Width == 0) || (Height == 0) || (mFrameBufferConfigure == NULL)) {
     return EFI_SUCCESS;
   }
 
-  Pitch    = FB_STRIDE;
-  Screen   = (UINT32 *)(UINTN)FB_BASE;
-  BltPitch = (Delta != 0) ? (Delta / sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL)) : Width;
-
-  switch (BltOperation) {
-    case EfiBltVideoFill:
-      if (BltBuffer == NULL) {
-        return EFI_INVALID_PARAMETER;
-      }
-
-      Color = *(UINT32 *)BltBuffer;
-      for (Row = 0; Row < Height; Row++) {
-        for (Col = 0; Col < Width; Col++) {
-          Screen[(DestinationY + Row) * Pitch + DestinationX + Col] = Color;
-        }
-      }
-
-      break;
-
-    case EfiBltVideoToBltBuffer:
-      if (BltBuffer == NULL) {
-        return EFI_INVALID_PARAMETER;
-      }
-
-      for (Row = 0; Row < Height; Row++) {
-        Line = BltBuffer + (DestinationY + Row) * BltPitch + DestinationX;
-        CopyMem (
-          Line,
-          &Screen[(SourceY + Row) * Pitch + SourceX],
-          Width * sizeof (UINT32)
-          );
-      }
-
-      break;
-
-    case EfiBltBufferToVideo:
-      if (BltBuffer == NULL) {
-        return EFI_INVALID_PARAMETER;
-      }
-
-      for (Row = 0; Row < Height; Row++) {
-        Line = BltBuffer + (SourceY + Row) * BltPitch + SourceX;
-        CopyMem (
-          &Screen[(DestinationY + Row) * Pitch + DestinationX],
-          Line,
-          Width * sizeof (UINT32)
-          );
-      }
-
-      break;
-
-    case EfiBltVideoToVideo:
-      if (DestinationY <= SourceY) {
-        for (Row = 0; Row < Height; Row++) {
-          CopyMem (
-            &Screen[(DestinationY + Row) * Pitch + DestinationX],
-            &Screen[(SourceY + Row) * Pitch + SourceX],
-            Width * sizeof (UINT32)
-            );
-        }
-      } else {
-        for (Row = Height; Row > 0; Row--) {
-          CopyMem (
-            &Screen[(DestinationY + Row - 1) * Pitch + DestinationX],
-            &Screen[(SourceY + Row - 1) * Pitch + SourceX],
-            Width * sizeof (UINT32)
-            );
-        }
-      }
-
-      break;
-
-    default:
-      return EFI_INVALID_PARAMETER;
-  }
-
-  return EFI_SUCCESS;
+  return FrameBufferBlt (
+           mFrameBufferConfigure,
+           BltBuffer,
+           BltOperation,
+           SourceX,
+           SourceY,
+           DestinationX,
+           DestinationY,
+           Width,
+           Height,
+           Delta
+           );
 }
 
 STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL  mGop = {
@@ -209,6 +143,7 @@ PlatformGopEntryPoint (
 {
   EFI_STATUS  Status;
   EFI_HANDLE  Handle;
+  UINTN       ConfigureSize;
 
   ASSERT (FB_BPP == 4);
 
@@ -225,6 +160,29 @@ PlatformGopEntryPoint (
   mMode.SizeOfInfo      = sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION);
   mMode.FrameBufferBase = FB_BASE;
   mMode.FrameBufferSize = (UINTN)FB_STRIDE * FB_HEIGHT * FB_BPP;
+
+  //
+  // Size-discover the FrameBufferBltLib configuration, then create it
+  //
+  ConfigureSize = 0;
+  Status = FrameBufferBltConfigure (
+             (VOID *)(UINTN)FB_BASE,
+             &mModeInfo,
+             NULL,
+             &ConfigureSize
+             );
+  ASSERT (Status == RETURN_BUFFER_TOO_SMALL);
+
+  mFrameBufferConfigure = AllocatePool (ConfigureSize);
+  ASSERT (mFrameBufferConfigure != NULL);
+
+  Status = FrameBufferBltConfigure (
+             (VOID *)(UINTN)FB_BASE,
+             &mModeInfo,
+             mFrameBufferConfigure,
+             &ConfigureSize
+             );
+  ASSERT_EFI_ERROR (Status);
 
   DEBUG ((
     DEBUG_INFO,

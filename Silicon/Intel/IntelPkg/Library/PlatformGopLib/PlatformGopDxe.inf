@@ -22,6 +22,7 @@
   DebugLib
   PcdLib
   DevicePathLib
+  FrameBufferBltLib
 
 [Protocols]
   gEfiGraphicsOutputProtocolGuid                ## PRODUCES
