@@ -101,6 +101,7 @@ FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
   SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Facs.aml
   SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Facp.aml
   SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Apic.aml
+  SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Mcfg1G.aml
 !ifdef KDNET_USB
   SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Dbg2.aml
 !endif
