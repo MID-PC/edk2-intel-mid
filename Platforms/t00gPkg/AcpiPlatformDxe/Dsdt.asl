@@ -154,6 +154,20 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000011)
             {
                 Name (_ADR, 0x00020000)
                 Name (_DDN, "PowerVR SGX544MP Graphics")
+                OperationRegion (DEV2, PCI_Config, Zero, 0xFF)
+                Field (DEV2, DWordAcc, NoLock, Preserve)
+                {
+                    Offset (0x2C),
+                    SSID,   32
+                }
+                Method (_PS0, 0, NotSerialized)
+                {
+                    // Match the Windows Gfx driver INF (PCI\VEN_8086&DEV_08C8&SUBSYS_074B1025)
+                    SSID = 0x074B1025
+                }
+                Method (_PS3, 0, NotSerialized)
+                {
+                }
                 Method (_STA, 0, NotSerialized)
                 {
                     Return (0x0F)
