@@ -117,3 +117,10 @@
   # Emulated RTC Arch Protocol (required by DXE Core) + SCU watchdog management
   #
   MoorefieldPkg/Drivers/PlatformRuntimeDxe/PlatformRuntimeDxe.inf
+
+  #
+  # External SD card SDHCI registration (@ 0xFF3FA000). The generic
+  # SdMmcPciHcDxe / SdDxe / NonDiscoverablePciDeviceDxe stack is pulled in by
+  # IntelPkg.dsc.inc.
+  #
+  MoorefieldPkg/Drivers/SdHostDxe/SdHostDxe.inf

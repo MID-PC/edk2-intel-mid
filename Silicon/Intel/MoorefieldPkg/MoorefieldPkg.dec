@@ -9,8 +9,6 @@
 
 [Guids]
   gMoorefieldTokenSpaceGuid = { 0x7a1e4c2d, 0x9b3f, 0x4d5e, { 0x8a, 0x6c, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 } }
-  gMoorefieldAcpiTableStorageGuid = { 0x5d3c8b21, 0x7e9a, 0x4f16, { 0xb2, 0xc4, 0x0a, 0x1b, 0x2c, 0x3d, 0x4e, 0x5f } }
-  gEfiAcpiTableStorageGuid = { 0x7e374e25, 0x8e01, 0x4fee, { 0x87, 0xf2, 0x39, 0x0c, 0x23, 0xc6, 0x06, 0xcd } }
 
 [PcdsFixedAtBuild]
   ## SCU IPC-1 register block (intel_scu_ipc, 0000:00:13.0 -> ff009000)
@@ -18,3 +16,11 @@
 
   ## South-complex PMU ("intel_pmu_driver", 0000:00:14.0 -> ff00b000)
   gMoorefieldTokenSpaceGuid.PcdPmuBase|0xFF00B000|UINT32|0x00000002
+
+  ## External SD card SDHCI controller (mmc@ff3fa000, "intel,sdhci-tangier")
+  gMoorefieldTokenSpaceGuid.PcdSdHostBase|0xFF3FA000|UINT32|0x00000003
+  gMoorefieldTokenSpaceGuid.PcdSdHostSize|0x00001000|UINT32|0x00000004
+
+  ## PMU LSS index that gates the SD/SDIO0 power island (Tangier SDIO0_01 = 1).
+  ## The PMU must move this LSS to D0 before the SDHCI block responds.
+  gMoorefieldTokenSpaceGuid.PcdSdHostPmuLss|1|UINT32|0x00000005

@@ -2,11 +2,7 @@
   Moorefield platform runtime driver.
 
   Provides the emulated Real Time Clock Architectural Protocol required by the
-  DXE Core (this SoC has no RTC we drive yet). The SCU kernel watchdog is not
-  armed at this boot stage on Moorefield, so - unlike the Cloverview variant -
-  no SCU watchdog IPC traffic is issued here. If a real watchdog reset is ever
-  observed, restore the ScuStopWatchdog logic from
-  CloverviewPkg/Drivers/PlatformRuntimeDxe.
+  DXE Core. 
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -135,7 +131,7 @@ PlatformRuntimeEntryPoint (
                   );
   ASSERT_EFI_ERROR (Status);
 
-  DEBUG ((DEBUG_INFO, "PlatformRuntimeDxe: emulated RTC installed (SCU watchdog IPC disabled)\n"));
+  DEBUG ((DEBUG_INFO, "PlatformRuntimeDxe: emulated RTC installed\n"));
 
   return EFI_SUCCESS;
 }

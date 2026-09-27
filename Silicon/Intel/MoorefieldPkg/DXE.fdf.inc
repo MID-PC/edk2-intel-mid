@@ -17,6 +17,12 @@ INF  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
 # Emulated RTC Arch Protocol (required by DXE Core) + SCU watchdog management
 INF  MoorefieldPkg/Drivers/PlatformRuntimeDxe/PlatformRuntimeDxe.inf
 
+# External SD card (SDHCI @ 0xFF3FA000) + generic SD/MMC stack
+INF  MoorefieldPkg/Drivers/SdHostDxe/SdHostDxe.inf
+INF  MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
+INF  MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
+INF  MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
+
 # ACPI
 INF  MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
 

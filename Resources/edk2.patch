@@ -79,57 +79,6 @@ index 912048eee9..3d88a87c5f 100644
    //
    // 2. Start the Host Controller
    //
-diff --git a/MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c b/MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c
-index 8496ce4727..775126c05e 100644
---- a/MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c
-+++ b/MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c
-@@ -101,8 +101,14 @@ EMMC_DEVICE_PATH  mEmmcDpTemplate = {
- // Prioritized function list to detect card type.
- // User could add other card detection logic here.
- //
-+// Clover Trail+ platform: the SDHCI block exposed by SdHostDxe is the SD
-+// slot (mmc1) only; the internal eMMC (mmc0) and the Wi-Fi SDIO (mmc2) are
-+// not registered. EmmcIdentification probes MMC with CMD1, which an SD card
-+// never answers, so on this platform it always times out and floods DEBUG
-+// with "TRB failed with Device Error" + register dumps for no reason. The
-+// SD-only detection below is sufficient.
-+//
- CARD_TYPE_DETECT_ROUTINE  mCardTypeDetectRoutineTable[] = {
--  EmmcIdentification,
-   SdCardIdentification,
-   NULL
- };
-@@ -740,17 +746,27 @@ SdMmcPciHcDriverBindingStart (
-     //
-     // Check whether there is a SD/MMC card attached
-     //
-+    //
-+    // CloverTrailPkg: the SD card-detect line is not wired to the SDHCI block on
-+    // this platform (Linux uses SDHCI_QUIRK2_BAD_SD_CD and a GPIO instead), so
-+    // the Present State card-inserted bit is unreliable. Assume a card is
-+    // connected and let the card-type detection routines decide.
-+    //
-     if (Private->Slot[Slot].SlotType == RemovableSlot) {
-       Status = SdMmcHcCardDetect (PciIo, Slot, &MediaPresent);
-       if (EFI_ERROR (Status) && (Status != EFI_MEDIA_CHANGED)) {
--        continue;
-+        DEBUG ((
-+          DEBUG_INFO,
-+          "SdMmcHcCardDetect: Slot[%d] detect failed (%r), assuming card present\n",
-+          Slot,
-+          Status
-+          ));
-       } else if (!MediaPresent) {
-         DEBUG ((
-           DEBUG_INFO,
--          "SdMmcHcCardDetect: No device attached in Slot[%d]!!!\n",
-+          "SdMmcHcCardDetect: Slot[%d] reports no card, assuming card present\n",
-           Slot
-           ));
--        continue;
-       }
-     }
- 
 diff --git a/MdeModulePkg/Core/Dxe/Gcd/Gcd.c b/MdeModulePkg/Core/Dxe/Gcd/Gcd.c
 index de27f63791..94a497653c 100644
 --- a/MdeModulePkg/Core/Dxe/Gcd/Gcd.c
