@@ -238,27 +238,18 @@
 
 **Codename:** z00xs
 
-### Notes
-
-64-bit Moorefield (Silvermont) part. The primary bootloader consumes a standard
-Google `mkbootimg` image (header v0) instead of an Intel OSIP container; the UEFI
-FD is placed in the "second bootloader" slot (loaded at `0x10F00000`, entered in
-32-bit protected mode) and an ASUS `sig` blob is appended (presence-checked, not
-verified). SEC (`IntelPkg/Sec/X64/SecEntry.nasm`) performs the protected->long-mode
-switch and DxeIpl continues in long mode.
-
 ### UEFI Status
 
 | Feature            | Description                 | State |
 |:-------------------|:----------------------------|:-----:|
-| Display            | Fixed-mode GOP, 1080x1920   | ❔    |
-| Shell              | Boot to shell               | ❔    |
-| Internal Storage   | No device drivers yet       | ❌    |
-| SD Card            | No device drivers yet       | ❌    |
-| Side Buttons       | No device drivers yet       | ❌    |
-| USB Host Mode      | No device drivers yet       | ❌    |
-| Windows Boot       |                             | ❔    |
-| Linux Boot         |                             | ❔    |
+| Display            |                             | ✅    |
+| Shell              |                             | ✅    |
+| Internal Storage   |                             | ❌    |
+| SD Card            |                             | ❌    |
+| Side Buttons       |                             | ❌    |
+| USB Host Mode      |                             | ❌    |
+| Windows Boot       |                             | ❌    |
+| Linux Boot         |                             | ❌    |
 
 </details>
 
