@@ -11,6 +11,24 @@ VOID
   IN CONST EFI_PEI_PPI_DESCRIPTOR *PpiList
   );
 
+//
+// Number of IDT entries we publish. PeiServicesTablePointerLibIdt only needs a
+// valid IDT base with 8 bytes below it for the PEI Services pointer; we mirror
+// the layout UefiCpuPkg/SecCore uses so temporary-RAM migration relocates it
+// cleanly.
+//
+#define SEC_IDT_ENTRY_COUNT  34
+
+//
+// Layout matches UefiCpuPkg/SecCore SEC_IDT_TABLE: the PEI Services pointer
+// sits immediately *below* the IDT base (PeiServicesTablePointerLibIdt reads it
+// at Idtr.Base - sizeof (UINTN)).
+//
+typedef struct {
+  UINTN                     PeiService;
+  IA32_IDT_GATE_DESCRIPTOR  IdtTable[SEC_IDT_ENTRY_COUNT];
+} SEC_IDT_TABLE;
+
 STATIC
 EFI_STATUS
 EFIAPI
@@ -55,6 +73,7 @@ SecTemporaryRamSupport (
   UINTN                     StackSize;
   INTN                      StackDelta;
   BASE_LIBRARY_JUMP_BUFFER  JumpBuffer;
+  IA32_DESCRIPTOR           IdtDescriptor;
 
   //
   // Lower half of temporary RAM is the PEI heap, upper half is the stack.
@@ -71,18 +90,37 @@ SecTemporaryRamSupport (
   CopyMem (NewHeap, OldHeap, HeapSize);
   CopyMem (NewStack, OldStack, StackSize);
 
+  StackDelta = (INTN)((UINTN)NewStack - (UINTN)OldStack);
+
+  //
+  // Rebase the IDT into the migrated stack region. PeiServicesTablePointerLibIdt
+  // stores the PEI Services table pointer immediately below the IDT base, and
+  // the IDT itself lives in the temporary RAM stack. Once the stack is copied to
+  // permanent memory the old copy is reclaimed, so IDTR must be repointed at the
+  // new location or the very next PEI Services access (in PeiCore phase 2)
+  // dereferences freed temporary RAM and hangs. This is mandatory on X64 and is
+  // exactly what OvmfPkg/Sec/SecMain.c does.
+  //
+  AsmReadIdtr (&IdtDescriptor);
+  IdtDescriptor.Base = (UINTN)IdtDescriptor.Base + StackDelta;
+  AsmWriteIdtr (&IdtDescriptor);
+
   //
   // Using SwitchStack() here results in an ASSERT (EntryPoint != NULL, BaseLib
   // SwitchStack.c)
   // Instead relocate the frame like OvmfPkg/Sec/SecMain.c:
-  // capture context, add the (new stack - old stack) delta to ESP/EBP and
+  // capture context, add the (new stack - old stack) delta to RSP/RBP and
   // long-jump, resuming right here on the copied stack.
   //
-  StackDelta = (INTN)((UINTN)NewStack - (UINTN)OldStack);
 
   if (SetJump (&JumpBuffer) == 0) {
+ #if defined (MDE_CPU_X64)
+    JumpBuffer.Rsp = (UINT64)((INTN)JumpBuffer.Rsp + StackDelta);
+    JumpBuffer.Rbp = (UINT64)((INTN)JumpBuffer.Rbp + StackDelta);
+ #else
     JumpBuffer.Esp = (UINT32)((INTN)JumpBuffer.Esp + StackDelta);
     JumpBuffer.Ebp = (UINT32)((INTN)JumpBuffer.Ebp + StackDelta);
+ #endif
     LongJump (&JumpBuffer, (UINTN)-1);
   }
 
@@ -166,8 +204,8 @@ FindPeiCoreEntryPoint (
 VOID
 EFIAPI
 SecStartup (
-  IN UINT32  SizeOfRam,
-  IN UINT32  TempRamBase,
+  IN UINTN   SizeOfRam,
+  IN UINTN   TempRamBase,
   IN VOID    *BootFirmwareVolume
   )
 {
@@ -175,6 +213,8 @@ SecStartup (
   PEI_CORE_ENTRY_POINT  PeiCoreEntryPoint;
   EFI_STATUS            Status;
   VOID                  *EntryPoint;
+  SEC_IDT_TABLE         IdtTableInStack;
+  IA32_DESCRIPTOR       IdtDescriptor;
 
   SerialPortInitialize ();
 
@@ -186,11 +226,11 @@ SecStartup (
 
   DEBUG ((
     DEBUG_INFO,
-    "  Image base 0x%08x  TempRam 0x%08x (0x%x bytes)  BFV 0x%08x\n",
+    "  Image base 0x%08x  TempRam 0x%lx (0x%lx bytes)  BFV 0x%lx\n",
     FixedPcdGet32 (PcdFdBaseAddress),
-    TempRamBase,
-    SizeOfRam,
-    (UINT32)(UINTN)BootFirmwareVolume
+    (UINT64)TempRamBase,
+    (UINT64)SizeOfRam,
+    (UINT64)(UINTN)BootFirmwareVolume
     ));
 
   Status = FindPeiCoreEntryPoint (
@@ -201,6 +241,26 @@ SecStartup (
     DEBUG ((DEBUG_ERROR, "SEC: PEI Core not found in BFV! %r\n", Status));
     CpuDeadLoop ();
   }
+
+  //
+  // Establish our own IDT before entering PEI. PeiServicesTablePointerLibIdt
+  // stores/reads the PEI Services table pointer at (IDTR.Base - sizeof (UINTN)),
+  // so IDTR must point at memory we control that also survives temporary-RAM
+  // migration. We were previously running on whatever IDTR the bootloader left
+  // (pointing into bootloader RAM); it happened to be writable during PEI phase
+  // 1 but was reclaimed at stack migration, which corrupted the PEI Services
+  // pointer and hung the PEI Core.
+  // Keep it as a local (lives on the SEC stack, which is in the temporary-RAM
+  // stack half) so SecTemporaryRamSupport copies it and StackDelta rebasing in
+  // that routine relocates IDTR to the migrated copy - exactly as
+  // UefiCpuPkg/SecCore does.
+  //
+  IdtTableInStack.PeiService = 0;
+  ZeroMem (&IdtTableInStack.IdtTable, sizeof (IdtTableInStack.IdtTable));
+
+  IdtDescriptor.Base  = (UINTN)&IdtTableInStack.IdtTable;
+  IdtDescriptor.Limit = (UINT16)(sizeof (IdtTableInStack.IdtTable) - 1);
+  AsmWriteIdtr (&IdtDescriptor);
 
   ZeroMem (&SecCoreData, sizeof (SecCoreData));
   SecCoreData.DataSize               = (UINT16)sizeof (EFI_SEC_PEI_HAND_OFF);
@@ -214,7 +274,7 @@ SecStartup (
   SecCoreData.StackBase = (VOID *)((UINTN)TempRamBase + (SizeOfRam >> 1));
   SecCoreData.StackSize = SizeOfRam - (SizeOfRam >> 1);
 
-  DEBUG ((DEBUG_INFO, "SEC: entering PEI Core at 0x%08x\n", (UINT32)(UINTN)EntryPoint));
+  DEBUG ((DEBUG_INFO, "SEC: entering PEI Core at 0x%lx\n", (UINT64)(UINTN)EntryPoint));
 
   PeiCoreEntryPoint = (PEI_CORE_ENTRY_POINT)EntryPoint;
   PeiCoreEntryPoint (&SecCoreData, mPeiSecPpiList);

@@ -18,7 +18,9 @@
 /**
   C entry point of the SEC phase.
 
-  Called from Ia32/SecEntry.nasm with a temporary stack already in place.
+  Called from Ia32/SecEntry.nasm (32-bit parts) or X64/SecEntry.nasm (64-bit
+  parts, after the protected->long-mode switch) with a temporary stack already
+  in place.
 
   @param[in] SizeOfRam     Size of the temporary RAM region.
   @param[in] TempRamBase   Base of the temporary RAM region.
@@ -28,8 +30,8 @@
 VOID
 EFIAPI
 SecStartup (
-  IN UINT32  SizeOfRam,
-  IN UINT32  TempRamBase,
+  IN UINTN   SizeOfRam,
+  IN UINTN   TempRamBase,
   IN VOID    *BootFirmwareVolume
   );
 

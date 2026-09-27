@@ -1,0 +1,20 @@
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = MoorefieldPkg
+  PACKAGE_GUID                   = 2C7E9A15-4B6D-4F8A-9C31-7E5D2A1B4C60
+  PACKAGE_VERSION                = 0.1
+
+[Includes]
+  Include
+
+[Guids]
+  gMoorefieldTokenSpaceGuid = { 0x7a1e4c2d, 0x9b3f, 0x4d5e, { 0x8a, 0x6c, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 } }
+  gMoorefieldAcpiTableStorageGuid = { 0x5d3c8b21, 0x7e9a, 0x4f16, { 0xb2, 0xc4, 0x0a, 0x1b, 0x2c, 0x3d, 0x4e, 0x5f } }
+  gEfiAcpiTableStorageGuid = { 0x7e374e25, 0x8e01, 0x4fee, { 0x87, 0xf2, 0x39, 0x0c, 0x23, 0xc6, 0x06, 0xcd } }
+
+[PcdsFixedAtBuild]
+  ## SCU IPC-1 register block (intel_scu_ipc, 0000:00:13.0 -> ff009000)
+  gMoorefieldTokenSpaceGuid.PcdScuIpcBase|0xFF009000|UINT32|0x00000001
+
+  ## South-complex PMU ("intel_pmu_driver", 0000:00:14.0 -> ff00b000)
+  gMoorefieldTokenSpaceGuid.PcdPmuBase|0xFF00B000|UINT32|0x00000002

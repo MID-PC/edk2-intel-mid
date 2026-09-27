@@ -1,0 +1,61 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PlatformPei
+  FILE_GUID                      = 8A9B0C1D-2E3F-4051-A6B7-C8D9E0F11223
+  MODULE_TYPE                    = PEIM
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = PlatformPeiEntryPoint
+
+[Sources]
+  PlatformPei.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MoorefieldPkg/MoorefieldPkg.dec
+  IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  PeimEntryPoint
+  PeiServicesLib
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  HobLib
+  IoLib
+  LocalApicLib
+  PcdLib
+  SfiMemoryMapLib
+
+[Ppis]
+  gEfiPeiMasterBootModePpiGuid                  ## PRODUCES
+  gEfiPeiMemoryDiscoveredPpiGuid                ## PRODUCES
+
+[FixedPcd]
+  gIntelMidTokenSpaceGuid.PcdFdBaseAddress
+  gIntelMidTokenSpaceGuid.PcdFdSize
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize
+  gIntelMidTokenSpaceGuid.PcdPeiMemoryBase
+  gIntelMidTokenSpaceGuid.PcdLegacyMemoryBase
+  gIntelMidTokenSpaceGuid.PcdLegacyMemorySize
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedBase
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedSize
+  gIntelMidTokenSpaceGuid.PcdLegacyTopBase
+  gIntelMidTokenSpaceGuid.PcdLegacyTopSize
+  gIntelMidTokenSpaceGuid.PcdConsoleStateBase
+  gIntelMidTokenSpaceGuid.PcdPciGpuMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciGpuMmioSize
+  gIntelMidTokenSpaceGuid.PcdPciIspMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciIspMmioSize
+  gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize
+  gMoorefieldTokenSpaceGuid.PcdScuIpcBase
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBase
+  gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
+  gIntelMidTokenSpaceGuid.PcdFrameBufferHeight
+  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
+
+[Depex]
+  TRUE

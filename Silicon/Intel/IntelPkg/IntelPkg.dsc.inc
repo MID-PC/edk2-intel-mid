@@ -7,9 +7,17 @@
 
 [BuildOptions.common.EDKII.SEC]
   *_CLANGPDB_*_DLINK_FLAGS       = /ALIGN:0x1000 /FILEALIGN:0x1000
+  #
+  # On X64, tools_def appends DLINK_XIPFLAGS (/ALIGN:32) to XIP modules (SEC,
+  # PEI_CORE, PEIM), which would clobber the /ALIGN:0x1000 above and leave
+  # SectionAlignment != FileAlignment - fatal when GenFw wraps the module as a
+  # TE image. Override the XIP alignment so both stay at 0x1000.
+  #
+  *_CLANGPDB_X64_DLINK_XIPFLAGS  = /ALIGN:0x1000
 
 [BuildOptions.common.EDKII.PEI_CORE,BuildOptions.common.EDKII.PEIM]
   *_CLANGPDB_*_DLINK_FLAGS       = /ALIGN:0x1000 /FILEALIGN:0x1000
+  *_CLANGPDB_X64_DLINK_XIPFLAGS  = /ALIGN:0x1000
 
 [BuildOptions.common.EDKII.DXE_CORE,BuildOptions.common.EDKII.DXE_DRIVER,BuildOptions.common.EDKII.DXE_RUNTIME_DRIVER,BuildOptions.common.EDKII.UEFI_DRIVER,BuildOptions.common.EDKII.UEFI_APPLICATION]
   *_CLANGPDB_*_DLINK_FLAGS       = /ALIGN:0x1000
