@@ -41,6 +41,10 @@
   gIntelMidTokenSpaceGuid.PcdLegacyMemorySize|0x00100000|UINT32|0x00000007
   gIntelMidTokenSpaceGuid.PcdLegacyReservedBase|0x00000000|UINT32|0x00000008
   gIntelMidTokenSpaceGuid.PcdLegacyReservedSize|0x00004000|UINT32|0x00000009
+  ## EFI_MEMORY_TYPE of the legacy reserved range (IVT/BDA). 9 (EfiReservedMemoryType)
+  #  keeps it off limits; 4 (EfiBootServicesData) lets a boot-time int10h shim
+  #  (e.g. UefiSeven for Windows 7) claim it with AllocateAddress.
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedType|0x00000009|UINT32|0x0000000D
   gIntelMidTokenSpaceGuid.PcdLegacyTopBase|0x000A0000|UINT32|0x0000000A
   gIntelMidTokenSpaceGuid.PcdLegacyTopSize|0x00060000|UINT32|0x0000000B
 

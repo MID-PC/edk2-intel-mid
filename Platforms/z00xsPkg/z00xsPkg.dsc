@@ -42,3 +42,12 @@
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailModel|"Z00XS"
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemRetailSku|"ZX551ML"
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemBoardModel|"ZX551ML"
+
+[Components]
+  #
+  # Board DSDT. Built from Dsdt.asl and wrapped in an FFS file keyed by
+  # gMoorefieldAcpiTableStorageGuid, which MoorefieldPkg/Drivers/AcpiPlatformDxe
+  # picks up with GetSectionFromAnyFv(). Referenced from z00xsPkg.fdf as
+  # "INF RuleOverride = ACPITABLE z00xsPkg/AcpiPlatformDxe/AcpiTables.inf".
+  #
+  z00xsPkg/AcpiPlatformDxe/AcpiTables.inf

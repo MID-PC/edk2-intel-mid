@@ -23,8 +23,17 @@ INF  MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDx
 INF  MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
 INF  MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
 
+# USB3 host (DWC3 @ 0xF9100000) + generic xHCI stack.
+# NonDiscoverablePciDeviceDxe is already pulled in above for the SDHCI device.
+INF  MoorefieldPkg/Drivers/XhciDwc3Dxe/XhciDwc3Dxe.inf
+INF  MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+
 # ACPI
 INF  MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
+INF  MoorefieldPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
 
 # SMBIOS
 INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf

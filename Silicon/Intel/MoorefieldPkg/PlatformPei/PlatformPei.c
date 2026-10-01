@@ -218,6 +218,8 @@ PlatformPeiInstallMemoryMap (
   UINT64             PeiMemBase;
   UINT64             PeiMemSize;
   UINT64             ConsoleBase;
+  UINT64             Dwc3Base;
+  UINT64             Dwc3Size;
   UINT64             MainBase;
   UINT64             MainLimit;
   UINT64             Start;
@@ -289,6 +291,9 @@ PlatformPeiInstallMemoryMap (
   MainBase       = 0;
   MainLimit      = 0;
   MmapMmioCount  = 0;
+
+  Dwc3Base = (UINT64)FixedPcdGet32 (PcdDwc3Base);
+  Dwc3Size = (UINT64)FixedPcdGet32 (PcdDwc3Size);
 
   for (Index = 0; Index < SfiCount; Index++) {
     Start = SfiMmap.Entry[Index].PhysStart;
@@ -375,6 +380,46 @@ PlatformPeiInstallMemoryMap (
     }
 
     ReportResourceWindow (ResourceType, Attr, Start, Size, TypeName);
+
+    //
+    // The SFI map buries the DWC3 aperture inside a single 0x7EBFF000-byte
+    // MMIO window (0x80001000-0xFEC00000). A 2 GiB range is not something the
+    // MTRR programming in DxeCore can make uncacheable, so the DWC3 registers
+    // end up behind whatever the default PAT attributes are and reads return
+    // garbage. Split the aperture out as its own descriptor so it becomes a GCD
+    // memory space of a size that can actually be programmed uncached.
+    //
+    if ((ResourceType == EFI_RESOURCE_MEMORY_MAPPED_IO) &&
+        (Start <= Dwc3Base) && (Limit > Dwc3Base))
+    {
+      if (Start < Dwc3Base) {
+        ReportResourceWindow (
+          ResourceType,
+          Attr,
+          Start,
+          Dwc3Base - Start,
+          "MMIO below DWC3"
+          );
+      }
+
+      ReportResourceWindow (
+        EFI_RESOURCE_MEMORY_MAPPED_IO,
+        CT_MMIO_ATTRIBUTES,
+        Dwc3Base,
+        Dwc3Size,
+        "USB3 DWC3"
+        );
+
+      if (Limit > Dwc3Base + Dwc3Size) {
+        ReportResourceWindow (
+          ResourceType,
+          Attr,
+          Dwc3Base + Dwc3Size,
+          Limit - (Dwc3Base + Dwc3Size),
+          "MMIO above DWC3"
+          );
+      }
+    }
   }
 
   // Check if UEFI FD is not covered by the SFI map
@@ -478,10 +523,13 @@ PlatformPeiInstallMemoryMap (
   CarveOuts[CarveCount].Size = (UINT64)FixedPcdGet32 (PcdLegacyReservedSize);
   CarveOuts[CarveCount].Name = "legacy reserved";
   CarveCount++;
-  CarveOuts[CarveCount].Base = (UINT64)FixedPcdGet32 (PcdLegacyTopBase);
-  CarveOuts[CarveCount].Size = (UINT64)FixedPcdGet32 (PcdLegacyTopSize);
-  CarveOuts[CarveCount].Name = "legacy top";
-  CarveCount++;
+  // Zero on boards whose 0xA0000-0xFFFFF holds PCI BARs (e.g. GPIO at 0xCDB20)
+  if (FixedPcdGet32 (PcdLegacyTopSize) != 0) {
+    CarveOuts[CarveCount].Base = (UINT64)FixedPcdGet32 (PcdLegacyTopBase);
+    CarveOuts[CarveCount].Size = (UINT64)FixedPcdGet32 (PcdLegacyTopSize);
+    CarveOuts[CarveCount].Name = "legacy top";
+    CarveCount++;
+  }
   CarveOuts[CarveCount].Base = FdBase;
   CarveOuts[CarveCount].Size = FdSize;
   CarveOuts[CarveCount].Name = "firmware image";
@@ -528,7 +576,7 @@ PlatformPeiInstallMemoryMap (
     BuildMemoryAllocationHob (
       CarveOuts[Index].Base,
       CarveOuts[Index].Size,
-      EfiReservedMemoryType
+      (Index == 0) ? (EFI_MEMORY_TYPE)FixedPcdGet32 (PcdLegacyReservedType) : EfiReservedMemoryType
       );
   }
 

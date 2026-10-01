@@ -42,6 +42,7 @@
   gIntelMidTokenSpaceGuid.PcdLegacyMemorySize
   gIntelMidTokenSpaceGuid.PcdLegacyReservedBase
   gIntelMidTokenSpaceGuid.PcdLegacyReservedSize
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedType
   gIntelMidTokenSpaceGuid.PcdLegacyTopBase
   gIntelMidTokenSpaceGuid.PcdLegacyTopSize
   gIntelMidTokenSpaceGuid.PcdConsoleStateBase
@@ -52,6 +53,8 @@
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize
   gMoorefieldTokenSpaceGuid.PcdScuIpcBase
+  gMoorefieldTokenSpaceGuid.PcdDwc3Base
+  gMoorefieldTokenSpaceGuid.PcdDwc3Size
   gIntelMidTokenSpaceGuid.PcdFrameBufferBase
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight

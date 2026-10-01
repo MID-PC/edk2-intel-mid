@@ -32,6 +32,8 @@
   gMoorefieldTokenSpaceGuid.PcdSdHostPmuLss
   gMoorefieldTokenSpaceGuid.PcdPmuBase
   gMoorefieldTokenSpaceGuid.PcdScuIpcBase
+  gMoorefieldTokenSpaceGuid.PcdGpioBase
+  gMoorefieldTokenSpaceGuid.PcdSdCardCdPin
 
 [Depex]
   TRUE

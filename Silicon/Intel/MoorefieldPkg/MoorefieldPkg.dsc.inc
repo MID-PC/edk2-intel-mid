@@ -56,6 +56,23 @@
   gIntelMidTokenSpaceGuid.PcdPeiMemoryBase|0x12000000
 
   #
+  # Only 0x0-0x9FFFF is real-mode RAM here. The IntelPkg default of 1 MiB
+  # (plus a reserved 0xA0000-0xFFFFF "legacy top") would report the GPIO
+  # controller BAR at 0xCDB20 (00:0C.0, needed by PCI) as RAM/reserved, so
+  # Windows cannot assign it and PCI0 fails with Code 12.
+  #
+  gIntelMidTokenSpaceGuid.PcdLegacyMemorySize|0x000A0000
+  gIntelMidTokenSpaceGuid.PcdLegacyTopBase|0x000A0000
+  gIntelMidTokenSpaceGuid.PcdLegacyTopSize|0x00000000
+
+  #
+  # IVT/BDA (0x0-0x3FFF) as BootServicesData so UefiSeven's int10h shim can
+  # AllocatePages() it for Windows 7. ExitBootServices reclaims it as RAM
+  # and Windows 8+/Linux never touch page 0 on their own.
+  #
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedType|0x00000004
+
+  #
   # Local APIC timer clock = bus clock. Moorefield runs a 100 MHz FSB.
   #
   gEfiMdePkgTokenSpaceGuid.PcdFSBClock|100000000
@@ -124,3 +141,25 @@
   # IntelPkg.dsc.inc.
   #
   MoorefieldPkg/Drivers/SdHostDxe/SdHostDxe.inf
+
+  #
+  # DWC3 USB3 host controller (@ 0xF9100000). Programs the core and publishes
+  # the aperture as a non-discoverable xHCI device; NonDiscoverablePciDeviceDxe
+  # and XhciDxe are pulled in by IntelPkg.dsc.inc.
+  #
+  MoorefieldPkg/Drivers/XhciDwc3Dxe/XhciDwc3Dxe.inf
+  MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf
+
+  #
+  # USB bus enumeration and class drivers (mass storage, HID keyboard) for the
+  # devices behind the xHCI above.
+  #
+  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
+  MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+
+  #
+  # FACS/FADT/MADT plus the board DSDT pulled from the platform ACPI storage
+  # file (gMoorefieldAcpiTableStorageGuid). Must run after AcpiTableDxe.
+  #
+  MoorefieldPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf

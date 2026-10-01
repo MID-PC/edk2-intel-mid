@@ -1,0 +1,48 @@
+## @file
+#  Moorefield DWC3 OTG core: host mode, VBUS, and xHCI registration.
+#
+#  Assumes an OTG A-cable with a device is always attached: enables PMIC OTG
+#  mode and the charger's 5V boost for VBUS, powers the USB2 PHY, puts the DWC3
+#  core into host mode, and publishes the aperture as a non-discoverable xHCI
+#  device for MdeModulePkg's XhciDxe.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = XhciDwc3Dxe
+  FILE_GUID                      = 3F1A5C72-9E64-4B28-8D17-C4A05F2B6E93
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = XhciDwc3DxeEntryPoint
+
+[Sources]
+  XhciDwc3Dxe.c
+  Dwc3Regs.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MoorefieldPkg/MoorefieldPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  DebugLib
+  IoLib
+  TimerLib
+  BaseLib
+  PcdLib
+  NonDiscoverableDeviceRegistrationLib
+
+[Protocols]
+  gEfiUsb2HcProtocolGuid                           ## SOMETIMES_CONSUMES
+
+[FixedPcd]
+  gMoorefieldTokenSpaceGuid.PcdDwc3Base
+  gMoorefieldTokenSpaceGuid.PcdDwc3Size
+  gMoorefieldTokenSpaceGuid.PcdScuIpcBase
+
+[Depex]
+  TRUE
