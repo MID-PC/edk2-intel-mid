@@ -12,11 +12,12 @@
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/NonDiscoverableDeviceRegistrationLib.h>
 #include <Library/PcdLib.h>
+#include <Library/SfiTableLib.h>
 #include <Protocol/SdMmcOverride.h>
 
 //
 // South-complex PMU register block (PcdPmuBase)
-// 
+//
 #define PMU_STS_OFFSET      0x00
 #define PMU_CMD_OFFSET      0x04
 #define PMU_SSC_OFFSET      0x30
@@ -43,9 +44,8 @@
 #define SDHCI_NORMAL_INT_STATUS_OFFSET  0x30
 #define SDHCI_ERROR_INT_STATUS_OFFSET   0x38
 
-// Present State register bits. Note BIT0 is Command Inhibit, not card detect:
-// the latched "card inserted" bit is BIT2, and BIT16 is the one the generic
-// stack's SdMmcHcCardDetect() samples.
+// Present State bits. BIT0 is Command Inhibit, not card detect; the latched
+// "card inserted" bit is BIT2. BIT16 is what SdMmcHcCardDetect() samples.
 #define SDHCI_PS_COMMAND_INHIBIT       BIT0
 #define SDHCI_PS_CARD_INSERTED         BIT2
 #define SDHCI_PS_CARD_STATE_STABLE     BIT3
@@ -83,20 +83,10 @@
 #define PMIC_VLDOCNT_VSWITCH    BIT1
 
 //
-// langwell GPIO controller (TANGIER_GPIO), reached the way gpio-langwell.c
-// reaches it on an Annedal part: register base is BAR0 of the GPIO PCI function
-// 0000:00:0c.0, mapped at 0xFF008000 (iomem.txt). There is no PCI bus in
-// firmware to probe that BAR, so it comes from PcdGpioBase.
-//
-// lnw_gpio_ddata[TANGIER_GPIO] sets gplr_offset = 4, and gpio_reg() computes
-//
-//   reg_gplr = reg_base + gplr_offset
-//   GPLR[n]  = reg_gplr + (n / 32) * 4      (GPLR is enum value 0, so the
-//                                           reg_type * nreg * 4 term drops out)
-//
-// which is why GPLR[0] lands at 0xFF008004 rather than at the base. The
-// reg_type < GITR test in gpio_reg() selects reg_gplr for GPLR, and that is
-// exactly the 0xFF008300 / 0xFF008004 case its comment calls out for TNG.
+// langwell GPIO (TANGIER_GPIO), reached as gpio-langwell.c reaches it on Annedal:
+// BAR0 of 00:0c.0, fixed by PcdGpioBase because firmware has no PCI bus to probe.
+// GPLR[n] is at base + gplr_offset + (n / 32) * 4, and gplr_offset is 4 here, so
+// GPLR[0] is at PcdGpioBase + 4, not at the base.
 //
 #define LNW_TNG_GPLR_OFFSET  4
 #define LNW_TNG_NGPIO        192
@@ -105,63 +95,32 @@
 #define LNW_TNG_REG_GPLR     0
 
 //
-// SFI tables. Same window and validation rules SfiMemoryMapLib applies: a
-// 16-byte-aligned walk of 0x000E0000-0x00100000 matching on the four-character
-// signature, with the table's declared length required to fit the window and
-// its bytes required to sum to zero.
+// SFI GPIO table. Locating the table is SfiTableLib's job; only the GPIO-specific
+// payload layout is this driver's business.
 //
-#define SFI_GPIO_SEARCH_BASE   0x000E0000
-#define SFI_GPIO_SEARCH_SIZE   0x00020000
-#define SFI_GPIO_SEARCH_STRIDE 16
-#define SFI_GPIO_SIG           "GPIO"
-#define SFI_NAME_LEN           16
+#define SFI_GPIO_SIG  "GPIO"
+#define SFI_NAME_LEN  16
 
 //
 // The pin the SFI GPIO table is searched for by name.
 //
 #define MOFD_SD_CD_PIN_NAME    "sd_cd_pin"
 
-//
-// Card detect sense.
-//
-// A card in the slot pulls the CD line to ground, so the pin reads LOW for
-// "present" and HIGH for an empty slot. That is the plain SD socket sense, and
-// it is what this board measures: with the slot empty the pin reads high, and
-// fitting a card pulls it low.
-//
-// Getting this backwards is silent and self-inflicting, because the driver sets
-// the host controller's card-detect test level from this verdict: assume
-// active-high on an active-low board and an empty slot is reported to the stack
-// as "card present", so the stack keeps initialising and retrying a slot with
-// nothing in it, while a card actually fitted is reported as a disconnect and is
-// ignored with no log at all.
-//
-// It stays a named constant because the level that means "in" is a board wiring
-// property the source does not record, and the two failure modes above are worth
-// exactly one edit rather than a hunt. MofdCardDetectInit() logs the raw level
-// and the verdict on every boot: with the slot EMPTY the driver must report
-// "absent", and with a card fitted "present".
-//
+// Card detect sense: a card pulls the line to ground, so the pin reads LOW when
+// present and HIGH when the slot is empty. Getting this backwards is silent: the
+// driver sets the controller's CD test level from this verdict, so an empty slot
+// is reported as a card the stack keeps retrying, and a real card is reported as
+// a disconnect and ignored. MofdCardDetectInit() logs both every boot: empty must
+// say "absent".
 #define MOFD_SD_CD_ACTIVE_HIGH  FALSE
 
 #pragma pack(1)
 
 //
-// Packed SFI GPIO table. The 24-byte header matches the layout SfiMemoryMapLib
-// already validates: signature, length, revision, checksum, OEM id, OEM table id.
-// The payload is a flat array of the 34-byte entries below, with no count field
-// of its own; (Len - 24) / 34 divides exactly for the tables this boot
-// publishes.
+// Packed SFI GPIO table payload: a flat array of the 34-byte entries below, with
+// no count field of its own; (Len - 24) / 34 divides exactly for the tables this
+// boot publishes. The 24-byte header is SFI_TABLE_HEADER, owned by SfiTableLib.
 //
-typedef struct {
-  CHAR8  Sig[4];
-  UINT32 Len;
-  UINT8  Rev;
-  UINT8  Csum;
-  CHAR8  OemId[6];
-  CHAR8  OemTableId[8];
-} SFI_GPIO_TABLE_HEADER;
-
 typedef struct {
   CHAR8  ControllerName[SFI_NAME_LEN];
   UINT16 PinNo;
@@ -181,21 +140,13 @@ STATIC EFI_HANDLE  mSdControllerHandle;
 
 //
 // Card detect line, resolved once at entry from the SFI GPIO table. Cached
-// because the phase callback is re-entered on every enumeration retry and the
-// lookup walks the whole SFI window to find the table.
+// because the phase callback re-runs on every enumeration retry.
 //
 STATIC UINTN  mSdCardCdPin;
 
-//
-// Diagnostic de-duplication for the diagnostics the stack re-enters on every
-// retry of a slot that will not come up. An empty slot never does come up, and
-// SdMmcPciHcDxe retries it from a 100 ms periodic enumeration timer for the rest
-// of the run, so without these the same block of lines repeats ten times a
-// second forever and, on the serial console this board is debugged over, that
-// flood is the only thing visible. Each is suppressed once reported and re-armed
-// only when the state it describes actually moves, so a card being inserted or
-// removed is still reported.
-//
+// One-shot reports for diagnostics the stack re-enters on every retry. An empty
+// slot never comes up and SdMmcPciHcDxe retries it from a 100 ms timer, so an
+// unrepeated report floods the console. Each re-arms when its state moves.
 STATIC BOOLEAN  mHcStateReported;
 STATIC UINT32   mHcSignature;
 STATIC BOOLEAN  mCdOverrideReported;
@@ -326,16 +277,11 @@ MofdSdMmcCapability (
   *Capability &= ~(UINT64)(SDHCI_CAP_HIGH_SPEED | SDHCI_CAP_SDR50 |
                            SDHCI_CAP_SDR104 | SDHCI_CAP_DDR50);
 
-  //
-  // SdMmcHcInitPowerVoltage() asserts when no voltage is reported at all, and
-  // this part is a 1.8 V bus, so make sure that bit is there.
-  //
+  // SdMmcHcInitPowerVoltage() asserts when no voltage is reported, and this is
+  // a 1.8 V bus.
   *Capability |= SDHCI_CAP_VOLTAGE18;
 
-  //
-  // This runs on every init retry, and the masked-off bits above are applied
-  // fresh each time, so print only when the negotiated value has moved.
-  //
+  // Runs on every init retry, so print only when the negotiated value moved.
   if (mCapabilityReported && (*Capability == mLastCapability) && (*BaseClkFreq == mLastBaseClkFreq)) {
     return EFI_SUCCESS;
   }
@@ -360,12 +306,10 @@ MofdSdMmcCapability (
 /**
   Compare one fixed-width SFI name field against a NUL-terminated string.
 
-  The field is SFI_NAME_LEN bytes and is only NUL-padded by convention, so it
-  cannot be handed to AsciiStrCmp() without risking a read past the end of the
-  table. The end of Name has to be tested before the byte is compared: a name
-  that fills its field exactly -- which is the case for the four-character "GPIO"
-  signature -- would otherwise be compared against the first byte of the next
-  field and rejected, so the table could never be found.
+  The field is SFI_NAME_LEN bytes and only NUL-padded by convention, so it cannot go
+  to AsciiStrCmp() without risking a read past the table. The end of Name is tested
+  before each byte: a name filling its field exactly would otherwise have its
+  terminator compared against the next field's first byte and be rejected.
 **/
 STATIC
 BOOLEAN
@@ -390,73 +334,46 @@ MofdSfiNameIs (
 }
 
 /**
-  Locate and validate the SFI GPIO table.
-
-  The scan mirrors what SfiMemoryMapLib already does over the same window: walk
-  it 16 bytes at a time looking for the signature, then require the declared
-  length to fit the window and the low byte of the table's byte sum to be zero.
-  The length check is what keeps a garbage match from turning into a wild read of
-  the payload.
+  Locate the SFI GPIO table and return its entries. SfiFindTable() has already
+  validated the header; the payload must be a whole number of entries so a short
+  or padded table cannot make the walk run off the end.
 **/
 STATIC
-CONST SFI_GPIO_TABLE_HEADER *
-MofdSfiFindGpioTable (
-  VOID
+CONST SFI_GPIO_TABLE_ENTRY *
+MofdFindSfiGpioTable (
+  OUT UINTN  *EntryCount
   )
 {
-  CONST SFI_GPIO_TABLE_HEADER  *Header;
-  UINT8                        Sum;
-  UINTN                        Index;
-  UINTN                        Address;
+  CONST SFI_TABLE_HEADER    *Header;
+  CONST SFI_GPIO_TABLE_ENTRY  *Entry;
 
-  for (Address = SFI_GPIO_SEARCH_BASE;
-       Address < (SFI_GPIO_SEARCH_BASE + SFI_GPIO_SEARCH_SIZE);
-       Address += SFI_GPIO_SEARCH_STRIDE)
-  {
-    Header = (CONST SFI_GPIO_TABLE_HEADER *)Address;
+  *EntryCount = 0;
 
-    if (!MofdSfiNameIs (Header->Sig, SFI_GPIO_SIG)) {
-      continue;
-    }
-
-    //
-    // The table has to fit inside the SFI window from where it was found, and
-    // its payload has to be a whole number of entries. This is what keeps a
-    // garbage signature match from turning into a wild read of the payload.
-    //
-    if ((Header->Len < sizeof (SFI_GPIO_TABLE_HEADER)) ||
-        (Header->Len > (SFI_GPIO_SEARCH_BASE + SFI_GPIO_SEARCH_SIZE - Address)) ||
-        ((Header->Len - sizeof (SFI_GPIO_TABLE_HEADER)) % sizeof (SFI_GPIO_TABLE_ENTRY) != 0))
-    {
-      continue;
-    }
-
-    //
-    // SFI checksum: the bytes of the whole table sum to zero, low byte only.
-    // The accumulator is deliberately UINT8 so the addition wraps, matching the
-    // UINT8 Sum in SfiMemoryMapLib's SfiTableIsValid(); accumulating in a wider
-    // type looks like it works and silently rejects every real table.
-    //
-    Sum = 0;
-    for (Index = 0; Index < Header->Len; Index++) {
-      Sum = (UINT8)(Sum + ((CONST UINT8 *)Header)[Index]);
-    }
-
-    if (Sum == 0) {
-      return Header;
-    }
+  Header = SfiFindTable (SFI_GPIO_SIG);
+  if (Header == NULL) {
+    return NULL;
   }
 
-  return NULL;
+  if (((Header->Len - sizeof (*Header)) % sizeof (SFI_GPIO_TABLE_ENTRY)) != 0) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "SdHostDxe: SFI GPIO table length %u is not a whole number of %u-byte entries\n",
+      Header->Len,
+      (UINT32)sizeof (SFI_GPIO_TABLE_ENTRY)
+      ));
+    return NULL;
+  }
+
+  Entry       = (CONST SFI_GPIO_TABLE_ENTRY *)(Header + 1);
+  *EntryCount = (Header->Len - sizeof (*Header)) / sizeof (SFI_GPIO_TABLE_ENTRY);
+
+  return Entry;
 }
 
 /**
-  Resolve the SD card detect GPIO pin number.
-
-  The SFI GPIO table this boot publishes is the authority: it names the line
-  ("sd_cd_pin") and the controller it lives on ("tangier_gpio"), and it is what
-  keeps the pin number from being a magic constant in this file. PcdSdCardCdPin
-  is only a fallback for a boot that does not publish the table.
+  Resolve the SD card detect pin. The SFI GPIO table names the line and its
+  controller, which is what keeps the pin number out of this file;
+  PcdSdCardCdPin is only the fallback for a boot that publishes no table.
 **/
 STATIC
 UINTN
@@ -464,35 +381,44 @@ MofdCardDetectPin (
   OUT BOOLEAN  *FromSfi
   )
 {
-  CONST SFI_GPIO_TABLE_HEADER  *Header;
-  CONST SFI_GPIO_TABLE_ENTRY   *Entry;
+  CONST SFI_GPIO_TABLE_ENTRY  *Entry;
   UINTN                        Count;
   UINTN                        Index;
 
   *FromSfi = FALSE;
 
-  Header = MofdSfiFindGpioTable ();
-  if (Header != NULL) {
-    Entry = (CONST SFI_GPIO_TABLE_ENTRY *)(Header + 1);
-    Count = (Header->Len - sizeof (SFI_GPIO_TABLE_HEADER)) / sizeof (SFI_GPIO_TABLE_ENTRY);
+  Entry = MofdFindSfiGpioTable (&Count);
 
-    for (Index = 0; Index < Count; Index++) {
-      if (MofdSfiNameIs (Entry[Index].ControllerName, LNW_TNG_CONTROLLER) &&
-          MofdSfiNameIs (Entry[Index].PinName, MOFD_SD_CD_PIN_NAME))
-      {
-        *FromSfi = TRUE;
-        return Entry[Index].PinNo;
-      }
+  for (Index = 0; Index < Count; Index++) {
+    if (MofdSfiNameIs (Entry[Index].ControllerName, LNW_TNG_CONTROLLER) &&
+        MofdSfiNameIs (Entry[Index].PinName, MOFD_SD_CD_PIN_NAME))
+    {
+      *FromSfi = TRUE;
+      DEBUG ((
+        DEBUG_INFO,
+        "SdHostDxe: %a.%a resolved from the SFI GPIO table: pin %u\n",
+        LNW_TNG_CONTROLLER,
+        MOFD_SD_CD_PIN_NAME,
+        (UINT32)Entry[Index].PinNo
+        ));
+      return (UINTN)Entry[Index].PinNo;
     }
   }
+
+  DEBUG ((
+    DEBUG_WARN,
+    "SdHostDxe: no %a.%a in the SFI GPIO table, falling back to PcdSdCardCdPin %u\n",
+    LNW_TNG_CONTROLLER,
+    MOFD_SD_CD_PIN_NAME,
+    (UINT32)FixedPcdGet32 (PcdSdCardCdPin)
+    ));
 
   return (UINTN)FixedPcdGet32 (PcdSdCardCdPin);
 }
 
 /**
-  Read the raw level of a pin in the langwell GPIO controller's level
-  registers, the way gpio-langwell.c reads it with gpio_get() for a
-  direction-input pin.
+  Read a pin's raw level from the langwell level registers, as gpio_get() does
+  for a direction-input pin.
 **/
 STATIC
 BOOLEAN
@@ -507,12 +433,8 @@ MofdGpioPinLevel (
     return FALSE;
   }
 
-  //
-  // GPLR is a 192-bit level register, so a pin number splits into a register
-  // index and a bit within it at 32. LNW_TNG_NGPIO / 32 is the *count* of these
-  // registers (6), not the pins in one, and using it here would walk the pin
-  // number into the wrong register entirely.
-  //
+  // GPLR is 192 bits wide, so the pin splits into a register index and a bit at 32.
+  // LNW_TNG_NGPIO / 32 is the count of these registers, not the pins in one.
   RegGplr = (UINTN)FixedPcdGet32 (PcdGpioBase) + LNW_TNG_GPLR_OFFSET;
   Bit     = Pin % LNW_TNG_BITS_PER_REG;
 
@@ -537,14 +459,9 @@ MofdCardPresent (
 }
 
 /**
-  Point the host controller's card detect at the GPIO's answer.
-
-  Host Control BIT7 (SD Bus Card Detect Signal Selection) makes the controller
-  report the BIT6 test level as the card detect source instead of the physical
-  pad; the generic stack samples Present State BIT16 ("SD Bus Inserted"), which
-  follows that selection. So setting the test level to the GPIO's answer is what
-  the stack actually reads, and it is the difference between the stack knowing
-  the slot is empty and the stack talking to a card that is not there.
+  Point the host controller's card detect at the GPIO. Host Control BIT7 makes
+  BIT6 the card detect source instead of the physical pad, and the generic stack
+  samples Present State BIT16, which follows that selection.
 **/
 STATIC
 VOID
@@ -568,10 +485,8 @@ MofdApplyCardDetect (
 
   MmioWrite8 (HcBase + SDHCI_HOST_CONTROL_OFFSET, HostControl);
 
-  //
-  // A software reset clears Host Control, so this has to be reapplied on every
-  // attempt; the write is idempotent, so only report it when the value moves.
-  //
+  // A software reset clears Host Control, so this reapplies every attempt. The
+  // write is idempotent, so only report when the value moves.
   if (mCdOverrideReported && (HostControl == mCdOverrideValue)) {
     return;
   }
@@ -591,11 +506,9 @@ MofdApplyCardDetect (
 }
 
 /**
-  Resolve the card detect pin and publish it to the host controller.
-
-  Runs once at entry, before the device is registered, so the very first
-  SdMmcHcCardDetect() the stack performs already sees the real slot state
-  instead of a hardcoded "card present".
+  Resolve the card detect pin and publish it to the host controller. Runs once
+  at entry, before registration, so the stack's first SdMmcHcCardDetect() already
+  sees the real slot state.
 **/
 STATIC
 UINTN
@@ -620,12 +533,8 @@ MofdCardDetectInit (
 
   MofdApplyCardDetect (Pin, MofdCardPresent (Pin));
 
-  //
-  // One unconditional line carrying the raw level and the verdict, so the sense
-  // can be confirmed from the log without having to correlate the dump lines.
-  // With the slot empty this must read level 1 / absent; with a card fitted,
-  // level 0 / present.
-  //
+  // Raw level and verdict in one line so the sense is checkable from the log:
+  // empty must read level 1 / absent, card fitted level 0 / present.
   DEBUG ((
     DEBUG_WARN,
     "SdHostDxe: CD pin %Lu level %u -> card %a (%a)\n",
@@ -639,14 +548,10 @@ MofdCardDetectInit (
 }
 
 /**
-  Log the host-controller state that decides whether the card can be reached at
-  all, alongside what the card detect GPIO says.
-
-  Called from the init-host-post phase, which the stack reaches again on every
-  100 ms enumeration tick for as long as the slot will not come up. The dump is
-  therefore emitted once per distinct state rather than once per attempt: an
-  empty slot is the case that retries forever, and repeating an identical dump
-  ten times a second says nothing the first copy did not.
+  Log the host controller state that decides whether the card is reachable at
+  all, alongside what the card detect GPIO says. Called from the init-host-post
+  phase, which the stack re-enters on every 100 ms tick for as long as the slot
+  will not come up, so this emits once per distinct state.
 **/
 STATIC
 VOID
@@ -677,14 +582,9 @@ MofdDumpHcState (
   ErrorIntStatus  = MmioRead16 (HcBase + SDHCI_ERROR_INT_STATUS_OFFSET);
   CardPresent     = MofdCardPresent (mSdCardCdPin);
 
-  //
-  // The signature deliberately covers only what decides whether a card is
-  // reachable: the card detect answer and the view the controller is reporting,
-  // the bus power and voltage, and the clock. The data-line levels and the
-  // interrupt status registers are left out because every failed command moves
-  // them, and including those would put the dump straight back into a
-  // per-attempt loop.
-  //
+  // Signature covers only what decides reachability: card detect, bus power,
+  // voltage and clock. The data lines and interrupt status move on every failed
+  // command, so including them would put the dump back in a per-attempt loop.
   Signature = ((UINT32)CardPresent ? BIT0 : 0) |
               (Present & (SDHCI_PS_CARD_INSERTED | SDHCI_PS_CD_SIGNAL_LEVEL)) |
               (UINT32)(PowerControl & (SDHCI_PC_SD_BUS_POWER | SDHCI_PC_SD_VOLTAGE_MASK)) |
@@ -762,16 +662,12 @@ MofdPowerUpWithClockGated (
 
   HcBase = (UINTN)FixedPcdGet32 (PcdSdHostBase);
 
-  //
   // Gate the SD clock first: CLOCK_CONTROL BIT0 is the internal clock enable and
   // BIT2 the card clock enable, same layout as u-boot's sdhci.h.
-  //
   MmioWrite16 (HcBase + SDHCI_CLOCK_CONTROL_OFFSET, 0);
 
-  //
-  // Then raise the bus at 1.8 V, which is what SdMmcHcInitPowerVoltage() would
-  // select for this slot anyway (capabilities report Voltage18 only).
-  //
+  // Then raise the bus at 1.8 V, which is what SdMmcHcInitPowerVoltage() selects
+  // for this slot anyway (capabilities report Voltage18 only).
   MmioWrite8 (
     HcBase + SDHCI_POWER_CONTROL_OFFSET,
     SDHCI_PC_VSEL_1_8V | SDHCI_PC_SD_BUS_POWER
@@ -803,33 +699,20 @@ MofdSdMmcNotifyPhase (
   }
 
   if (PhaseType == EdkiiSdMmcResetPost) {
-    //
-    // The software reset the stack just ran cleared Host Control, so the card
-    // detect selection has to go back in before the stack looks at it.
-    //
+    // The software reset the stack just ran cleared Host Control.
     MofdApplyCardDetect (mSdCardCdPin, MofdCardPresent (mSdCardCdPin));
   }
 
   if (PhaseType == EdkiiSdMmcInitHostPre) {
     CardPresent = MofdCardPresent (mSdCardCdPin);
 
-    //
-    // Refuse the init when the slot is empty, here, before anything is powered
-    // or clocked.
-    //
-    // SdMmcHcInitHost() propagates this status back to its caller without
-    // touching the bus, so no card command is ever issued, no TRB is ever
-    // built, and the 100 ms enumeration timer retries only this cheap GPIO read
-    // instead of issuing CMD0/CMD8 at a slot with nothing in it once every
-    // 100 ms for the rest of the run -- which is what produced the endless
-    // "TRB failed" flood this detection path exists to stop.
-    //
+    // Refuse the init before anything is powered or clocked. SdMmcHcInitHost()
+    // propagates this without touching the bus, so no card command is issued and
+    // the 100 ms enumeration timer retries only this GPIO read instead of sending
+    // CMD0/CMD8 at an empty slot forever, which is the "TRB failed" flood this
+    // path exists to stop.
     if (!CardPresent) {
-      //
-      // This branch runs on every 100 ms enumeration tick for as long as the slot
-      // stays empty, so only the first pass is worth a line; reporting each one
-      // would replace the TRB flood with a quieter flood.
-      //
+      // Runs on every enumeration tick while the slot stays empty, so report once.
       if (!mNoCardReported) {
         mNoCardReported = TRUE;
 
@@ -843,9 +726,7 @@ MofdSdMmcNotifyPhase (
       return EFI_NO_MEDIA;
     }
 
-    //
-    // Re-arm, so a later removal is reported again after a card has been seen.
-    //
+    // Re-arm so a later removal is reported again.
     mNoCardReported = FALSE;
 
     MofdPowerUpWithClockGated ();
@@ -898,9 +779,8 @@ SdHostDxeEntryPoint (
   MoorefieldEnableSdPower ();
 
   //
-  // Resolve the card detect line and tell the controller what it says before the
-  // device is registered, so the stack's first SdMmcHcCardDetect() reads the real
-  // slot state rather than a hardcoded "card present".
+  // Tell the controller the slot state before registration, so the stack's first
+  // SdMmcHcCardDetect() does not read a hardcoded "card present".
   //
   mSdCardCdPin = MofdCardDetectInit ();
 

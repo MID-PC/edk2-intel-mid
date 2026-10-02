@@ -37,10 +37,11 @@
   # The primary bootloader loads the image at 0x10F00000 (the boot image
   # "second bootloader" slot) and jumps to its first byte in 32-bit protected
   # mode. 0x10F00000 lies inside the 0x06000000-0x7F600000 System RAM window
-  # (see ZX551ML/tables/MMAP and iomem.txt).
+  # (see ZX551ML/tables/MMAP and iomem.txt). PcdFdBaseAddress and PcdFdSize are
+  # set from the device's FD geometry, which lives in
+  # Resources/Configs/<device>.toml and reaches the build through the platform
+  # FDF; the .dec defaults are the fallback for a build that bypasses that path.
   #
-  gIntelMidTokenSpaceGuid.PcdFdBaseAddress|0x10F00000
-  gIntelMidTokenSpaceGuid.PcdFdSize|0x00400000
 
   #
   # SEC/PEI temporary RAM (stack + heap + long-mode page tables) inside the
@@ -54,6 +55,15 @@
   # Permanent PEI memory inside the main FD RAM window, above the FD image.
   #
   gIntelMidTokenSpaceGuid.PcdPeiMemoryBase|0x12000000
+
+  #
+  # SCU IPC-1 (intel_scu_ipc, 0000:00:13.0) and south-complex PMU
+  # (intel_pmu_driver, 0000:00:14.0) register blocks, consumed by
+  # IntelPkg/Library/ScuResetSystemLib and by PlatformPei. Both moved out of
+  # the 0xFF11xxxx Cloverview window.
+  #
+  gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF009000
+  gIntelMidTokenSpaceGuid.PcdPmuBase|0xFF00B000
 
   #
   # Only 0x0-0x9FFFF is real-mode RAM here. The IntelPkg default of 1 MiB
@@ -71,6 +81,14 @@
   # and Windows 8+/Linux never touch page 0 on their own.
   #
   gIntelMidTokenSpaceGuid.PcdLegacyReservedType|0x00000004
+
+  #
+  # Moorefield (Silvermont) supports 36-bit physical addressing, and a
+  # board with DRAM above the 4 GiB boundary has its high RAM window
+  # truncated unless the CPU HOB says so. Cloverview is 32-bit and takes the
+  # .dec default. Consumed by PlatformMemoryMapLib.
+  #
+  gIntelMidTokenSpaceGuid.PcdCpuMaxPhysAddrBits|36
 
   #
   # Local APIC timer clock = bus clock. Moorefield runs a 100 MHz FSB.
@@ -122,7 +140,7 @@
   #
   # SCU IPC command based reset runtime
   #
-  ResetSystemLib|MoorefieldPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
+  ResetSystemLib|IntelPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
 
 [Components]
   #

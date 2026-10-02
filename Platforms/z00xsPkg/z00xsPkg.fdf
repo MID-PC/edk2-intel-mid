@@ -1,10 +1,10 @@
 
 [FD.Z00XS]
-BaseAddress   = 0x10F00000 | gIntelMidTokenSpaceGuid.PcdFdBaseAddress
-Size          = 0x00400000 | gIntelMidTokenSpaceGuid.PcdFdSize
+BaseAddress   = $(FD_BASE) | gIntelMidTokenSpaceGuid.PcdFdBaseAddress
+Size          = $(FD_SIZE) | gIntelMidTokenSpaceGuid.PcdFdSize
 ErasePolarity = 1
 BlockSize     = 0x1000
-NumBlocks     = 0x400
+NumBlocks     = $(FD_BLOCKS)
 
 # SEC first so the image is directly executable at offset 0
 0x00000000|0x00010000

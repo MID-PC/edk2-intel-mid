@@ -1,10 +1,10 @@
 
 [FD.DUCATI]
-BaseAddress   = 0x01101000 | gIntelMidTokenSpaceGuid.PcdFdBaseAddress
-Size          = 0x00200000 | gIntelMidTokenSpaceGuid.PcdFdSize
+BaseAddress   = $(FD_BASE) | gIntelMidTokenSpaceGuid.PcdFdBaseAddress
+Size          = $(FD_SIZE) | gIntelMidTokenSpaceGuid.PcdFdSize
 ErasePolarity = 1
 BlockSize     = 0x1000
-NumBlocks     = 0x200
+NumBlocks     = $(FD_BLOCKS)
 
 # SEC first so the image is directly executable
 0x00000000|0x00010000

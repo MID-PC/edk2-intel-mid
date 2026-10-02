@@ -24,7 +24,9 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
   MoorefieldPkg/MoorefieldPkg.dec
+  IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
   UefiDriverEntryPoint
@@ -32,8 +34,9 @@
   DebugLib
   IoLib
   TimerLib
-  BaseLib
+  MtrrLib
   PcdLib
+  ScuIpcLib
   NonDiscoverableDeviceRegistrationLib
 
 [Protocols]
@@ -42,7 +45,6 @@
 [FixedPcd]
   gMoorefieldTokenSpaceGuid.PcdDwc3Base
   gMoorefieldTokenSpaceGuid.PcdDwc3Size
-  gMoorefieldTokenSpaceGuid.PcdScuIpcBase
 
 [Depex]
   TRUE

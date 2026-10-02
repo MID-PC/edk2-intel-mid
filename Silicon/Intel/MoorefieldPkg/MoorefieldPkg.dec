@@ -33,12 +33,6 @@
   gMoorefieldTokenSpaceGuid.PcdHpetSize|0x00000400|UINT32|0x0000000B
 
 
-  ## SCU IPC-1 register block (intel_scu_ipc, 0000:00:13.0 -> ff009000)
-  gMoorefieldTokenSpaceGuid.PcdScuIpcBase|0xFF009000|UINT32|0x00000001
-
-  ## South-complex PMU ("intel_pmu_driver", 0000:00:14.0 -> ff00b000)
-  gMoorefieldTokenSpaceGuid.PcdPmuBase|0xFF00B000|UINT32|0x00000002
-
   ## External SD card SDHCI controller (mmc@ff3fa000, "intel,sdhci-tangier")
   gMoorefieldTokenSpaceGuid.PcdSdHostBase|0xFF3FA000|UINT32|0x00000003
   gMoorefieldTokenSpaceGuid.PcdSdHostSize|0x00001000|UINT32|0x00000004

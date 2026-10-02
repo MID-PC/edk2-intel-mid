@@ -13,12 +13,14 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   CloverviewPkg/CloverviewPkg.dec
+  IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
   UefiDriverEntryPoint
   UefiBootServicesTableLib
   DebugLib
   IoLib
+  ScuIpcLib
   TimerLib
   PcdLib
   NonDiscoverableDeviceRegistrationLib
@@ -29,7 +31,6 @@
 [FixedPcd]
   gCloverviewTokenSpaceGuid.PcdSdHostBase
   gCloverviewTokenSpaceGuid.PcdSdHostSize
-  gCloverviewTokenSpaceGuid.PcdScuIpcBase
   gCloverviewTokenSpaceGuid.PcdGpioCoreBase
 
 [Depex]

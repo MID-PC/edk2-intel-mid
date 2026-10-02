@@ -1,21 +1,19 @@
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = SfiMemoryMapLib
-  FILE_GUID                      = A1B5532C-7B4A-4F9E-A2C3-D4E5F6071829
+  BASE_NAME                      = SfiTableLib
+  FILE_GUID                      = 7C4E1A05-3D82-4F6B-9E10-2B8A5F6D3C41
   MODULE_TYPE                    = BASE
   VERSION_STRING                 = 1.0
-  LIBRARY_CLASS                  = SfiMemoryMapLib
+  LIBRARY_CLASS                  = SfiTableLib
 
 [Sources]
-  SfiMemoryMapLib.c
+  SfiTableLib.c
 
 [Packages]
   MdePkg/MdePkg.dec
   IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
-  SfiTableLib
-  PlatformMemoryMapLib
   BaseLib
   BaseMemoryLib
   DebugLib

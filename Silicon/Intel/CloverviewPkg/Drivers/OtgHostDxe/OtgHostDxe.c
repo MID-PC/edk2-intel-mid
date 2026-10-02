@@ -469,7 +469,6 @@ CtOtgEnterHostMode (
 
 STATIC UINTN      mOtgOpBase   = 0;
 STATIC EFI_EVENT  mOtgPollEvent = NULL;
-STATIC EFI_HANDLE mOtgNdHandle = NULL;
 
 /**
   Read one ULPI register via the viewport; 0xFFFF on timeout means no ULPI
@@ -867,7 +866,6 @@ OtgHostDxeEntryPoint (
   }
 
   DEBUG ((DEBUG_ERROR, "OtgHostDxe: EHCI host registered at 0x%08x, handle %p\n", Base + CT_CI_CAP_OFFSET, Handle));
-  mOtgNdHandle = Handle;
 
   Status = EFI_SUCCESS;
   DEBUG ((DEBUG_ERROR, "OtgHostDxe: registration done, leaving connect to BDS ConnectAll\n"));

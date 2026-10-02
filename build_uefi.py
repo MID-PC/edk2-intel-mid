@@ -7,13 +7,23 @@ import shutil
 import stat
 import subprocess
 import sys
+import tomllib
 
 from pathlib import Path
 
 # Paths relative to repository root
-BUILD_PATH      = Path("Build")
-OUT_PATH        = Path("out")
-PLATFORM_PATH   = Path("Platforms")
+BUILD_PATH         = Path("Build")
+OUT_PATH           = Path("out")
+PLATFORM_PATH      = Path("Platforms")
+CONFIG_PATH        = Path("Resources/Configs")
+SCRIPTS_PATH       = Path("Resources/Scripts")
+
+sys.path.insert(0, str(SCRIPTS_PATH))
+from BootImage import (  # noqa: E402
+    BootImageError,
+    dsc_output_directory,
+    pack_boot_image,
+)
 
 logger: logging.Logger
 
@@ -25,6 +35,12 @@ def setup_logger():
     handler.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
+
+    # Resources/Scripts/BootImage.py logs under its own name; give it the same
+    # handler so boot image progress shows up interleaved with ours.
+    boot_image_logger = logging.getLogger("BootImage")
+    boot_image_logger.addHandler(handler)
+    boot_image_logger.setLevel(logging.INFO)
 
 
 def parse_arguments():
@@ -61,6 +77,18 @@ def discover_platforms():
         device = pkg_name.removesuffix("Pkg")
         devices[device] = pkg_dir
     return devices
+
+
+def load_device_config(device):
+    """Read Resources/Configs/<device>.toml."""
+    config_file = CONFIG_PATH / f"{device}.toml"
+    if not config_file.is_file():
+        logger.error(f'No config for "{device}": {config_file}')
+        logger.error(f"expected a [uefi_fd] and a [boot_image] section naming the format")
+        sys.exit(1)
+
+    with open(config_file, "rb") as fh:
+        return tomllib.load(fh)
 
 
 def resolve_device(devices, requested):
@@ -167,8 +195,16 @@ def _rmtree_onerror(func, path, exc_info):
 
 
 def clean_build(device):
-    pkg_name = f"{device}Pkg"
-    build_dir = BUILD_PATH / pkg_name
+    # Ask the platform DSC where its output goes rather than assuming
+    # Build/<device>Pkg: not every platform uses that layout.
+    dsc = PLATFORM_PATH / f"{device}Pkg" / f"{device}Pkg.dsc"
+    build_dir = BUILD_PATH / f"{device}Pkg"
+    if dsc.is_file():
+        try:
+            build_dir = Path(dsc_output_directory(dsc))
+        except BootImageError as e:
+            logger.warning(f"{e}, falling back to {build_dir}")
+
     if build_dir.is_dir():
         logger.info(f"==> Removing {build_dir}")
         shutil.rmtree(build_dir, onerror=_rmtree_onerror)
@@ -202,6 +238,8 @@ def main():
         logger.error(f"DeviceBuild.py not found at {script}")
         sys.exit(1)
 
+    config = load_device_config(device)
+
     if args.update:
         if not update_local_repo():
             sys.exit(1)
@@ -225,10 +263,31 @@ def main():
     if args.kdnet_usb:
         extra_args.append("KDNET_USB=1")
 
+    #
+    # Hand the FD geometry from the device's TOML to the build. DeviceBuild.py
+    # forwards these into BLD_*_FD_*, and the platform FDF picks them up as
+    # $(FD_BASE) / $(FD_SIZE). This keeps the TOML the single source of truth.
+    #
+    fd_config = config.get("uefi_fd") or {}
+    if "base" not in fd_config or "size" not in fd_config:
+        logger.error(f"{CONFIG_PATH / f'{device}.toml'}: [uefi_fd] needs both base and size")
+        sys.exit(1)
+    extra_args.append(f"FD_BASE={hex(fd_config['base'])}")
+    extra_args.append(f"FD_SIZE={hex(fd_config['size'])}")
+
     rc = run_device_script(script, args.release, extra_args)
     if rc != 0:
         logger.error("Build failed")
         sys.exit(rc)
+
+    try:
+        pack_boot_image(config, device, args.release or "RELEASE",
+                        Path(__file__).resolve().parent)
+    except BootImageError as e:
+        logger.error("Boot image creation failed")
+        for line in str(e).splitlines():
+            logger.error(f"    {line}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

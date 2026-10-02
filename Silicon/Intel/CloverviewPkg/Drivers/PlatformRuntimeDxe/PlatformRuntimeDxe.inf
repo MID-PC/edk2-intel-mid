@@ -13,17 +13,16 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   CloverviewPkg/CloverviewPkg.dec
+  IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
   UefiDriverEntryPoint
   UefiBootServicesTableLib
   UefiRuntimeServicesTableLib
   UefiLib
-  BaseLib
   BaseMemoryLib
   DebugLib
-  IoLib
-  PcdLib
+  ScuIpcLib
 
 [Protocols]
   gEfiRealTimeClockArchProtocolGuid             ## PRODUCES
@@ -31,9 +30,6 @@
 [Guids]
   gEfiEventExitBootServicesGuid                 ## CONSUMES
   gEfiEventReadyToBootGuid                      ## CONSUMES
-
-[FixedPcd]
-  gCloverviewTokenSpaceGuid.PcdScuIpcBase
 
 [Depex]
   TRUE

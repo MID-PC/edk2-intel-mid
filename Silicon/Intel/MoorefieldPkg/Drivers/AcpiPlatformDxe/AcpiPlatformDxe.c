@@ -1,15 +1,13 @@
 /** @file
   Moorefield (Silvermont / Z3580) platform ACPI table set.
 
-  Builds FACS, FADT and MADT in memory and installs them together with the
-  board DSDT, producing a hardware-reduced ACPI namespace that is sufficient
-  for Windows to enumerate the four Silvermont cores and the MMIO devices the
-  board describes in ASL. Windows starts the application processors itself
-  with INIT/SIPI from the MADT; no firmware MP wake-up is involved.
+  Builds FACS, FADT, MADT, HPET and MCFG in memory and installs them with the
+  board DSDT, giving a hardware-reduced namespace enough for Windows to bring up
+  the four cores and the MMIO devices the DSDT describes. Windows starts the APs
+  itself with INIT/SIPI from the MADT; no firmware MP wake-up is involved.
 
-  FACS and DSDT are installed before FADT; AcpiTableDxe patches the FADT
-  FIRMWARE_CTRL / X_FIRMWARE_CTRL and DSDT / X_DSDT pointers every time the
-  table set is published, so they are left zero here.
+  FACS and DSDT are installed before FADT. AcpiTableDxe patches the FADT
+  FIRMWARE_CTRL and DSDT pointers itself, so they are left zero here.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
  **/
@@ -28,57 +26,35 @@
 #include <IndustryStandard/MemoryMappedConfigurationSpaceAccessTable.h>
 #include <Protocol/AcpiTable.h>
 
-///
-/// FADT.PM1xxxBlock, PM2Block, PMTimerBlock, GPE0Block and GPE1Block are all
-/// zero: the part has no ACPI fixed hardware and the FADT advertises
-/// HARDWARE_REDUCED_ACPI, so the OS ignores them entirely.
-///
-/// WBINVD is set, not cleared: the bit reads "the WBINVD instruction works
-/// properly", so the OS may use it to flush and invalidate the boot-loader
-/// hand-off caches at ExitBootServices. Every other bit here is from the
-/// valid hardware-reduced mask in DynamicTablesPkg's AcpiFadtLib.
-///
+// No ACPI fixed hardware on this part, so the PM1xxx/PM2/PMTimer/GPE blocks stay
+  // zero and the FADT advertises HARDWARE_REDUCED_ACPI. WBINVD is set, not
+  // cleared: the bit means "WBINVD works", so the OS may use it to flush the
+  // hand-off caches at ExitBootServices.
 #define MF_FADT_FLAGS  (EFI_ACPI_6_5_WBINVD | EFI_ACPI_6_5_SLP_BUTTON | \
                         EFI_ACPI_6_5_HW_REDUCED_ACPI | \
                         EFI_ACPI_6_5_LOW_POWER_S0_IDLE_CAPABLE)
 
-///
-/// The GFX path is a fixed-mode linear framebuffer handed over through the
-/// Graphics Output Protocol, so there is no legacy VGA framebuffer to keep the
-/// OS away from. The SoC has no CMOS RTC, so say so rather than let the OS
-/// probe for one that cannot be there.
-///
+// GFX is a fixed-mode linear framebuffer from GOP, so there is no legacy VGA
+  // framebuffer to keep the OS away from. No CMOS RTC either.
 #define MF_FADT_BOOT_ARCH_FLAGS  (EFI_ACPI_6_5_VGA_NOT_PRESENT | \
                                   EFI_ACPI_6_5_CMOS_RTC_NOT_PRESENT)
 
-///
-/// Z3580 is a tablet-class part: no S3/S4 and no legacy cooling or docking
-/// model for the OS to honour.
-///
+// Tablet-class part: no S3/S4 and no legacy cooling or docking model.
 #define MF_PREFERRED_PM_PROFILE  EFI_ACPI_6_5_PM_PROFILE_TABLET
 
-///
-/// I/O APIC identifier. Moorefield exposes a single I/O APIC; there is no
-/// second GSI range to offset into.
-///
+// Single I/O APIC, so no second GSI range to offset into.
 #define MF_IO_APIC_ID  0x00
 
 #define MF_OEM_ID  { 'I', 'N', 'T', 'E', 'L', ' ' }
 #define MF_OEM_TABLE_ID  SIGNATURE_32 ('M', 'O', 'O', 'R')
 
-///
-/// Z3580 has four cores in two modules. The SFI CPUS table on the device
-/// (ZX551ML/tables/CPUS) lists their APIC IDs as 0, 2, 4 and 6 - the odd IDs
-/// are the absent SMT siblings - so the IDs are not consecutive. The
-/// ACPI processor UID is the logical index and must agree with \_SB.CPUn._UID
-/// in Dsdt.asl.
-///
+// Four cores in two modules. The SFI CPUS table lists APIC IDs 0, 2, 4, 6 - the
+  // odd ones are absent SMT siblings - so the IDs are not consecutive.
 #define MF_CPU_COUNT  4
 
 /**
-  MADT with all four cores online. This mirrors the ACPI 6.5 APIC table
-  layout directly - common header, LocalApicAddress, Flags, then the APIC
-  structures packed back to back - so the whole table is a single object.
+  MADT with all four cores online. Mirrors the ACPI 6.5 APIC table layout
+  directly, so the whole table is a single object.
 **/
 typedef struct {
   EFI_ACPI_DESCRIPTION_HEADER                   Header;
@@ -89,16 +65,10 @@ typedef struct {
 } MOOREFIELD_MADT;
 
 /**
-  ACPI 2.0+ "HPET" IA-PC High Precision Event Timer Table.
-
-  MdePkg provides the signature but no structure for this table, so it is
-  declared here. The OS needs this table in addition to the PNP0103 device in
-  the DSDT: the device tells it the block is there, this table is what it
-  actually programs. Without it ACPI.sys has no way to find the counter and
-  falls back to the APIC timer.
-
-  It is required because the FADT is hardware-reduced (no PM timer block) and
-  the SoC has no CMOS RTC, so the HPET is the only ACPI-visible time source.
+  ACPI 2.0+ "HPET" table. MdePkg has the signature but no structure, so it is
+  declared here. Needed on top of the DSDT's PNP0103 device, which only says the
+  block exists: with a hardware-reduced FADT and no CMOS RTC, this is the only
+  ACPI-visible time source, so without it ACPI.sys falls back to the APIC timer.
 **/
 typedef struct {
   EFI_ACPI_DESCRIPTION_HEADER                 Header;
@@ -110,8 +80,7 @@ typedef struct {
 } MOOREFIELD_HPET;
 
 /**
-  ACPI "MCFG" PCI Express memory-mapped configuration space table with one
-  allocation structure. MCFG is what lets Linux use the ECAM window that the
+  ACPI "MCFG" table, one allocation. Lets Linux use the ECAM window that the
   PCI0 root bridge in Dsdt.asl reserves through its PDRC device.
 **/
 #pragma pack(1)
@@ -124,11 +93,8 @@ typedef struct {
 
 #define MF_HPET_REVISION  0x01
 
-///
-/// The HPET is the OS's only clock here, so declare it as such. Bit 0 of Flags
-/// is the only defined bit: clear means the block is in system memory, which
-/// is how the PNP0103 _CRS in Dsdt.asl describes 0xFED00000.
-///
+// Flags bit 0 is the only defined bit: clear means system memory, matching how
+  // the PNP0103 _CRS in Dsdt.asl describes 0xFED00000.
 #define MF_HPET_FLAGS  0x00
 
 STATIC CONST EFI_ACPI_6_5_FIRMWARE_ACPI_CONTROL_STRUCTURE  mFacs = {
@@ -137,9 +103,6 @@ STATIC CONST EFI_ACPI_6_5_FIRMWARE_ACPI_CONTROL_STRUCTURE  mFacs = {
   .Version   = EFI_ACPI_6_5_FIRMWARE_ACPI_CONTROL_STRUCTURE_VERSION
 };
 
-//
-// Every PM1xxx/PM2/PMTimer/GPE block stays zero: see MF_FADT_FLAGS.
-//
 STATIC CONST EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE  mFadt = {
   .Header = {
     .Signature       = EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE_SIGNATURE,
@@ -156,11 +119,9 @@ STATIC CONST EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE  mFadt = {
   .Flags             = MF_FADT_FLAGS,
   .MinorVersion      = 0x05  // ACPI 6.5
   //
-  // FirmwareCtrl, Dsdt and every register block are left zero. AcpiTableDxe
-  // fills in FirmwareCtrl/XFirmwareCtrl and Dsdt/XDsdt from the FACS and DSDT
-  // it installs, and the OS ignores the register blocks in hardware-reduced
-  // mode.
-  //
+  // FirmwareCtrl, Dsdt and every register block stay zero: AcpiTableDxe fills in
+  // FirmwareCtrl/XFirmwareCtrl and Dsdt/XDsdt, and the OS ignores the blocks in
+  // hardware-reduced mode.
 };
 
 #define MF_LOCAL_APIC(Uid, Id)  {                                          \
@@ -198,12 +159,8 @@ STATIC CONST MOOREFIELD_MADT  mMadt = {
   }
 };
 
-//
-// PcdHpetSize records the real size of the register block for other
-// firmware modules; the HPET table itself only carries the address. Keep the
-// two in step by having the build check the address, and note the size is the
-// PNP0103 _CRS in Dsdt.asl.
-//
+// The HPET table carries only the address; PcdHpetSize is the size other modules
+// use, and it must match the PNP0103 _CRS in Dsdt.asl.
 STATIC CONST MOOREFIELD_HPET  mHpet = {
   .Header = {
     .Signature       = EFI_ACPI_6_5_HIGH_PRECISION_EVENT_TIMER_TABLE_SIGNATURE,
@@ -216,13 +173,8 @@ STATIC CONST MOOREFIELD_HPET  mHpet = {
     .CreatorRevision = 0x000C0000
   },
   .SequenceNumber = 0x00000000,
-  //
-  // Main counter tick in units of 1e-7 seconds. 1 means a 10 MHz (100 ns)
-  // counter. The field is advisory: the OS reads the true period from the
-  // counter's capability register and clamps the programmed period to the low
-  // 32 bits, which are valid on every HPET. Confirm against the real Moorefield
-  // HPET frequency if a timebase-sensitive consumer ever shows up.
-  //
+  // Counter tick in 1e-7 s units: 1 means 10 MHz (100 ns). Advisory, since the OS
+  // reads the true period from the counter's capability register.
   .MinimumTick = 0x0001,
   .BaseAddress = {
     .AddressSpaceId     = EFI_ACPI_6_5_SYSTEM_MEMORY,
@@ -235,11 +187,8 @@ STATIC CONST MOOREFIELD_HPET  mHpet = {
   .Reserved = 0
 };
 
-///
-/// One segment, bus 0 only, as in the SFI MCFG table on the device
-/// (ZX551ML/tables/MCFG): base 0x7F600000, segment 0, buses 00-00. Bus 0 is
-/// 1 MB of ECAM space, which is what PDRC in Dsdt.asl reserves.
-///
+// One segment, bus 0 only, matching the SFI MCFG table on the device. Bus 0 is
+  // 1 MB of ECAM space, which is what PDRC in Dsdt.asl reserves.
 STATIC CONST MOOREFIELD_MCFG  mMcfg = {
   .Header = {
     .Signature       = EFI_ACPI_6_5_PCI_EXPRESS_MEMORY_MAPPED_CONFIGURATION_SPACE_BASE_ADDRESS_DESCRIPTION_TABLE_SIGNATURE,
@@ -260,13 +209,10 @@ STATIC CONST MOOREFIELD_MCFG  mMcfg = {
 };
 
 /**
-  Fill in the 8-bit checksum of a writable ACPI table.
-
-  AcpiTableDxe recomputes the checksum on install anyway, so this is not
-  load-bearing. It is done here so that each table is already well formed
-  the moment it leaves this module, which keeps the tables debuggable on
-  their own and makes an accidental length change show up as a bad checksum
-  rather than going unnoticed.
+  Fill in the 8-bit checksum of a writable ACPI table. AcpiTableDxe recomputes
+  this on install, so it is not load-bearing; doing it here keeps each table well
+  formed the moment it leaves this module, and makes an accidental length change
+  show up as a bad checksum.
 
   @param[in, out]  Table  Table to checksum, in writable memory.
 **/
@@ -316,13 +262,9 @@ MfInstallTemplate (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  //
-  // The FACS has no checksum byte: it is a bare signature/length pair followed
-  // by platform fields, not a common-header table. MfChecksumTable() would treat
-  // it as an EFI_ACPI_DESCRIPTION_HEADER and write at offset 9, which is inside
-  // HardwareSignature (offset 8), corrupting it. AcpiTableDxe does not compute a
-  // checksum for the FACS either, so it has to be installed untouched.
-  //
+  // The FACS has no checksum byte: it is a bare signature/length pair, not a
+  // common-header table, so MfChecksumTable() would write at offset 9, inside
+  // HardwareSignature. AcpiTableDxe does not checksum it either.
   if (Template->Signature != EFI_ACPI_6_5_FIRMWARE_ACPI_CONTROL_STRUCTURE_SIGNATURE) {
     MfChecksumTable (Table);
   }
@@ -478,10 +420,8 @@ AcpiPlatformEntryPoint (
   return EFI_SUCCESS;
 }
 
-// The HPET table is a fixed 0x38 bytes by definition, and its Generic Address
-// Structure has to be 8-byte aligned inside it, which only holds because the
-// fields in MOOREFIELD_HPET are in the order above. If either ever stops being
-// true the table is silently malformed, so pin both down here.
+// The HPET table is 0x38 bytes by definition and its Generic Address Structure
+// must be 8-byte aligned inside it, which only holds given the field order above.
 STATIC_ASSERT (
   sizeof (MOOREFIELD_HPET) == 0x38,
   "HPET table must be 0x38 bytes"

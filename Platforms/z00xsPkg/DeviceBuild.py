@@ -15,9 +15,7 @@
 
 import logging
 import os
-import re
 import shutil
-import subprocess
 import sys
 
 from edk2toolext.environment.uefi_build import UefiBuilder
@@ -29,35 +27,6 @@ from edk2toolext.invocables.edk2_update import UpdateSettingsManager
 
 PACKAGE_NAME = "z00xsPkg"
 DEVICE_NAME = "z00xs"
-FD_NAME = "Z00XS"
-
-# Boot image geometry, matching the stock ZX551ML boot image (mkbootimg -v).
-BOOT_BASE = 0x10000000
-KERNEL_OFFSET = 0x00008000     # kernel load 0x10008000
-RAMDISK_OFFSET = 0x01000000    # ramdisk load 0x11000000
-SECOND_OFFSET = 0x00F00000     # second (our FD) load 0x10F00000
-TAGS_OFFSET = 0x00000100       # tags load 0x10000100
-PAGE_SIZE = 2048
-
-# Exact stock kernel command line (from the mkbootimg dump of the stock image).
-BOOT_CMDLINE = (
-    "init=/init pci=noearly console=logk0 loglevel=0 vmalloc=256M "
-    "androidboot.hardware=mofd_v1 watchdog.watchdog_thresh=60 "
-    "androidboot.spid=xxxx:xxxx:xxxx:xxxx:xxxx:xxxx "
-    "androidboot.serialno=01234567890123456789 gpt "
-    "snd_pcm.maximum_substreams=8 ptrace.ptrace_can_access=1 panic=15 "
-    "ip=50.0.0.2:50.0.0.1::255.255.255.0::usb0:on debug_locks=0 "
-    'n_gsm.mux_base_conf="ttyACM0,0 ttyXMM0,1" bootboost=1'
-)
-
-
-def _fd_name_from_fdf(fdf_path: str) -> str:
-    with open(fdf_path, "r", encoding="utf-8", errors="replace") as fh:
-        for line in fh:
-            m = re.match(r"^\s*\[FD\.([A-Za-z0-9_]+)\]\s*$", line)
-            if m:
-                return m.group(1)
-    return FD_NAME
 
 
 # Common Configuration
@@ -72,11 +41,6 @@ class CommonPlatform:
         "Silicon/Intel",
         "Common/edk2",
     )
-
-
-_fdf_path = os.path.join(CommonPlatform.WorkspaceRoot, "Platforms", PACKAGE_NAME, f"{PACKAGE_NAME}.fdf")
-if os.path.isfile(_fdf_path):
-    FD_NAME = _fd_name_from_fdf(_fdf_path)
 
 
 # Configuration for Update & Setup
@@ -175,94 +139,28 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
         if self.env.GetValue("KDNET_USB") == "1":
             self.env.SetValue("BLD_*_KDNET_USB", "1", "Platform Hardcoded (KDNET_USB=1)")
 
+        #
+        # FD geometry, supplied by build_uefi.py from the device's TOML config
+        # in Resources/Configs/. The platform FDF picks these up as $(FD_BASE),
+        # $(FD_SIZE) and $(FD_BLOCKS), which also sets the PcdFdBaseAddress and
+        # PcdFdSize PCDs read by SecMain, PlatformPei and SmBiosTableDxe.
+        #
+        for _name in ("FD_BASE", "FD_SIZE"):
+            _value = self.env.GetValue(_name)
+            if _value:
+                self.env.SetValue(f"BLD_*_{_name}", _value, "Device TOML config")
+        if self.env.GetValue("FD_SIZE"):
+            _size = int(self.env.GetValue("FD_SIZE"), 0)
+            self.env.SetValue("BLD_*_FD_BLOCKS", str(_size // 0x1000), "Device TOML config")
+
         return 0
 
-    # Boot image packing (mkbootimg + appended ASUS sig)
+    #
+    # Boot image packing is handled by build_uefi.py from the device's config
+    # in Resources/Configs/<device>.toml, which selects the format and its
+    # options. Nothing device-specific belongs here.
+    #
     def PlatformPostBuild(self):
-        ws = self.GetWorkspaceRoot()
-        target = self.env.GetValue("TARGET")
-        out_base = self.env.GetValue("BUILD_OUTPUT_BASE")
-        fd_path = os.path.join(out_base, "FV", f"{FD_NAME}.fd")
-
-        pkg_dir = os.path.join(ws, "Platforms", PACKAGE_NAME)
-        res_dir = os.path.join(pkg_dir, "ImageResources")
-        scripts = os.path.join(ws, "Resources", "Scripts")
-        out_dir = os.path.join(ws, "out")
-        out_image = os.path.join(out_dir, f"boot_{DEVICE_NAME}_{target}.img")
-
-        kernel = os.path.join(res_dir, "kernel")
-        ramdisk = os.path.join(res_dir, "ramdisk")
-        sig = os.path.join(res_dir, "sig")
-
-        if not os.path.isfile(fd_path):
-            logging.critical(f"expected firmware image not produced: {fd_path}")
-            logging.critical(f"    (looked under BUILD_OUTPUT_BASE={out_base})")
-            return 1
-        logging.info(f"==> FD saved as {fd_path} ({os.path.getsize(fd_path)} bytes)")
-
-        # Required boot-image inputs. kernel/ramdisk come from the stock image:
-        #   python3 Resources/Scripts/unpack_bootimg.py boot.img Platforms/z00xsPkg/ImageResources
-        for label, path in (("kernel", kernel), ("ramdisk", ramdisk), ("sig", sig)):
-            if not os.path.isfile(path):
-                logging.critical(f"missing {label}: {path}")
-                if label in ("kernel", "ramdisk"):
-                    logging.critical("        extract them from the stock boot image once:")
-                    logging.critical(f"        python3 Resources/Scripts/unpack_bootimg.py boot.img {res_dir}")
-                return 1
-
-        # The primary bootloader jumps to offset 0 of the second-stage payload
-        # in 32-bit protected mode. Make offset 0 of the FD a direct jmp to the
-        # SEC entry (same mechanism as the OSIP devices).
-        logging.info("==> Patching SEC entry jump at offset 0")
-        patch = subprocess.run(
-            [sys.executable, os.path.join(scripts, "patch_sec_entry.py"), fd_path],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-        )
-        if patch.returncode != 0:
-            logging.critical("patch_sec_entry.py failed: %s", (patch.stderr or patch.stdout).strip())
-            return 1
-
-        with open(fd_path, "rb") as fh:
-            first_byte = fh.read(1)
-        if first_byte != b"\xe9":
-            logging.critical("image is not directly executable at offset 0 (first byte %s)" % first_byte.hex())
-            return 1
-
-        os.makedirs(out_dir, exist_ok=True)
-        if os.path.isfile(out_image):
-            os.remove(out_image)
-
-        logging.info("==> Assembling Android boot image (FD as second bootloader)")
-        mkboot = subprocess.run(
-            [
-                sys.executable, os.path.join(scripts, "mkbootimg.py"),
-                "--kernel", kernel,
-                "--ramdisk", ramdisk,
-                "--second", fd_path,
-                "--cmdline", BOOT_CMDLINE,
-                "--base", hex(BOOT_BASE),
-                "--kernel_offset", hex(KERNEL_OFFSET),
-                "--ramdisk_offset", hex(RAMDISK_OFFSET),
-                "--second_offset", hex(SECOND_OFFSET),
-                "--tags_offset", hex(TAGS_OFFSET),
-                "--pagesize", str(PAGE_SIZE),
-                "--header_version", "0",
-                "-o", out_image,
-            ],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-        )
-        if mkboot.returncode != 0 or not os.path.isfile(out_image):
-            logging.critical("mkbootimg failed: %s", (mkboot.stderr or mkboot.stdout).strip())
-            return 1
-        logging.info(mkboot.stdout.strip())
-
-        # Append the ASUS "sig" blob. It is not verified; the bootloader only
-        # checks that it is present:  cat zf2_6_sig >> <boot image>
-        logging.info("==> Appending ASUS sig (%d bytes)" % os.path.getsize(sig))
-        with open(out_image, "ab") as dst, open(sig, "rb") as src:
-            dst.write(src.read())
-
-        logging.info(f"==> Output image saved as {out_image} ({os.path.getsize(out_image)} bytes)")
         return 0
 
     def FlashRomImage(self):

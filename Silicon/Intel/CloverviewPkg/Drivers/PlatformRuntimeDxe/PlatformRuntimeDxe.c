@@ -6,21 +6,11 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/UefiLib.h>
-#include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
-#include <Library/IoLib.h>
-#include <Library/PcdLib.h>
+#include <Library/ScuIpcLib.h>
 #include <Protocol/RealTimeClock.h>
 #include <Guid/EventGroup.h>
-
-// SCU IPC-1: watchdog STOP = 0x000010F8 (cmd 0xF8, sub-command 1 in bits 15:12)
-#define SCU_IPC_CMD_OFFSET      0x00u
-#define SCU_IPC_STATUS_OFFSET   0x04u
-#define SCU_IPC_STATUS_BUSY     BIT0
-#define SCU_IPC_STATUS_ERROR    BIT1
-#define SCU_IPC_POLL_LIMIT      1000000u
-#define SCU_IPC_WATCHDOG_STOP   0x000010F8u
 
 // Re-issue the watchdog stop every 5s while boot services are alive
 #define WDT_KEEPER_PERIOD_100NS  (5 * 10 * 1000 * 1000ULL)
@@ -48,37 +38,6 @@ STATIC EFI_TIME  mTime = {
 STATIC UINT32  mTicks = 0;
 
 /**
-  Wait until the SCU IPC-1 block is idle; FALSE if busy or unmapped
-**/
-STATIC
-BOOLEAN
-ScuIpcWaitNotBusy (
-  VOID
-  )
-{
-  UINTN   IpcBase;
-  UINT32  Status;
-  UINT32  Retry;
-
-  IpcBase = (UINTN)FixedPcdGet32 (PcdScuIpcBase);
-
-  for (Retry = 0; Retry < SCU_IPC_POLL_LIMIT; Retry++) {
-    Status = MmioRead32 (IpcBase + SCU_IPC_STATUS_OFFSET);
-    if (Status == MAX_UINT32) {
-      return FALSE;
-    }
-
-    if ((Status & SCU_IPC_STATUS_BUSY) == 0) {
-      return TRUE;
-    }
-
-    CpuPause ();
-  }
-
-  return FALSE;
-}
-
-/**
   Stop the SCU kernel watchdog; Verbose=FALSE keeps the periodic keeper quiet
 **/
 STATIC
@@ -87,62 +46,45 @@ ScuStopWatchdog (
   IN BOOLEAN  Verbose
   )
 {
-  UINTN   IpcBase;
-  UINT32  Status;
+  EFI_STATUS  Status;
 
-  IpcBase = (UINTN)FixedPcdGet32 (PcdScuIpcBase);
+  Status = ScuIpcSimpleCommand (
+             SCU_IPC_MSG_WATCHDOG_TIMER,
+             SCU_IPC_WDT_SUB_STOP
+             );
+  switch (Status) {
+  case EFI_SUCCESS:
+    mWdtStopCount++;
+    if (Verbose) {
+      DEBUG ((
+        DEBUG_INFO,
+        "PlatformRuntime: SCU watchdog stopped (stops %u, failures %u)\n",
+        mWdtStopCount,
+        mWdtFailCount
+        ));
+    }
 
-  if (MmioRead32 (IpcBase + SCU_IPC_STATUS_OFFSET) == MAX_UINT32) {
+    break;
+
+  case EFI_NOT_FOUND:
+    //
+    // Not a failure: this counts the SCU as running, which is what the keeper
+    // is reporting, but it will never succeed so it should not look like a
+    // regression either.
+    //
     if (Verbose) {
       DEBUG ((DEBUG_WARN, "PlatformRuntime: SCU IPC not present, watchdog left as-is\n"));
     }
 
-    return;
-  }
+    break;
 
-  if (!ScuIpcWaitNotBusy ()) {
+  default:
     mWdtFailCount++;
     if (Verbose) {
-      DEBUG ((DEBUG_ERROR, "PlatformRuntime: SCU IPC busy before watchdog stop\n"));
+      DEBUG ((DEBUG_ERROR, "PlatformRuntime: SCU watchdog stop failed: %r\n", Status));
     }
 
-    return;
-  }
-
-  MmioWrite32 (IpcBase + SCU_IPC_CMD_OFFSET, SCU_IPC_WATCHDOG_STOP);
-
-  if (!ScuIpcWaitNotBusy ()) {
-    mWdtFailCount++;
-    if (Verbose) {
-      DEBUG ((DEBUG_ERROR, "PlatformRuntime: SCU IPC timeout during watchdog stop\n"));
-    }
-
-    return;
-  }
-
-  Status = MmioRead32 (IpcBase + SCU_IPC_STATUS_OFFSET);
-  if ((Status & SCU_IPC_STATUS_ERROR) != 0) {
-    mWdtFailCount++;
-    if (Verbose) {
-      DEBUG ((
-        DEBUG_ERROR,
-        "PlatformRuntime: SCU rejected watchdog stop (status 0x%08x)\n",
-        Status
-        ));
-    }
-
-    return;
-  }
-
-  mWdtStopCount++;
-  if (Verbose) {
-    DEBUG ((
-      DEBUG_INFO,
-      "PlatformRuntime: SCU watchdog stopped (status 0x%08x, stops %u, failures %u)\n",
-      Status,
-      mWdtStopCount,
-      mWdtFailCount
-      ));
+    break;
   }
 }
 

@@ -7,12 +7,6 @@
 
 [BuildOptions.common.EDKII.SEC]
   *_CLANGPDB_*_DLINK_FLAGS       = /ALIGN:0x1000 /FILEALIGN:0x1000
-  #
-  # On X64, tools_def appends DLINK_XIPFLAGS (/ALIGN:32) to XIP modules (SEC,
-  # PEI_CORE, PEIM), which would clobber the /ALIGN:0x1000 above and leave
-  # SectionAlignment != FileAlignment - fatal when GenFw wraps the module as a
-  # TE image. Override the XIP alignment so both stay at 0x1000.
-  #
   *_CLANGPDB_X64_DLINK_XIPFLAGS  = /ALIGN:0x1000
 
 [BuildOptions.common.EDKII.PEI_CORE,BuildOptions.common.EDKII.PEIM]
@@ -56,7 +50,10 @@
 
   MpInitLib|UefiCpuPkg/Library/MpInitLib/DxeMpInitLib.inf
   CpuPageTableLib|UefiCpuPkg/Library/CpuPageTableLib/CpuPageTableLib.inf
+  SfiTableLib|IntelPkg/Library/SfiTableLib/SfiTableLib.inf
   SfiMemoryMapLib|IntelPkg/Library/SfiMemoryMapLib/SfiMemoryMapLib.inf
+  PlatformMemoryMapLib|IntelPkg/Library/PlatformMemoryMapLib/PlatformMemoryMapLib.inf
+  ScuIpcLib|IntelPkg/Library/ScuIpcLib/ScuIpcLib.inf
 
   #
   # Debug Libraries

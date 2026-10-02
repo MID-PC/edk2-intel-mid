@@ -36,6 +36,11 @@
   #  SEC/PEI temp RAM, below the reserved hole; not part of the SFI map
   gIntelMidTokenSpaceGuid.PcdPeiMemoryBase|0x02100000|UINT32|0x00000005
 
+  ## Maximum physical address bits advertised in the CPU HOB. A DXE core that
+  #  believes the processor only decodes 32 bits truncates the high RAM window,
+  #  so parts with memory above 4 GiB must raise this.
+  gIntelMidTokenSpaceGuid.PcdCpuMaxPhysAddrBits|32|UINT8|0x00000035
+
   ## Legacy RAM below 1 MiB reported as system memory (AP startup trampoline)
   gIntelMidTokenSpaceGuid.PcdLegacyMemoryBase|0x00000000|UINT32|0x00000006
   gIntelMidTokenSpaceGuid.PcdLegacyMemorySize|0x00100000|UINT32|0x00000007
@@ -58,6 +63,17 @@
   gIntelMidTokenSpaceGuid.PcdPciIspMmioSize|0x00800000|UINT64|0x00000019
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase|0xFA000000|UINT64|0x0000001A
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize|0x04000000|UINT64|0x0000001B
+
+  ## SCU IPC-1 register block ("intel_scu_ipc"), used by ResetSystemLib to
+  #  request warm/cold reset and by PlatformPei to send the SD/OTG power-up
+  #  sequence. The address moved between SoC generations, so every platform
+  #  overrides it: Cloverview ff11c000, Moorefield ff009000.
+  gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF11C000|UINT32|0x0000000E
+
+  ## South-complex PMU register block ("intel_pmu_driver"), used by
+  #  ResetSystemLib for the S5 power-off write and by the SD/OTG drivers to
+  #  gate the card power island. Cloverview ff11d000, Moorefield ff00b000.
+  gIntelMidTokenSpaceGuid.PcdPmuBase|0xFF11D000|UINT32|0x0000000F
 
   ## SMBIOS Type 1
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemManufacturer|"Not Specified"|VOID*|0x0000002D

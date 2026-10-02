@@ -113,21 +113,8 @@
 #define PMIC_GPIO6_CTLO_OTG_EN         (BIT5 | BIT4 | BIT0)
 
 //
-// SCU IPC-1 (intel_scu_ipc.c). Tangier and Moorefield share PcdScuIpcBase.
+// The PMIC is reached over SCU IPC-1, which ScuIpcLib owns. The addresses
+// below are PMIC register addresses, not IPC register offsets.
 //
-#define SCU_IPC_COMMAND_OFFSET         0x00
-#define SCU_IPC_STATUS_OFFSET          0x04
-#define SCU_IPC_SPTR_OFFSET            0x08
-#define SCU_IPC_DPTR_OFFSET            0x0C
-#define SCU_IPC_WRITE_BUFFER           0x80
-#define SCU_IPC_READ_BUFFER            0x90
-
-#define SCU_IPC_STATUS_BUSY            BIT0
-#define SCU_IPC_STATUS_ERROR           BIT1
-#define SCU_IPC_STATUS_ERRCODE(S)      (((S) >> 16) & 0xFF)
-
-#define SCU_IPC_MSG_PCNTRL             0xFF    // power controller register access
-#define SCU_IPC_PCNTRL_READ            1
-#define SCU_IPC_PCNTRL_UPDATE          2       // read-modify-write
 
 #endif // DWC3_REGS_H_

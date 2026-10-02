@@ -6,9 +6,7 @@
 
 import logging
 import os
-import re
 import shutil
-import subprocess
 import sys
 
 from edk2toolext.environment.uefi_build import UefiBuilder
@@ -20,17 +18,6 @@ from edk2toolext.invocables.edk2_update import UpdateSettingsManager
 
 PACKAGE_NAME = "t00kPkg"
 DEVICE_NAME = "t00k"
-FD_NAME = "T00K"
-
-def _fd_name_from_fdf(fdf_path: str) -> str:
-    # Read the [FD.*] block name from the platform FDF
-    with open(fdf_path, "r", encoding="utf-8", errors="replace") as fh:
-        for line in fh:
-            m = re.match(r"^\s*\[FD\.([A-Za-z0-9_]+)\]\s*$", line)
-            if m:
-                return m.group(1)
-    return FD_NAME
-
 
 # Common Configuration
 class CommonPlatform:
@@ -44,12 +31,6 @@ class CommonPlatform:
         "Silicon/Intel",
         "Common/edk2",
     )
-
-
-# Derive FDF [FD.*] name at import; fall back to FD_NAME if unavailable
-_fdf_path = os.path.join(CommonPlatform.WorkspaceRoot, "Platforms", PACKAGE_NAME, f"{PACKAGE_NAME}.fdf")
-if os.path.isfile(_fdf_path):
-    FD_NAME = _fd_name_from_fdf(_fdf_path)
 
 
 # Configuration for Update & Setup
@@ -151,68 +132,28 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
         if self.env.GetValue("KDNET_USB") == "1":
             self.env.SetValue("BLD_*_KDNET_USB", "1", "Platform Hardcoded (KDNET_USB=1)")
 
+        #
+        # FD geometry, supplied by build_uefi.py from the device's TOML config
+        # in Resources/Configs/. The platform FDF picks these up as $(FD_BASE),
+        # $(FD_SIZE) and $(FD_BLOCKS), which also sets the PcdFdBaseAddress and
+        # PcdFdSize PCDs read by SecMain, PlatformPei and SmBiosTableDxe.
+        #
+        for _name in ("FD_BASE", "FD_SIZE"):
+            _value = self.env.GetValue(_name)
+            if _value:
+                self.env.SetValue(f"BLD_*_{_name}", _value, "Device TOML config")
+        if self.env.GetValue("FD_SIZE"):
+            _size = int(self.env.GetValue("FD_SIZE"), 0)
+            self.env.SetValue("BLD_*_FD_BLOCKS", str(_size // 0x1000), "Device TOML config")
+
         return 0
 
-    # Boot image packing
+    #
+    # Boot image packing is handled by build_uefi.py from the device's config
+    # in Resources/Configs/<device>.toml, which selects the format and its
+    # options. Nothing device-specific belongs here.
+    #
     def PlatformPostBuild(self):
-        ws = self.GetWorkspaceRoot()
-        target = self.env.GetValue("TARGET")
-        out_base = self.env.GetValue("BUILD_OUTPUT_BASE")
-        fd_path = os.path.join(out_base, "FV", f"{FD_NAME}.fd")
-
-        pkg_dir = os.path.join(ws, "Platforms", PACKAGE_NAME)
-        osip_dir = os.path.join(pkg_dir, "ImageResources")
-        out_dir = os.path.join(ws, "out")
-        out_image = os.path.join(out_dir, f"boot_{DEVICE_NAME}_{target}.img")
-
-        if not os.path.isfile(fd_path):
-            logging.critical(f"expected firmware image not produced: {fd_path}")
-            logging.critical(f"    (looked under BUILD_OUTPUT_BASE={out_base})")
-            return 1
-        logging.info(f"==> FD saved as {fd_path} ({os.path.getsize(fd_path)} bytes)")
-
-        for f in ("hdr", "sig", "cmdline.txt", "parameter"):
-            if not os.path.isfile(os.path.join(osip_dir, f)):
-                logging.critical(f"missing {os.path.join(osip_dir, f)}")
-                logging.critical("        unpack the stock boot image once:")
-                logging.critical(f"        python3 Resources/Scripts/unpack_osip.py boot.img {osip_dir}")
-                return 1
-
-        logging.info("==> Patching SEC entry jump at offset 0")
-        patch = subprocess.run(
-            [sys.executable, os.path.join(ws, "Resources", "Scripts", "patch_sec_entry.py"), fd_path],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-        )
-        if patch.returncode != 0:
-            logging.critical("patch_sec_entry.py failed: %s", (patch.stderr or patch.stdout).strip())
-            return 1
-
-        with open(fd_path, "rb") as fh:
-            first_byte = fh.read(1)
-        if first_byte != b"\xe9":
-            logging.critical("image is not directly executable at offset 0 (first byte %s)" % first_byte.hex())
-            return 1
-
-        os.makedirs(out_dir, exist_ok=True)
-        if os.path.isfile(out_image):
-            os.remove(out_image)
-
-        logging.info("==> Assembling OSIP image with mkosip")
-        mkosip = subprocess.run(
-            [
-                sys.executable,
-                os.path.join(ws, "Resources", "Scripts", "mkosip.py"),
-                "-o", out_image,
-                "-p", fd_path,
-                "-d", osip_dir,
-            ],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-        )
-        if mkosip.returncode != 0 or not os.path.isfile(out_image):
-            logging.critical("mkosip failed: %s", (mkosip.stderr or mkosip.stdout).strip())
-            return 1
-
-        logging.info(f"==> Output image saved as {out_image} ({os.path.getsize(out_image)} bytes)")
         return 0
 
     def FlashRomImage(self):

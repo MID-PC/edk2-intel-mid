@@ -20,12 +20,11 @@
   PeimEntryPoint
   PeiServicesLib
   BaseLib
-  BaseMemoryLib
   DebugLib
-  HobLib
-  IoLib
   LocalApicLib
   PcdLib
+  PlatformMemoryMapLib
+  ScuIpcLib
   SfiMemoryMapLib
 
 [Ppis]
@@ -33,32 +32,8 @@
   gEfiPeiMemoryDiscoveredPpiGuid                ## PRODUCES
 
 [FixedPcd]
-  gIntelMidTokenSpaceGuid.PcdFdBaseAddress
-  gIntelMidTokenSpaceGuid.PcdFdSize
-  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase
-  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize
-  gIntelMidTokenSpaceGuid.PcdPeiMemoryBase
   gIntelMidTokenSpaceGuid.PcdLegacyMemoryBase
   gIntelMidTokenSpaceGuid.PcdLegacyMemorySize
-  gIntelMidTokenSpaceGuid.PcdLegacyReservedBase
-  gIntelMidTokenSpaceGuid.PcdLegacyReservedSize
-  gIntelMidTokenSpaceGuid.PcdLegacyReservedType
-  gIntelMidTokenSpaceGuid.PcdLegacyTopBase
-  gIntelMidTokenSpaceGuid.PcdLegacyTopSize
-  gIntelMidTokenSpaceGuid.PcdConsoleStateBase
-  gIntelMidTokenSpaceGuid.PcdPciGpuMmioBase
-  gIntelMidTokenSpaceGuid.PcdPciGpuMmioSize
-  gIntelMidTokenSpaceGuid.PcdPciIspMmioBase
-  gIntelMidTokenSpaceGuid.PcdPciIspMmioSize
-  gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase
-  gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize
-  gMoorefieldTokenSpaceGuid.PcdScuIpcBase
-  gMoorefieldTokenSpaceGuid.PcdDwc3Base
-  gMoorefieldTokenSpaceGuid.PcdDwc3Size
-  gIntelMidTokenSpaceGuid.PcdFrameBufferBase
-  gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
-  gIntelMidTokenSpaceGuid.PcdFrameBufferHeight
-  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
 
 [Depex]
   TRUE

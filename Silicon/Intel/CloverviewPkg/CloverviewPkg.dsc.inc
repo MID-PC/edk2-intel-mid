@@ -24,14 +24,22 @@
 [PcdsFixedAtBuild]
   #
   # Image / temporary RAM layout.
-  # 0x01101000 is where the primary bootloader hands control over to the bootstub
-  # Temporary RAM is put well above the image inside the first System RAM window
+  # PcdFdBaseAddress is where the primary bootloader hands control over to the
+  # bootstub. Both it and PcdFdSize are set from the device's FD geometry, which
+  # lives in Resources/Configs/<device>.toml and reaches the build through the
+  # platform FDF; the .dec defaults are the fallback for a build that bypasses
+  # that path. Temporary RAM is put well above the image inside the first
+  # System RAM window.
   #
-  gIntelMidTokenSpaceGuid.PcdFdBaseAddress|0x01101000
-  gIntelMidTokenSpaceGuid.PcdFdSize|0x00200000
-
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize|0x00040000
+
+  #
+  # SCU IPC-1 (intel_scu_ipc) and south-complex PMU (intel_pmu_driver) register
+  # blocks, consumed by IntelPkg/Library/ScuResetSystemLib and by PlatformPei.
+  #
+  gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF11C000
+  gIntelMidTokenSpaceGuid.PcdPmuBase|0xFF11D000
 
   #
   # Local APIC timer clock = bus clock
@@ -62,7 +70,7 @@
   #
   # SCU IPC command based reset runtime
   #
-  ResetSystemLib|CloverviewPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
+  ResetSystemLib|IntelPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
 
 [Components]
   #
