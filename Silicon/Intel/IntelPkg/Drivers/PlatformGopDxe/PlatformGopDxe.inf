@@ -4,7 +4,7 @@
   FILE_GUID                      = 2A3B4C5D-6E7F-4081-9203-A4B5C6D7E8F9
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
-  ENTRY_POINT                    = PlatformGopEntryPoint
+  ENTRY_POINT                    = PlatformGopDxeEntryPoint
 
 [Sources]
   PlatformGopDxe.c

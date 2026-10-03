@@ -1,0 +1,48 @@
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = MoorefieldPkg
+  PACKAGE_GUID                   = 2C7E9A15-4B6D-4F8A-9C31-7E5D2A1B4C60
+  PACKAGE_VERSION                = 0.1
+
+[Includes]
+  Include
+
+[Guids]
+  gMoorefieldTokenSpaceGuid = { 0x7a1e4c2d, 0x9b3f, 0x4d5e, { 0x8a, 0x6c, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 } }
+  gMoorefieldAcpiTableStorageGuid = { 0x1b3d2a44, 0x9c07, 0x4e2f, { 0xa7, 0x1d, 0x63, 0x8e, 0x50, 0x9b, 0x22, 0x6c } }
+
+[PcdsFixedAtBuild]
+  ## Local APIC (xAPIC) MMIO window
+  gMoorefieldTokenSpaceGuid.PcdLocalApicBase|0xFEE00000|UINT32|0x00000006
+  gMoorefieldTokenSpaceGuid.PcdLocalApicSize|0x00001000|UINT32|0x00000007
+
+  ## I/O APIC MMIO window
+  gMoorefieldTokenSpaceGuid.PcdIoApicBase|0xFEC00000|UINT32|0x00000008
+  gMoorefieldTokenSpaceGuid.PcdIoApicSize|0x00000400|UINT32|0x00000009
+
+  ## IA-PC HPET register block
+  gMoorefieldTokenSpaceGuid.PcdHpetBase|0xFED00000|UINT32|0x0000000A
+  gMoorefieldTokenSpaceGuid.PcdHpetSize|0x00000400|UINT32|0x0000000B
+
+  ## SD host controller (mmc1, SD card slot) MMIO window
+  gMoorefieldTokenSpaceGuid.PcdSdHostBase|0xFF3FA000|UINT32|0x00000003
+  gMoorefieldTokenSpaceGuid.PcdSdHostSize|0x00001000|UINT32|0x00000004
+
+  ## PMU LSS index that gates the SDIO0 power island
+  gMoorefieldTokenSpaceGuid.PcdSdHostPmuLss|1|UINT32|0x00000005
+
+  ## DWC3 USB3 host controller MMIO aperture.
+  ## The xHCI registers sit at the base; the DWC3 global registers are at base + 0xC100
+  ## Must stay in sync with the PMM0 PCI0 window in DSDT
+  gMoorefieldTokenSpaceGuid.PcdDwc3Base|0xF9100000|UINT32|0x0000000C
+  gMoorefieldTokenSpaceGuid.PcdDwc3Size|0x00100000|UINT32|0x0000000D
+
+  ## langwell GPIO controller BAR0
+  gMoorefieldTokenSpaceGuid.PcdGpioBase|0xFF008000|UINT32|0x0000000E
+
+  ## SD card detect line as a GPIO pin number
+  gMoorefieldTokenSpaceGuid.PcdSdCardCdPin|77|UINT32|0x0000000F
+
+  ## PCI Express (MMCONFIG) window
+  ## Must stay in sync with PDRC in DSDT
+  gMoorefieldTokenSpaceGuid.PcdPciMmcfgBase|0x7F600000|UINT32|0x00000010

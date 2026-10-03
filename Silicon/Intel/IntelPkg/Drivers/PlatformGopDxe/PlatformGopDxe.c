@@ -136,7 +136,7 @@ STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL  mGop = {
 **/
 EFI_STATUS
 EFIAPI
-PlatformGopEntryPoint (
+PlatformGopDxeEntryPoint (
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
   )

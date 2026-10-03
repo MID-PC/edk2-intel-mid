@@ -1,0 +1,40 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PlatformMemoryMapLib
+  FILE_GUID                      = 3E7C4A16-58D2-4B9F-9C31-6A0B7D5E2F48
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = PlatformMemoryMapLib
+
+[Sources]
+  PlatformMemoryMapLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  HobLib
+  PcdLib
+  PeiServicesLib
+
+[FixedPcd]
+  gIntelMidTokenSpaceGuid.PcdFdBaseAddress
+  gIntelMidTokenSpaceGuid.PcdFdSize
+  gIntelMidTokenSpaceGuid.PcdPeiMemoryBase
+  gIntelMidTokenSpaceGuid.PcdCpuMaxPhysAddrBits
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase
+  gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedBase
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedSize
+  gIntelMidTokenSpaceGuid.PcdLegacyReservedType
+  gIntelMidTokenSpaceGuid.PcdLegacyTopBase
+  gIntelMidTokenSpaceGuid.PcdLegacyTopSize
+  gIntelMidTokenSpaceGuid.PcdConsoleStateBase
+  gIntelMidTokenSpaceGuid.PcdPciGpuMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciGpuMmioSize
+  gIntelMidTokenSpaceGuid.PcdPciIspMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciIspMmioSize
+  gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase
+  gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize

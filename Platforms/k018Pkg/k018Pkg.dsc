@@ -4,7 +4,7 @@
   PLATFORM_GUID                  = 5944194D-373F-43D9-9058-C2E537F705AB
   PLATFORM_VERSION               = 0.10
   DSC_SPECIFICATION              = 0x00010005
-  OUTPUT_DIRECTORY               = Build/k018/Pkg
+  OUTPUT_DIRECTORY               = Build/k018Pkg
   SUPPORTED_ARCHITECTURES        = IA32
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
@@ -38,5 +38,4 @@
 
 [Components]
   # ACPI
-  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
   k018Pkg/AcpiPlatformDxe/AcpiTables.inf

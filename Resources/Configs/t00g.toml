@@ -1,0 +1,8 @@
+# UEFI FD Configs
+[uefi_fd]
+base = 0x01101000 # bootstub entry point
+size = 0x00200000
+
+# Boot Image Configs
+[boot_image]
+format = "osip"

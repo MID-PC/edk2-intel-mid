@@ -1,0 +1,19 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SfiTableLib
+  FILE_GUID                      = 7C4E1A05-3D82-4F6B-9E10-2B8A5F6D3C41
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = SfiTableLib
+
+[Sources]
+  SfiTableLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib

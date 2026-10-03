@@ -201,14 +201,14 @@
 | SD Card              |               | ✅    |
 | Side Buttons         |               | ❌    |
 | Light Sensor         |               | ❌    |
-| Accelerometer Sensor |               | ✅    |
+| Accelerometer Sensor |               | ❌    |
 | Temperature Sensor   |               | ❌    |
 | Battery              |               | ❌    |
 | USB Host Mode        |               | ✅    |
 | Charging             |               | ❌    |
-| WLAN                 |               | ✅    |
+| WLAN                 |               | ❌    |
 | CPU                  |               | ✅    |
-| Touchscreen          |               | ✅    |
+| Touchscreen          |               | ❌    |
 | Bluetooth            |               | ❌    |
 | GPS                  |               | ❌    |
 | Audio                |               | ❌    |
@@ -272,6 +272,35 @@
 
 </td></tr>
 </table>
+</details>
+
+</details>
+
+<details>
+<summary><b><strong>Intel Atom z35xx (Moorefield)</strong></b></summary>
+
+<br>
+
+<details>
+<summary><b><strong>Intel Atom z3580 / z3590</strong></b></summary>
+
+## Asus Zenfone Zoom (ZX551ML)
+
+**Codename:** z00xs
+
+### UEFI Status
+
+| Feature            | Description                 | State |
+|:-------------------|:----------------------------|:-----:|
+| Display            |                             | ✅    |
+| Shell              |                             | ✅    |
+| Internal Storage   |                             | ❌    |
+| SD Card            |                             | ✅    |
+| Side Buttons       |                             | ❌    |
+| USB Host Mode      |                             | ✅    |
+| Windows Boot       |                             | ✅    |
+| Linux Boot         |                             | ❌    |
+
 </details>
 
 </details>

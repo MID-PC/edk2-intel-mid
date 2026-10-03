@@ -1,0 +1,16 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = AcpiTables
+  FILE_GUID                      = 1B3D2A44-9C07-4E2F-A71D-638E509B226C
+  MODULE_TYPE                    = USER_DEFINED
+  VERSION_STRING                 = 1.0
+
+[Sources]
+  Dsdt.asl
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MoorefieldPkg/MoorefieldPkg.dec
+
+[Guids]
+  gMoorefieldAcpiTableStorageGuid

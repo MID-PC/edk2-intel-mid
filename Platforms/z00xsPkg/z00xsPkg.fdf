@@ -1,0 +1,104 @@
+
+[FD.Z00XS]
+BaseAddress   = $(FD_BASE) | gIntelMidTokenSpaceGuid.PcdFdBaseAddress
+Size          = $(FD_SIZE) | gIntelMidTokenSpaceGuid.PcdFdSize
+ErasePolarity = 1
+BlockSize     = 0x1000
+NumBlocks     = $(FD_BLOCKS)
+
+# SEC first so the image is directly executable at offset 0
+0x00000000|0x00010000
+FV = FVSEC
+
+0x00010000|0x003F0000
+FV = FVMAIN
+
+# SEC firmware volume
+[FV.FVSEC]
+BlockSize          = 0x1000
+FvAlignment        = 16
+ERASE_POLARITY     = 1
+MEMORY_MAPPED      = TRUE
+STICKY_WRITE       = TRUE
+LOCK_CAP           = TRUE
+LOCK_STATUS        = TRUE
+WRITE_DISABLED_CAP = TRUE
+WRITE_ENABLED_CAP  = TRUE
+WRITE_STATUS       = TRUE
+WRITE_LOCK_CAP     = TRUE
+WRITE_LOCK_STATUS  = TRUE
+READ_DISABLED_CAP  = TRUE
+READ_ENABLED_CAP   = TRUE
+READ_STATUS        = TRUE
+READ_LOCK_CAP      = TRUE
+READ_LOCK_STATUS   = TRUE
+
+INF IntelPkg/Sec/SecMain.inf
+
+# Main firmware volume: PEI + DXE
+[FV.FVMAIN]
+BlockSize          = 0x1000
+FvAlignment        = 16
+ERASE_POLARITY     = 1
+MEMORY_MAPPED      = TRUE
+STICKY_WRITE       = TRUE
+LOCK_CAP           = TRUE
+LOCK_STATUS        = TRUE
+WRITE_DISABLED_CAP = TRUE
+WRITE_ENABLED_CAP  = TRUE
+WRITE_STATUS       = TRUE
+WRITE_LOCK_CAP     = TRUE
+WRITE_LOCK_STATUS  = TRUE
+READ_DISABLED_CAP  = TRUE
+READ_ENABLED_CAP   = TRUE
+READ_STATUS        = TRUE
+READ_LOCK_CAP      = TRUE
+READ_LOCK_STATUS   = TRUE
+
+# PEIM
+INF  MdeModulePkg/Core/Pei/PeiMain.inf
+INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
+INF  MoorefieldPkg/PlatformPei/PlatformPei.inf
+INF  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
+
+FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
+   SECTION GUIDED EE4E5898-3914-4259-9D6E-DC7BD79403CF PROCESSING_REQUIRED = TRUE {
+     SECTION FV_IMAGE = FVDXE
+   }
+ }
+
+# DXE firmware volume (LZMA compressed inside FVMAIN)
+[FV.FVDXE]
+BlockSize          = 0x1000
+FvAlignment        = 16
+ERASE_POLARITY     = 1
+MEMORY_MAPPED      = TRUE
+STICKY_WRITE       = TRUE
+LOCK_CAP           = TRUE
+LOCK_STATUS        = TRUE
+WRITE_DISABLED_CAP = TRUE
+WRITE_ENABLED_CAP  = TRUE
+WRITE_STATUS       = TRUE
+WRITE_LOCK_CAP     = TRUE
+WRITE_LOCK_STATUS  = TRUE
+READ_DISABLED_CAP  = TRUE
+READ_ENABLED_CAP   = TRUE
+READ_STATUS        = TRUE
+READ_LOCK_CAP      = TRUE
+READ_LOCK_STATUS   = TRUE
+
+# PCD must dispatch first
+APRIORI DXE {
+  INF  MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
+}
+
+# DXE drivers
+!include MoorefieldPkg/DXE.fdf.inc
+
+# ACPI
+INF  RuleOverride = ACPITABLE z00xsPkg/AcpiPlatformDxe/AcpiTables.inf
+
+!include IntelPkg/Extra.fdf.inc
+
+# Common FDF rules
+!include IntelPkg/Common.fdf.inc

@@ -39,5 +39,4 @@
 
 [Components]
   # ACPI
-  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
   t00gPkg/AcpiPlatformDxe/AcpiTables.inf

@@ -22,13 +22,8 @@
   gCloverviewTokenSpaceGuid.PcdOtgHostBase|0xFFA60000|UINT32|0x00000024
   gCloverviewTokenSpaceGuid.PcdOtgHostSize|0x00001000|UINT32|0x00000025
 
-  ## SCU IPC-1 register block (intel_scu_ipc)
-  gCloverviewTokenSpaceGuid.PcdScuIpcBase|0xFF11C000|UINT32|0x00000022
-
   ## Langwell GPIO Core bank (clv_gpio_1), global GPIO base 96
   gCloverviewTokenSpaceGuid.PcdGpioCoreBase|0xFF13F000|UINT32|0x00000023
 
   ## Langwell GPIO AON bank (clv_gpio_0), global GPIO base 0
   gCloverviewTokenSpaceGuid.PcdGpioAuxBase|0xFF119000|UINT32|0x00000026
-  ## South-complex PMU ("intel_pmu_driver", ff11d000-ff11dfff).
-  gCloverviewTokenSpaceGuid.PcdPmuBase|0xFF11D000|UINT32|0x00000027

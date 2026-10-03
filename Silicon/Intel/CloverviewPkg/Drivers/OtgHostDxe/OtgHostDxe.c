@@ -469,7 +469,6 @@ CtOtgEnterHostMode (
 
 STATIC UINTN      mOtgOpBase   = 0;
 STATIC EFI_EVENT  mOtgPollEvent = NULL;
-STATIC EFI_HANDLE mOtgNdHandle = NULL;
 
 /**
   Read one ULPI register via the viewport; 0xFFFF on timeout means no ULPI
@@ -658,9 +657,8 @@ STATIC EFI_EVENT  mOtgExitBootServicesEvent = NULL;
 
 /**
   ExitBootServices: stop firmware polling and keep the pads Windows needs.
-  Windows' usbehci.sys only programs UFOR/UFOT/UFOS - no driver for the
-  TUSB1211 CS/RST or CHG_OTG VBUS lines - so re-assert them and clear HOSTPC1's
-  PHY low-power/auto-suspend bits for the hand-off.
+  usbehci.sys only programs UFOR/UFOT/UFOS, with no driver for the TUSB1211 CS/RST or
+  CHG_OTG VBUS lines, so re-assert them and clear HOSTPC1's PHY suspend bits.
 **/
 STATIC
 VOID
@@ -867,7 +865,6 @@ OtgHostDxeEntryPoint (
   }
 
   DEBUG ((DEBUG_ERROR, "OtgHostDxe: EHCI host registered at 0x%08x, handle %p\n", Base + CT_CI_CAP_OFFSET, Handle));
-  mOtgNdHandle = Handle;
 
   Status = EFI_SUCCESS;
   DEBUG ((DEBUG_ERROR, "OtgHostDxe: registration done, leaving connect to BDS ConnectAll\n"));

@@ -14,6 +14,25 @@ INF  MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
 INF  MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf
 INF  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
 
+# Cloverview Platform Setup
+INF  CloverviewPkg/Drivers/PlatformRuntimeDxe/PlatformRuntimeDxe.inf
+
+# SDHCI
+INF  CloverviewPkg/Drivers/SdHostDxe/SdHostDxe.inf
+INF  MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
+INF  MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
+INF  MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
+
+# USB ChipIdea OTG forced into EHCI host mode + generic USB EHCI stack
+# Disabled in the no-USB KDNET variant
+!ifndef KDNET_USB
+INF  CloverviewPkg/Drivers/OtgHostDxe/OtgHostDxe.inf
+INF  MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+!endif
+
 # ACPI
 INF  MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
 INF  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
@@ -22,13 +41,8 @@ INF  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
 INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
 INF  IntelPkg/Drivers/SmBiosTableDxe/SmBiosTableDxe.inf
 
-# SDHCI
-INF  MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
-INF  MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
-INF  MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
-
 # Graphics
-INF  IntelPkg/Library/PlatformGopLib/PlatformGopDxe.inf
+INF  IntelPkg/Drivers/PlatformGopDxe/PlatformGopDxe.inf
 INF  MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
 INF  MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
 INF  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf

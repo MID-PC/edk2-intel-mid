@@ -11,19 +11,12 @@
 #include <Library/IoLib.h>
 #include <Library/PcdLib.h>
 #include <Library/ResetSystemLib.h>
+#include <Library/ScuIpcLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeLib.h>
 
-#define SCU_IPC_COMMAND_OFFSET     0x00U
-#define SCU_IPC_STATUS_OFFSET      0x04U
-#define SCU_IPC_STATUS_BUSY        BIT0
-#define SCU_IPC_STATUS_ERROR       BIT1
-#define SCU_IPC_WARM_RESET         0xF0U
-#define SCU_IPC_COLD_RESET         0xF1U
-#define SCU_IPC_POLL_LIMIT         3000000U
-#define SCU_IPC_MMIO_SIZE          SIZE_4KB
-
-// South-complex PMU (0xff11d000)
+// South-complex PMU register block (PcdPmuBase: ff11d000 on Cloverview,
+// ff00b000 on Moorefield)
 // Mirrors Linux pmu_power_off()
 #define PMU_PM_STS_OFFSET          0x00U
 #define PMU_PM_CMD_OFFSET          0x04U
@@ -32,7 +25,6 @@
 #define PMU_BUSY_POLL_LIMIT        1000000U
 #define PMU_MMIO_SIZE              SIZE_4KB
 
-STATIC VOID       *mScuIpcBase;
 STATIC VOID       *mPmuBase;
 STATIC EFI_EVENT  mVirtualAddressChangeEvent;
 
@@ -44,7 +36,6 @@ ScuResetVirtualAddressChange (
   IN VOID       *Context
   )
 {
-  EfiConvertPointer (0, &mScuIpcBase);
   EfiConvertPointer (0, &mPmuBase);
 }
 
@@ -58,18 +49,9 @@ ScuResetSystemLibConstructor (
   EFI_STATUS            Status;
   EFI_PHYSICAL_ADDRESS  Base;
 
-  Base        = (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdScuIpcBase);
-  mScuIpcBase = (VOID *)(UINTN)Base;
-
-  Status = gDS->SetMemorySpaceAttributes (
-                  Base,
-                  SCU_IPC_MMIO_SIZE,
-                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
-                  );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_WARN, "SCU reset: failed to mark IPC MMIO runtime: %r\n", Status));
-  }
-
+  // ScuIpcLib makes its own aperture uncacheable on first use. The PMU block does
+  // not help itself, so map it here; SetMemorySpaceAttributes only records a GCD
+  // attribute, and this is the only path we have across ExitBootServices.
   Base     = (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdPmuBase);
   mPmuBase = (VOID *)(UINTN)Base;
 
@@ -93,53 +75,20 @@ ScuResetSystemLibConstructor (
   return Status;
 }
 
-STATIC
-BOOLEAN
-ScuIpcWaitIdle (
-  VOID
-  );
+/**
+  Ask the SCU to reset, then wait for it to happen.
 
-#pragma GCC diagnostic ignored "-Wunused-function"
-
-STATIC
-BOOLEAN
-ScuIpcWaitIdle (
-  VOID
-  )
-{
-  UINT32  Retry;
-  UINT32  Status;
-  UINTN   Base;
-
-  Base = (UINTN)mScuIpcBase;
-  for (Retry = 0; Retry < SCU_IPC_POLL_LIMIT; Retry++) {
-    Status = MmioRead32 (Base + SCU_IPC_STATUS_OFFSET);
-    if ((Status & SCU_IPC_STATUS_BUSY) == 0) {
-      return (BOOLEAN)((Status & SCU_IPC_STATUS_ERROR) == 0);
-    }
-
-    CpuPause ();
-  }
-
-  return FALSE;
-}
-
+  Whether the command was accepted makes no difference: if the SCU did not take it
+  nothing else resets the board, so the alternatives are a hang either way.
+**/
 STATIC
 VOID
 ScuReset (
-  IN UINT8  Command
+  IN UINT32  Command
   )
 {
-  UINTN  Base;
-
-  Base = (UINTN)mScuIpcBase;
   DEBUG ((DEBUG_ERROR, "SCU reset: issuing command 0x%02x\n", Command));
-  if ((Base != 0) && (MmioRead32 (Base + SCU_IPC_STATUS_OFFSET) != MAX_UINT32)) {
-    if (ScuIpcWaitIdle ()) {
-      MmioWrite32 (Base + SCU_IPC_COMMAND_OFFSET, Command);
-      ScuIpcWaitIdle ();
-    }
-  }
+  ScuIpcSimpleCommand (Command, 0);
 
   CpuDeadLoop ();
 }
@@ -150,7 +99,7 @@ ResetCold (
   VOID
   )
 {
-  ScuReset (SCU_IPC_COLD_RESET);
+  ScuReset (SCU_IPC_MSG_COLD_RESET);
 }
 
 VOID
@@ -159,7 +108,7 @@ ResetWarm (
   VOID
   )
 {
-  ScuReset (SCU_IPC_WARM_RESET);
+  ScuReset (SCU_IPC_MSG_WARM_RESET);
 }
 
 STATIC
@@ -203,7 +152,7 @@ ResetShutdown (
     CpuDeadLoop ();
   }
 
-  ScuReset (SCU_IPC_COLD_RESET);
+  ScuReset (SCU_IPC_MSG_COLD_RESET);
 }
 
 VOID

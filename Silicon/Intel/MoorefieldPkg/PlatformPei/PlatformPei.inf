@@ -1,0 +1,39 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PlatformPei
+  FILE_GUID                      = 8A9B0C1D-2E3F-4051-A6B7-C8D9E0F11223
+  MODULE_TYPE                    = PEIM
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = PlatformPeiEntryPoint
+
+[Sources]
+  PlatformPei.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MoorefieldPkg/MoorefieldPkg.dec
+  IntelPkg/IntelPkg.dec
+
+[LibraryClasses]
+  PeimEntryPoint
+  PeiServicesLib
+  BaseLib
+  DebugLib
+  LocalApicLib
+  PcdLib
+  PlatformMemoryMapLib
+  ScuIpcLib
+  SfiMemoryMapLib
+
+[Ppis]
+  gEfiPeiMasterBootModePpiGuid                  ## PRODUCES
+  gEfiPeiMemoryDiscoveredPpiGuid                ## PRODUCES
+
+[FixedPcd]
+  gIntelMidTokenSpaceGuid.PcdLegacyMemoryBase
+  gIntelMidTokenSpaceGuid.PcdLegacyMemorySize
+
+[Depex]
+  TRUE

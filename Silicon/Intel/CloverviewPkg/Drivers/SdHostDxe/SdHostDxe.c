@@ -5,24 +5,13 @@
 #include <PiDxe.h>
 #include <Library/DebugLib.h>
 #include <Library/IoLib.h>
+#include <Library/ScuIpcLib.h>
 #include <Library/TimerLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/NonDiscoverableDeviceRegistrationLib.h>
 #include <Library/PcdLib.h>
 #include <Protocol/SdMmcOverride.h>
-
-// SCU IPC-1 register block (PcdScuIpcBase)
-#define SCU_IPC_COMMAND       0x00
-#define SCU_IPC_STATUS        0x04
-#define SCU_IPC_WRITE_BUFFER  0x80
-#define SCU_IPC_READ_BUFFER   0x90
-#define SCU_IPC_BUSY          BIT0
-#define SCU_IPC_ERROR         BIT1
-#define SCU_IPC_PCNTRL        0xFF
-#define SCU_IPC_PCNTRL_WRITE  0
-#define SCU_IPC_PCNTRL_READ   1
-#define SCU_IPC_POLL_LIMIT    3000000U
 
 #define VCCSDIO_ADDR    0xD5
 #define VCCSDIO_NORMAL  0x07
@@ -53,84 +42,9 @@
 
 STATIC EFI_HANDLE  mSdControllerHandle;
 
-STATIC
-EFI_STATUS
-ScuIpcWait (
-  IN UINTN  IpcBase
-  )
-{
-  UINT32  Retry;
-  UINT32  Status;
-
-  for (Retry = 0; Retry < SCU_IPC_POLL_LIMIT; Retry++) {
-    Status = MmioRead32 (IpcBase + SCU_IPC_STATUS);
-    if ((Status & SCU_IPC_BUSY) == 0) {
-      return ((Status & SCU_IPC_ERROR) == 0) ? EFI_SUCCESS : EFI_DEVICE_ERROR;
-    }
-
-    MicroSecondDelay (1);
-  }
-
-  return EFI_TIMEOUT;
-}
-
-STATIC
-EFI_STATUS
-ScuPmicRead8 (
-  IN  UINT16  Address,
-  OUT UINT8   *Value
-  )
-{
-  EFI_STATUS  Status;
-  UINTN       IpcBase;
-
-  IpcBase = (UINTN)FixedPcdGet32 (PcdScuIpcBase);
-  Status  = ScuIpcWait (IpcBase);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  // Linux pwr_reg_rdwr(): a read carries one little-endian UINT16 address
-  MmioWrite32 (IpcBase + SCU_IPC_WRITE_BUFFER, Address);
-  MmioWrite32 (
-    IpcBase + SCU_IPC_COMMAND,
-    (2U << 16) | (SCU_IPC_PCNTRL_READ << 12) | SCU_IPC_PCNTRL
-    );
-  Status = ScuIpcWait (IpcBase);
-  if (!EFI_ERROR (Status)) {
-    *Value = MmioRead8 (IpcBase + SCU_IPC_READ_BUFFER);
-  }
-
-  return Status;
-}
-
-STATIC
-EFI_STATUS
-ScuPmicWrite8 (
-  IN UINT16  Address,
-  IN UINT8   Value
-  )
-{
-  EFI_STATUS  Status;
-  UINTN       IpcBase;
-  UINT32      Payload;
-
-  IpcBase = (UINTN)FixedPcdGet32 (PcdScuIpcBase);
-  Status  = ScuIpcWait (IpcBase);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  // Linux pwr_reg_rdwr(): write payload is UINT16 address followed by UINT8
-  Payload = (UINT32)Address | ((UINT32)Value << 16);
-  MmioWrite32 (IpcBase + SCU_IPC_WRITE_BUFFER, Payload);
-  MmioWrite32 (
-    IpcBase + SCU_IPC_COMMAND,
-    (3U << 16) | (SCU_IPC_PCNTRL_WRITE << 12) | SCU_IPC_PCNTRL
-    );
-  return ScuIpcWait (IpcBase);
-}
-
+/**
+  The SD card rail is powered by the PMIC, which only the SCU can reach.
+**/
 STATIC
 VOID
 CloverviewEnableSdPower (
@@ -141,13 +55,13 @@ CloverviewEnableSdPower (
   UINT8       Value;
 
   Value  = 0;
-  Status = ScuPmicRead8 (VCCSDIO_ADDR, &Value);
+  Status = ScuIpcPmicRead (VCCSDIO_ADDR, &Value);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_WARN, "SdHostDxe: VCCSDIO read failed: %r; using inherited power state\n", Status));
     return;
   }
 
-  Status = ScuPmicWrite8 (VCCSDIO_ADDR, VCCSDIO_NORMAL);
+  Status = ScuIpcPmicWrite (VCCSDIO_ADDR, VCCSDIO_NORMAL);
   DEBUG ((
     EFI_ERROR (Status) ? DEBUG_WARN : DEBUG_VERBOSE,
     "SdHostDxe: VCCSDIO 0x%02x -> 0x%02x: %r\n",

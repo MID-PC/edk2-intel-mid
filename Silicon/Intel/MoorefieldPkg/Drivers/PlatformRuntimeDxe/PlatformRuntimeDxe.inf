@@ -1,0 +1,30 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PlatformRuntimeDxe
+  FILE_GUID                      = 6C4D2E1F-8A9B-4F53-9C21-3B4E5A6F7081
+  MODULE_TYPE                    = DXE_RUNTIME_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = PlatformRuntimeEntryPoint
+
+[Sources]
+  PlatformRuntimeDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MoorefieldPkg/MoorefieldPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+  UefiLib
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+
+[Protocols]
+  gEfiRealTimeClockArchProtocolGuid             ## PRODUCES
+
+[Depex]
+  TRUE

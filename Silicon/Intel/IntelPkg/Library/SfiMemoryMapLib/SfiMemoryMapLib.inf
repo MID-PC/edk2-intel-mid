@@ -14,6 +14,8 @@
   IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
+  SfiTableLib
+  PlatformMemoryMapLib
   BaseLib
   BaseMemoryLib
   DebugLib

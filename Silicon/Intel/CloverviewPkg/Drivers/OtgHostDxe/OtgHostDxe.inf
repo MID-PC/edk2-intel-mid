@@ -13,6 +13,7 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   CloverviewPkg/CloverviewPkg.dec
+  IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -36,7 +37,7 @@
   gCloverviewTokenSpaceGuid.PcdOtgHostSize
   gCloverviewTokenSpaceGuid.PcdGpioCoreBase
   gCloverviewTokenSpaceGuid.PcdGpioAuxBase
-  gCloverviewTokenSpaceGuid.PcdPmuBase
+  gIntelMidTokenSpaceGuid.PcdPmuBase
 
 [Depex]
   TRUE

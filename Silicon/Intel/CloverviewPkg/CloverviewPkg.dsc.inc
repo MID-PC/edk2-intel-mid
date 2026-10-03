@@ -23,20 +23,18 @@
 
 [PcdsFixedAtBuild]
   #
-  # Image / temporary RAM layout.
-  # 0x01101000 is where the primary bootloader hands control over to the bootstub
   # Temporary RAM is put well above the image inside the first System RAM window
   #
-  gIntelMidTokenSpaceGuid.PcdFdBaseAddress|0x01101000
-  gIntelMidTokenSpaceGuid.PcdFdSize|0x00200000
-
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize|0x00040000
 
   #
-  # Local APIC timer clock = bus clock
-  # Cloverview runs a 100 MHz FSB
+  # SCU IPC-1 (intel_scu_ipc) and south-complex PMU (intel_pmu_driver)
   #
+  gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF11C000
+  gIntelMidTokenSpaceGuid.PcdPmuBase|0xFF11D000
+
+  # Local APIC timer clock = bus clock; Cloverview runs a 100 MHz FSB
   gEfiMdePkgTokenSpaceGuid.PcdFSBClock|100000000
 
   #
@@ -62,7 +60,7 @@
   #
   # SCU IPC command based reset runtime
   #
-  ResetSystemLib|CloverviewPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
+  ResetSystemLib|IntelPkg/Library/ScuResetSystemLib/ScuResetSystemLib.inf
 
 [Components]
   #
@@ -80,10 +78,8 @@
   #
   CloverviewPkg/Drivers/SdHostDxe/SdHostDxe.inf
 
-  #
-  # USB ChipIdea OTG forced into EHCI host mode + generic USB EHCI stack
+  # ChipIdea OTG forced into EHCI host mode + generic USB EHCI stack
   # Disabled in the no-USB KDNET variant
-  #
 !ifndef KDNET_USB
   CloverviewPkg/Drivers/OtgHostDxe/OtgHostDxe.inf
   MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
@@ -91,3 +87,8 @@
   MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
   MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
 !endif
+
+  #
+  # ACPI installation
+  #
+  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
