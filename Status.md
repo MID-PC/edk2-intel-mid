@@ -245,10 +245,10 @@
 | Display            |                             | ✅    |
 | Shell              |                             | ✅    |
 | Internal Storage   |                             | ❌    |
-| SD Card            |                             | ❌    |
+| SD Card            |                             | ✅    |
 | Side Buttons       |                             | ❌    |
-| USB Host Mode      |                             | ❌    |
-| Windows Boot       |                             | ❌    |
+| USB Host Mode      |                             | ✅    |
+| Windows Boot       |                             | ✅    |
 | Linux Boot         |                             | ❌    |
 
 </details>
