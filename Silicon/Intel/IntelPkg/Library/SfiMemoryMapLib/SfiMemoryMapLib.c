@@ -12,12 +12,8 @@
 /**
   Halt on a missing MMAP table.
 
-  All platforms linking this library are SFI platforms; a bootloader that hands
-  over without MMAP is a firmware defect. Log, assert, and stop rather than
-  fabricate a memory map. Non-SFI SoCs link a different library, so this branch
-  is never expected.
-
-  Never returns.
+  Every platform linking this is an SFI platform, so a handover without MMAP is a
+  firmware defect. Stopping beats fabricating a map; non-SFI SoCs link elsewhere.
 **/
 STATIC
 VOID

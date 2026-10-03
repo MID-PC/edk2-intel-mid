@@ -109,7 +109,7 @@ FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
   # z2560 CPU topology/power states SSDT
   SECTION RAW = CloverviewPkg/Acpi/AcpiTables/SsdPpm2560.aml
 }
-!include CloverviewPkg/Extra.fdf.inc
+!include IntelPkg/Extra.fdf.inc
 
 # Common FDF rules
 !include IntelPkg/Common.fdf.inc

@@ -38,5 +38,4 @@
 
 [Components]
   # ACPI
-  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
   ducatiPkg/AcpiPlatformDxe/AcpiTables.inf

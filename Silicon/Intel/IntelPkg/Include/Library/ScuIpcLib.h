@@ -1,16 +1,7 @@
 /** @file
-  Drive the SCU IPC-1 register block ("intel_scu_ipc").
-
-  The SCU is a separate core owning the PMIC and the south-complex power gates,
-  reached by writing a register block and polling a status bit. This library is
-  the only place in the tree that knows the register layout, the command encoding
-  and the completion protocol.
-
-  Ported from drivers/platform/x86/intel_scu_ipc.c and intel_scu_pmic.c, wire
-  format unchanged. Two details there look like bugs and are not: the write
-  buffer is a little-endian byte stream, so a 16-bit register address already
-  lays out as {addr_lo, addr_hi}; and read-modify-write sends {lo, hi, bits,
-  mask} with the mask applied by the SCU, not by us.
+  Drive the SCU IPC-1 register block, the path to the PMIC and the south-complex
+  power gates. Wire format unchanged from the kernel's intel_scu_ipc.c: the write
+  buffer is a byte stream, and read-modify-write leaves the mask to the SCU.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -37,18 +28,13 @@
 #define SCU_IPC_WDT_SUB_STOP        1     // IPCMSG_WATCHDOG_TIMER: stop it
 
 /**
-  Issue a command that carries no data.
-
-  The read buffer belongs to whatever ran last, so a caller that needs a value
-  back must use ScuIpcPmicRead instead. The kernel says the same thing about
-  its equivalent.
+  Issue a command that carries no data. The read buffer belongs to whatever ran
+  last, so a caller wanting a value back needs ScuIpcPmicRead.
 
   @param[in] Cmd  Message ID, one of the SCU_IPC_MSG_* values.
   @param[in] Sub  Sub-command, bits 15:12 of the command word.
-
   @retval EFI_SUCCESS      The SCU completed the command.
-  @retval EFI_NOT_FOUND    The register block does not read back as present, so
-                           no SCU answers. Nothing was written.
+  @retval EFI_NOT_FOUND    No SCU answers; nothing was written.
   @retval EFI_TIMEOUT      The SCU did not go idle.
   @retval EFI_DEVICE_ERROR The SCU reported an error.
 **/
@@ -64,7 +50,6 @@ ScuIpcSimpleCommand (
 
   @param[in]  Address  Register address.
   @param[out] Value    Register contents. Untouched on failure.
-
   @retval EFI_SUCCESS           The SCU completed the command.
   @retval EFI_NOT_FOUND         No SCU answers; nothing was written.
   @retval EFI_TIMEOUT           The SCU did not go idle.
@@ -83,7 +68,6 @@ ScuIpcPmicRead (
 
   @param[in] Address  Register address.
   @param[in] Value    Value to write.
-
   @retval EFI_SUCCESS      The SCU completed the command.
   @retval EFI_NOT_FOUND    No SCU answers; nothing was written.
   @retval EFI_TIMEOUT      The SCU did not go idle.
@@ -97,17 +81,12 @@ ScuIpcPmicWrite (
   );
 
 /**
-  Change the masked bits of one 8-bit power controller register.
-
-  The SCU reads the register, applies the bits under the mask and writes it
-  back; the read-modify-write is not done here. Bits whose mask bit is zero are
-  left as they are, so a read-then-write of the same register from two callers
-  cannot lose an update.
+  Change the masked bits of one 8-bit power controller register. The SCU applies
+  the mask itself, so two callers cannot lose an update to each other.
 
   @param[in] Address  Register address.
   @param[in] Bits     Values for the masked bits.
   @param[in] Mask     Bits to change; one to write, zero to leave alone.
-
   @retval EFI_SUCCESS      The SCU completed the command.
   @retval EFI_NOT_FOUND    No SCU answers; nothing was written.
   @retval EFI_TIMEOUT      The SCU did not go idle.

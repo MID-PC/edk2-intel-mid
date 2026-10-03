@@ -1,10 +1,7 @@
 /** @file
-  Locate tables published by a Simple Firmware Interface bootloader.
-
-  SFI 1.0 (http://simplefirmware.org) deposits a set of tables in the legacy BIOS
-  area between 0x000E0000 and 0x00100000, each starting with the same 24-byte
-  header. This library owns that header and the rules for finding a table by
-  signature; what a given table means is the caller's business.
+  Locate tables published by a Simple Firmware Interface bootloader. SFI 1.0
+  deposits them in the legacy BIOS area between 0x000E0000 and 0x00100000; this
+  library owns the shared 24-byte header and the rules for finding one by signature.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -45,16 +42,11 @@ typedef struct {
 
 /**
   Locate a published SFI table by its four-character signature.
-
-  This walks SYST's pointer array rather than scanning, because the tables are on
-  no boundary a scan could rely on: across the boards in dumps/ only SYST and XSDT
-  begin on a 16-byte boundary, GPIO lands at 9-14 and MMAP is never aligned. SYST
-  is the index; XSDT holds the one table SYST cannot carry.
+  This walks SYST's pointer array rather than scanning: only SYST and XSDT are
+  16-byte aligned on the boards in dumps/, and MMAP never is.
 
   @param[in] Signature  Four-character table signature, NUL terminated ("MMAP").
-
-  @return  Pointer to the validated table, or NULL when this boot does not
-           publish one.
+  @return  Pointer to the validated table, or NULL when this boot does not publish one.
 **/
 CONST SFI_TABLE_HEADER *
 EFIAPI

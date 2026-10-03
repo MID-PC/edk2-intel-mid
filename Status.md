@@ -151,14 +151,14 @@
 | SD Card              |               | ✅    |
 | Side Buttons         |               | ❌    |
 | Light Sensor         |               | ❌    |
-| Accelerometer Sensor |               | ✅    |
+| Accelerometer Sensor |               | ❌    |
 | Temperature Sensor   |               | ❌    |
 | Battery              |               | ❌    |
 | USB Host Mode        |               | ✅    |
 | Charging             |               | ❌    |
-| WLAN                 |               | ✅    |
+| WLAN                 |               | ❌    |
 | CPU                  |               | ✅    |
-| Touchscreen          |               | ✅    |
+| Touchscreen          |               | ❌    |
 | Bluetooth            |               | ❌    |
 | GPS                  |               | ❌    |
 | Audio                |               | ❌    |

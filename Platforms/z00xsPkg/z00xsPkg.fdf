@@ -96,15 +96,9 @@ APRIORI DXE {
 !include MoorefieldPkg/DXE.fdf.inc
 
 # ACPI
-#
-# Compiles Dsdt.asl into Dsdt.aml and wraps it in an FFS file whose GUID is
-# gMoorefieldAcpiTableStorageGuid. MoorefieldPkg/Drivers/AcpiPlatformDxe finds
-# that file with GetSectionFromAnyFv() and installs the DSDT, so the DSDT must
-# land in a firmware volume that is searched, i.e. the DXE FV below.
-#
 INF  RuleOverride = ACPITABLE z00xsPkg/AcpiPlatformDxe/AcpiTables.inf
 
-!include MoorefieldPkg/Extra.fdf.inc
+!include IntelPkg/Extra.fdf.inc
 
 # Common FDF rules
 !include IntelPkg/Common.fdf.inc

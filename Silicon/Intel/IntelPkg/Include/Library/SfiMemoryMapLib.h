@@ -52,7 +52,6 @@ typedef struct {
   Locate and decode the SFI MMAP table
 
   @param[out] Mmap  Decoded MMAP table; caller provides storage.
-
   @retval EFI_SUCCESS  MMAP table found and decoded.
 **/
 EFI_STATUS
@@ -64,15 +63,12 @@ SfiGetMmap (
 /**
   Walk the SFI MMAP into PlatformMemoryMapLib's window list.
 
-  This is the SFI half of turning a bootloader table into windows; classifying the
-  entries is the part that needs to know what an SFI MMAP type means. Entries at
-  or below SFI_MMAP_SUB_MEGABYTE_LIMIT, zero-sized entries, and entries whose
-  base-plus-size wraps are dropped.
+  The SFI half of turning a bootloader table into windows. Sub-megabyte, zero-sized
+  and wrapping entries are dropped.
 
   @param[out] Regions      Window list; caller provides storage.
   @param[in]  Capacity     Entries Regions can hold.
-  @param[out] RegionCount  Number of entries written to Regions. Never exceeds
-                           Capacity.
+  @param[out] RegionCount  Number of entries written, never more than Capacity.
 **/
 VOID
 EFIAPI

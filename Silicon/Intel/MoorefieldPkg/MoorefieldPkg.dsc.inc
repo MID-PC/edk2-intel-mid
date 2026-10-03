@@ -21,32 +21,9 @@
   !error "SOC_VARIANT must be set to SOC_VARIANT_Z3560, SOC_VARIANT_Z3580 or SOC_VARIANT_Z3590"
 !endif
 
-[PcdsFeatureFlag]
-  #
-  # Moorefield is a 64-bit (Silvermont) part. The primary bootloader enters the
-  # image in 32-bit protected mode; SEC (X64/SecEntry.nasm) performs the
-  # protected->long-mode switch, and DxeIpl keeps running in long mode from
-  # there. Override the IntelPkg default (FALSE) so DxeIpl builds the long-mode
-  # handoff instead of assuming a 32-bit DXE.
-  #
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|TRUE
-
 [PcdsFixedAtBuild]
   #
-  # Image / temporary RAM layout.
-  # The primary bootloader loads the image at 0x10F00000 (the boot image
-  # "second bootloader" slot) and jumps to its first byte in 32-bit protected
-  # mode. 0x10F00000 lies inside the 0x06000000-0x7F600000 System RAM window
-  # (see ZX551ML/tables/MMAP and iomem.txt). PcdFdBaseAddress and PcdFdSize are
-  # set from the device's FD geometry, which lives in
-  # Resources/Configs/<device>.toml and reaches the build through the platform
-  # FDF; the .dec defaults are the fallback for a build that bypasses that path.
-  #
-
-  #
-  # SEC/PEI temporary RAM (stack + heap + long-mode page tables) inside the
-  # low 0x00100000-0x04000000 System RAM window. The top 32 KiB is used by the
-  # SEC entry for the 4-level identity page tables (see X64/SecEntry.nasm).
+  # Temporary RAM is put well above the image inside the first System RAM window
   #
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize|0x00040000
@@ -57,55 +34,39 @@
   gIntelMidTokenSpaceGuid.PcdPeiMemoryBase|0x12000000
 
   #
-  # SCU IPC-1 (intel_scu_ipc, 0000:00:13.0) and south-complex PMU
-  # (intel_pmu_driver, 0000:00:14.0) register blocks, consumed by
-  # IntelPkg/Library/ScuResetSystemLib and by PlatformPei. Both moved out of
-  # the 0xFF11xxxx Cloverview window.
+  # SCU IPC-1 (intel_scu_ipc) and south-complex PMU (intel_pmu_driver)
   #
   gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF009000
   gIntelMidTokenSpaceGuid.PcdPmuBase|0xFF00B000
 
   #
-  # Only 0x0-0x9FFFF is real-mode RAM here. The IntelPkg default of 1 MiB
-  # (plus a reserved 0xA0000-0xFFFFF "legacy top") would report the GPIO
-  # controller BAR at 0xCDB20 (00:0C.0, needed by PCI) as RAM/reserved, so
-  # Windows cannot assign it and PCI0 fails with Code 12.
+  # Legacy RAM window override (0x0-0x9FFFF)
   #
   gIntelMidTokenSpaceGuid.PcdLegacyMemorySize|0x000A0000
   gIntelMidTokenSpaceGuid.PcdLegacyTopBase|0x000A0000
   gIntelMidTokenSpaceGuid.PcdLegacyTopSize|0x00000000
 
   #
-  # IVT/BDA (0x0-0x3FFF) as BootServicesData so UefiSeven's int10h shim can
-  # AllocatePages() it for Windows 7. ExitBootServices reclaims it as RAM
-  # and Windows 8+/Linux never touch page 0 on their own.
+  # IVT/BDA (0x0-0x3FFF) as BootServicesData
   #
   gIntelMidTokenSpaceGuid.PcdLegacyReservedType|0x00000004
 
   #
-  # Moorefield (Silvermont) supports 36-bit physical addressing, and a
-  # board with DRAM above the 4 GiB boundary has its high RAM window
-  # truncated unless the CPU HOB says so. Cloverview is 32-bit and takes the
-  # .dec default. Consumed by PlatformMemoryMapLib.
+  # Physical addressing bitness, consumed by PlatformMemoryMapLib
   #
   gIntelMidTokenSpaceGuid.PcdCpuMaxPhysAddrBits|36
 
-  #
-  # Local APIC timer clock = bus clock. Moorefield runs a 100 MHz FSB.
-  #
+  # Local APIC timer clock = bus clock; Moorefield runs a 100 MHz FSB
   gEfiMdePkgTokenSpaceGuid.PcdFSBClock|100000000
 
   #
-  # PCI device MMIO windows for SfiMemoryMapLib. Moorefield GPU (0000:00:02.0)
-  # BARs live at 0x80000000-0x9FFFFFFF and 0xC0000000-0xC1FFFFFF (iomem.txt).
-  # The framebuffer at 0x7F700000 is inside the 0x7F600000-0x80000000 reserved
-  # window already described as MMIO by the SFI MMAP, so no extra PCD needed.
+  # PCI device MMIO windows for SfiMemoryMapLib
   #
   gIntelMidTokenSpaceGuid.PcdPciGpuMmioBase|0x80000000
   gIntelMidTokenSpaceGuid.PcdPciGpuMmioSize|0x20000000
   gIntelMidTokenSpaceGuid.PcdPciIspMmioBase|0xC2000000
   gIntelMidTokenSpaceGuid.PcdPciIspMmioSize|0x00400000
-  # No separate EMAC window on this part.
+  # No separate EMAC window on Moorefield
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize|0x0
 
   #
@@ -127,15 +88,6 @@
   !error "SOC_VARIANT must be set to SOC_VARIANT_Z3560, SOC_VARIANT_Z3580 or SOC_VARIANT_Z3590"
 !endif
 
-[PcdsFixedAtBuild.X64]
-  #
-  # 64-bit NX/XD profile. Keep memory protection minimal so the plain
-  # boot-to-shell image does not fault on the identity map SEC built.
-  #
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSetNxForStack|FALSE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeNxMemoryProtectionPolicy|0x0000000000000000
-  gEfiMdeModulePkgTokenSpaceGuid.PcdImageProtectionPolicy|0x00000000
-
 [LibraryClasses]
   #
   # SCU IPC command based reset runtime
@@ -149,35 +101,25 @@
   MoorefieldPkg/PlatformPei/PlatformPei.inf
 
   #
-  # Emulated RTC Arch Protocol (required by DXE Core) + SCU watchdog management
+  # Platform Setup
   #
   MoorefieldPkg/Drivers/PlatformRuntimeDxe/PlatformRuntimeDxe.inf
 
   #
-  # External SD card SDHCI registration (@ 0xFF3FA000). The generic
-  # SdMmcPciHcDxe / SdDxe / NonDiscoverablePciDeviceDxe stack is pulled in by
-  # IntelPkg.dsc.inc.
+  # SD slot registration
   #
   MoorefieldPkg/Drivers/SdHostDxe/SdHostDxe.inf
 
   #
-  # DWC3 USB3 host controller (@ 0xF9100000). Programs the core and publishes
-  # the aperture as a non-discoverable xHCI device; NonDiscoverablePciDeviceDxe
-  # and XhciDxe are pulled in by IntelPkg.dsc.inc.
+  # DWC3 USB3 host controller + generic USB XHCI stack
   #
   MoorefieldPkg/Drivers/XhciDwc3Dxe/XhciDwc3Dxe.inf
   MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf
-
-  #
-  # USB bus enumeration and class drivers (mass storage, HID keyboard) for the
-  # devices behind the xHCI above.
-  #
   MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
   MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
   MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
 
   #
-  # FACS/FADT/MADT plus the board DSDT pulled from the platform ACPI storage
-  # file (gMoorefieldAcpiTableStorageGuid). Must run after AcpiTableDxe.
+  # ACPI installation
   #
   MoorefieldPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf

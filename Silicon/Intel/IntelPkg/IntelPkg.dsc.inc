@@ -145,8 +145,11 @@
 #
 # PCDs
 #
-[PcdsFeatureFlag]
+[PcdsFeatureFlag.IA32]
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
+
+[PcdsFeatureFlag.X64]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|TRUE
 
 [PcdsFixedAtBuild]
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength|1000000
@@ -182,6 +185,12 @@
 
   gEfiShellPkgTokenSpaceGuid.PcdShellLibAutoInitialize|FALSE
 
+[PcdsFixedAtBuild.X64]
+  # 64-bit NX/XD profile, minimal memory protection
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetNxForStack|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeNxMemoryProtectionPolicy|0x0000000000000000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdImageProtectionPolicy|0x00000000
+
 [PcdsFixedAtBuild.IA32]
   # 32-bit NX/XD profile, taken from OvmfPkg
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetNxForStack|FALSE
@@ -202,15 +211,10 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdConInConnectOnDemand|FALSE
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvStoreReserved|0
 
-#
-# Components - the generic core and driver stack shared by every Intel MID
-# platform
-#
+# Components: the generic core and driver stack shared by every Intel MID platform
 [Components]
-  #
-  # On droidboot devices, IAFW loads the bootstub.
-  # We replace the bootstub with the FD, and use patch_sec_entry.py to make the first instruction of the FD a direct jmp to SEC.
-  #
+  # On droidboot devices IAFW loads the bootstub. We replace it with the FD, and
+  # patch_sec_entry.py makes the FD's first instruction a direct jmp to SEC.
   IntelPkg/Sec/SecMain.inf
 
   #
@@ -283,7 +287,7 @@
   #
   # Console / graphics
   #
-  IntelPkg/Library/PlatformGopLib/PlatformGopDxe.inf
+  IntelPkg/Drivers/PlatformGopDxe/PlatformGopDxe.inf
   MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf

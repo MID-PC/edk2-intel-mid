@@ -3,19 +3,9 @@
 # @file BootImage.py
 # Boot image packing for edk2-intel-mid.
 #
-# Every device is described by a TOML file in Resources/Configs/<device>.toml.
-# This module turns that description into a flashable image. It owns all of the
-# logic that used to be copy-pasted into each Platforms/<dev>Pkg/DeviceBuild.py:
-#
-#   - locating the FD the build just produced
-#   - checking the device's ImageResources are present, and telling the user
-#     how to extract them from the stock image if they are not
-#   - patching a jmp at offset 0 so the primary bootloader can enter the FD
-#   - dispatching to the packer for the device's boot image format
-#   - applying any post-processing steps (appended blobs)
-#
-# Adding a format means adding a BootImagePacker subclass and registering it in
-# PACKERS. Nothing in build_uefi.py or any DeviceBuild.py needs to change.
+# Every device is described by a TOML file in Resources/Configs/<device>.toml, and this
+# module turns that into a flashable image. A new format means a new BootImagePacker
+# subclass registered in PACKERS; nothing else changes.
 #
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
@@ -31,21 +21,14 @@ from pathlib import Path
 # Directory holding this file and the tools it drives.
 SCRIPTS = Path(__file__).resolve().parent
 
-#
-# Progress messages. build_uefi.py attaches its handler to this logger; without
-# it the informational output would be dropped, since the root logger defaults
-# to WARNING.
-#
+# build_uefi.py attaches its handler here; the root logger defaults to WARNING.
 logger = logging.getLogger("BootImage")
 
 FD_NAME_RE = re.compile(r"^\s*\[FD\.([A-Za-z0-9_]+)\]\s*$")
 OUTPUT_DIRECTORY_RE = re.compile(r"^\s*OUTPUT_DIRECTORY\s*=\s*(\S+)")
 
-#
-# Offset 0 of the FD must become a direct jmp to the SEC entry, because the
-# primary bootloader jumps to offset 0 of the payload in 32-bit protected mode.
-# x86 near jmp opcode.
-#
+# Offset 0 must become a direct jmp to the SEC entry: the primary bootloader
+# jumps there in 32-bit protected mode. x86 near jmp opcode.
 JMP_OPCODE = b"\xe9"
 
 
@@ -56,39 +39,26 @@ class BootImageError(Exception):
 class BootImagePacker:
     """Base class for a boot image format.
 
-    A subclass declares the inputs it needs from the device's ImageResources
-    directory and knows how to invoke the tool that assembles the format.
+    A subclass declares its ImageResources inputs and how to invoke the tool that
+    assembles the format.
     """
 
-    #
     # Format name, as written in the [boot_image] format key of a device TOML.
-    #
     format_name = None
 
-    #
-    # The name the FD is known by inside the assembled image. Formats that have
-    # slots pass this to the tool as the slot flag; the rest use it only to
-    # describe what was done, in progress output.
-    #
+    # Name the FD goes by inside the assembled image: the slot flag for formats
+    # that have slots, progress output for the rest.
     fd_slot = "payload"
 
-    #
-    # Files that must exist in the device's ImageResources directory. A missing
-    # entry is a hard error: the stock blobs are device-specific and cannot be
-    # synthesized.
-    #
+    # Files that must exist in ImageResources. Missing is a hard error: these
+    # blobs are device-specific and cannot be synthesized.
     required_inputs = ()
 
-    #
-    # [boot_image] keys this format understands, on top of the format key
-    # itself. Anything else in a device TOML is a configuration error.
-    #
+    # [boot_image] keys this format understands. Anything else is a config error.
     accepted_options = frozenset()
 
-    #
-    # How to populate the required inputs from the device's stock boot image,
-    # shown when one is missing. {outdir} is substituted.
-    #
+    # How to populate the required inputs from the stock image, shown when one is
+    # missing. {outdir} is substituted.
     unpack_hint = None
 
     def assemble(self, fd_path, res_dir, out_image, options):
@@ -163,11 +133,8 @@ class AndroidBootPacker(BootImagePacker):
     unpack_hint = ("python3 Resources/Scripts/unpack_bootimg.py boot.img "
                    "{outdir}")
 
-    #
-    # [boot_image] keys mapped to mkbootimg flags. This is an explicit table
-    # rather than a loop over the options dict so that a key with no matching
-    # flag is reported instead of silently dropped.
-    #
+    # [boot_image] keys mapped to mkbootimg flags. An explicit table, not a loop, so
+    # that a key with no matching flag is reported instead of silently dropped.
     FLAG_MAP = {
         "base": "--base",
         "cmdline": "--cmdline",
@@ -179,10 +146,8 @@ class AndroidBootPacker(BootImagePacker):
         "header_version": "--header_version",
     }
 
-    #
-    # Keys passed through in hex. The rest are rendered with str(), since
-    # mkbootimg parses them with int(x, 0) or expects plain text.
-    #
+    # Passed through in hex; the rest go as str(), since mkbootimg parses them
+    # with int(x, 0) or expects plain text.
     HEX_KEYS = ("base", "kernel_offset", "ramdisk_offset",
                 "second_offset", "tags_offset")
 
@@ -205,10 +170,7 @@ class AndroidBootPacker(BootImagePacker):
         return _run_tool("mkbootimg.py", *cmd, expect=out_image)
 
 
-#
-# Registry of known formats. The keys are the values accepted in a device
-# TOML's [boot_image] format key.
-#
+# Registry of known formats, keyed by what a device TOML's [boot_image] accepts.
 PACKERS = {
     OsipPacker.format_name: OsipPacker,
     AndroidBootPacker.format_name: AndroidBootPacker,

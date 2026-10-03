@@ -2,8 +2,7 @@
   Cloverview / Penwell platform PEIM.
 
   Discovers the memory map from the SFI tables droidboot publishes, then hands
-  it to PlatformMemoryMapLib, which owns resource descriptors, carve-out
-  validation and the CPU HOB.
+  it to PlatformMemoryMapLib, which owns descriptors, carve-outs and the CPU HOB.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -67,10 +66,8 @@ DisableScuWatchdog (
 /**
   SfiMemoryMapLib discovery, then PlatformMemoryMapLib construction.
 
-  The one place this PEIM knows its bootloader speaks SFI. Both halves are
-  libraries and both know nothing about each other; what neither can know is that
-  this SoC discovers its memory from SFI tables. A SoC that discovers memory some
-  other way replaces this function and nothing else.
+  The one place this PEIM knows its bootloader speaks SFI, which is the only thing
+  neither library can know. A SoC that discovers memory otherwise replaces this.
 **/
 STATIC
 VOID

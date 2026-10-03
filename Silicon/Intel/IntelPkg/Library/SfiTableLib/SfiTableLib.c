@@ -14,15 +14,14 @@
 #define SFI_SYST_MAX_POINTERS  (SFI_SEARCH_SIZE / sizeof (UINT64))
 
 // Offset from the end of the XSDT header to the UINT32 holding the address of the
-// table XSDT points at. XSDT is 44 bytes on every board measured, so it carries
-// exactly one such entry; see SfiFindXsdtChild().
+// table XSDT points at. XSDT is 44 bytes on every board measured, so exactly one
+// entry; see SfiFindXsdtChild().
 #define SFI_XSDT_CHILD_OFFSET  12
 
 /**
   Is a table address inside the SFI search area, with room for a header?
 
   @param[in] Addr  Candidate table address.
-
   @retval TRUE   The address is inside the area and a header fits.
   @retval FALSE  Otherwise; the candidate cannot be dereferenced.
 **/
@@ -40,7 +39,6 @@ SfiAddrInWindow (
   Validate an SFI table header.
 
   @param[in] Header  Table header to validate.
-
   @retval TRUE   Length within the search area and correct checksum.
   @retval FALSE  Length, bounds or checksum failed.
 **/
@@ -81,7 +79,6 @@ SfiTableIsValid (
 
   @param[in] Header    Table header to check.
   @param[in] Signature Four-character table signature.
-
   @retval TRUE   The header matches the signature.
   @retval FALSE  Otherwise.
 **/
@@ -96,12 +93,9 @@ SfiTableIs (
 }
 
 /**
-  Find SYST, the one table that has to be looked for by scanning.
-
-  Everything else is reachable through SYST's pointer array, so this is the only
-  place the walk step matters. SYST is the first table written and its payload is
-  aligned, so it is 16-byte aligned on every board measured; nothing else reliably
-  is, which is why the other tables are reached by pointer.
+  Find SYST, the one table that has to be looked for by scanning. Everything else
+  is reachable through SYST's pointer array, so this is the only place the walk
+  step matters.
 
   @return  Pointer to the validated SYST table, or NULL when not found.
 **/
@@ -129,15 +123,11 @@ SfiFindSyst (
 }
 
 /**
-  Return the single table XSDT points at.
-
-  MCFG is the one table SYST does not list on any board measured, so the bootloader
-  puts it in XSDT instead. XSDT's payload is 20 bytes and that address is the
-  UINT32 at offset 12 from the end of the header; the surrounding fields are
-  unidentified and no board publishes a second entry, so only the first is read.
+  Return the single table XSDT points at. MCFG is the one table SYST never lists,
+  so the bootloader puts it here instead; the surrounding fields are unidentified
+  and no board publishes a second entry.
 
   @param[in] Xsdt  Validated XSDT table.
-
   @return  Pointer to the validated table XSDT points at, or NULL.
 **/
 STATIC
@@ -178,8 +168,8 @@ SfiFindTable (
   UINTN                   Index;
 
   //
-  // Only the four signature bytes are ever compared, so a longer name would
-  // match a table it does not name.
+  // Only the four signature bytes are compared, so a longer name would match a
+  // table it does not name.
   //
   if ((Signature == NULL) || (AsciiStrLen (Signature) != 4)) {
     return NULL;

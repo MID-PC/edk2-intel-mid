@@ -23,28 +23,18 @@
 
 [PcdsFixedAtBuild]
   #
-  # Image / temporary RAM layout.
-  # PcdFdBaseAddress is where the primary bootloader hands control over to the
-  # bootstub. Both it and PcdFdSize are set from the device's FD geometry, which
-  # lives in Resources/Configs/<device>.toml and reaches the build through the
-  # platform FDF; the .dec defaults are the fallback for a build that bypasses
-  # that path. Temporary RAM is put well above the image inside the first
-  # System RAM window.
+  # Temporary RAM is put well above the image inside the first System RAM window
   #
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamSize|0x00040000
 
   #
-  # SCU IPC-1 (intel_scu_ipc) and south-complex PMU (intel_pmu_driver) register
-  # blocks, consumed by IntelPkg/Library/ScuResetSystemLib and by PlatformPei.
+  # SCU IPC-1 (intel_scu_ipc) and south-complex PMU (intel_pmu_driver)
   #
   gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF11C000
   gIntelMidTokenSpaceGuid.PcdPmuBase|0xFF11D000
 
-  #
-  # Local APIC timer clock = bus clock
-  # Cloverview runs a 100 MHz FSB
-  #
+  # Local APIC timer clock = bus clock; Cloverview runs a 100 MHz FSB
   gEfiMdePkgTokenSpaceGuid.PcdFSBClock|100000000
 
   #
@@ -88,10 +78,8 @@
   #
   CloverviewPkg/Drivers/SdHostDxe/SdHostDxe.inf
 
-  #
-  # USB ChipIdea OTG forced into EHCI host mode + generic USB EHCI stack
+  # ChipIdea OTG forced into EHCI host mode + generic USB EHCI stack
   # Disabled in the no-USB KDNET variant
-  #
 !ifndef KDNET_USB
   CloverviewPkg/Drivers/OtgHostDxe/OtgHostDxe.inf
   MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
@@ -99,3 +87,8 @@
   MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
   MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
 !endif
+
+  #
+  # ACPI installation
+  #
+  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf

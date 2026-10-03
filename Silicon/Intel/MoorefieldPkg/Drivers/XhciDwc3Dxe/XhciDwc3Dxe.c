@@ -1,26 +1,8 @@
 /** @file
   Moorefield DWC3 OTG core: host-mode bring-up, VBUS, and xHCI registration.
 
-  The kernel decides host vs peripheral from the PMIC USB ID pin, an extcon state
-  machine firmware has no use for. This driver assumes an OTG (A-type) cable with
-  a device behind it, and performs the kernel's "ID grounded" sequence once,
-  unconditionally: core to OTG with the USB2 PHY down, VBUS on (PMIC OTG mode plus
-  the SMB1357 charger's OTG enable), PHY up, core to host, reset, register the
-  aperture as a non-discoverable xHCI device for MdeModulePkg XhciDxe.
-
-  Register sequences come from the ZX551ML kernel:
-
-    drivers/usb/dwc3/dwc3-intel-mrfl.c   dwc3_intel_platform_init, b_idle,
-                                         prepare_start_host, resume, enable_usb_phy
-    drivers/usb/dwc3/dwc3-host-intel.c   __dwc3_start_host, dwc_core_reset,
-                                         dwc_silicon_wa, dwc_set_host_mode
-    drivers/power/ASUS_BATTERY/smb1357_charger.c, external_drivers/.../pmic_ccsm.c
-                                         otg(), pmic_handle_otgmode
-    drivers/platform/x86/intel_scu_ipc.c  IPC-1 protocol (now ScuIpcLib)
-
-  Not done: the SMB1357 OTG current limit (register 0x12 over I2C) is left at the
-  power-on default, and USB2 eye calibration is skipped, the SFI DEVS table
-  carrying no ULPICAL/UTMICAL entry.
+  The kernel picks host vs peripheral from an extcon state machine firmware has no
+  use for, so this assumes an OTG cable and runs the ZX551ML sequence unchanged.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -49,12 +31,8 @@
 /**
   Gate or ungate the USB2 PHY (enable_usb_phy() / control_usb_phy_power()).
 
-  Integrated UTMI PHY: powered from the PMIC VUSBPHY rail. While that rail is off
-  the SoC's DP/DM pins must be isolated with USBRST#, or a peripheral biasing
-  DP/DM to 3.3V can damage the unpowered SoC (dwc3_intel_suspend()). So USBRST# is
-  asserted before the rail goes down and released only once it is up and settled.
-
-  External ULPI PHY (TUSB1211): the rail is unused; USBRST# alone holds it in reset.
+  The UTMI PHY runs off the PMIC VUSBPHY rail, and while it is down a peripheral
+  biasing DP/DM can damage the SoC, so USBRST# brackets it. ULPI just holds reset.
 
   @param[in] Ulpi  TRUE if the external ULPI PHY is fitted.
   @param[in] On    TRUE to power up, FALSE to power down.
@@ -97,13 +75,9 @@ Usb2PhyPower (
 }
 
 /**
-  Drive VBUS as an OTG A-device (setSMB1357Charger(ENABLE_5V) + otg(1) and
-  pmic_handle_otgmode(true) in the kernel).
-
-  Shady Cove is told it is the OTG source, then PMIC GPIO 6 raises the SMB1357
-  charger's OTG pin to boost the battery to 5V on VBUS. Then wait for the PMIC's
-  VBUS-detect bit, as do_wait_vbus_raise() does. A missing VBUS-valid indication is
-  reported but not fatal: the bring-up continues so the xHCI still registers.
+  Drive VBUS as an OTG A-device (setSMB1357Charger(ENABLE_5V) + otg(1)).
+  Shady Cove is told it is the OTG source, then PMIC GPIO 6 raises the charger's OTG
+  pin to put 5V on VBUS. A missing VBUS-valid bit is reported but not fatal.
 
   @retval EFI_SUCCESS  VBUS was enabled and reported valid.
   @retval Other        A PMIC access failed, or VBUS never reported valid.
@@ -177,11 +151,8 @@ Dwc3SwitchMode (
 
 /**
   Bring the OTG block to its idle state with the USB2 PHY off
-  (dwc3_intel_platform_init() + dwc3_intel_b_idle()).
-
-  Hibernation stays off, the ADP and OTG blocks are cleared, and the core is
-  forced to OTG mode so nothing drives D+ before host mode is deliberately
-  started.
+  (dwc3_intel_platform_init() + dwc3_intel_b_idle()): hibernation off, ADP and OTG
+  cleared, core forced to OTG so nothing drives D+ before host mode starts.
 **/
 STATIC
 VOID
@@ -254,12 +225,9 @@ Dwc3StartHost (
 
   Usb2PhyPower (Ulpi, TRUE);
 
-  //
-  // Do not let either PHY suspend: a suspended UTMI/ULPI PHY makes FS/LS
-  // devices fail to enumerate in host mode (set_sus_phy(otg, 0)). The ULPI
-  // auto-resume feature is a silicon erratum and stays off
-  // (disable_phy_auto_resume()).
-  //
+  // Do not let either PHY suspend: a suspended PHY makes FS/LS devices fail to
+  // enumerate in host mode (set_sus_phy(otg, 0)). ULPI auto-resume is a silicon
+  // erratum and stays off (disable_phy_auto_resume()).
   MmioAnd32 (Base + DWC3_GUSB2PHYCFG0, ~(UINT32)(DWC3_GUSB2PHYCFG_SUS_PHY | DWC3_GUSB2PHYCFG_ULPI_AUTORSM));
   MmioAnd32 (Base + DWC3_GUSB3PIPECTL0, ~(UINT32)DWC3_GUSB3PIPECTL_SUS_EN);
 
@@ -301,10 +269,9 @@ Dwc3StartHost (
 
 
 //
-// Read-only monitor. XhciDxe is silent unless it fails, so this reports whether
-// the host started (USBCMD.R/S), whether ports are powered (PORTSC.PP) and
-// whether anything is seen on them (PORTSC.CCS), on change, until DWC3_MON_TICKS
-// or ExitBootServices.
+// Read-only monitor. XhciDxe is silent unless it fails, so this reports on change
+// whether the host started (USBCMD.R/S) and whether ports are powered (PORTSC.PP)
+// with anything seen on them (PORTSC.CCS), until DWC3_MON_TICKS or ExitBootServices.
 //
 #define DWC3_MON_PERIOD_100NS  5000000ULL   // 500 ms
 #define DWC3_MON_TICKS         1200U    // 10 minutes
@@ -321,9 +288,8 @@ STATIC UINT32     mMonPmicLast = MAX_UINT32;
 
 /**
   Connect drivers to the registered device and report whether an xHCI host
-  controller protocol has appeared. The non-discoverable bus and XhciDxe bind
-  through the normal connect path; if nothing has connected the handle (for
-  example because BDS connected everything before it existed) it never starts.
+  controller protocol has appeared. If nothing connected the handle, because BDS
+  connected everything before it existed, the controller never starts.
 **/
 STATIC
 VOID
@@ -516,23 +482,9 @@ Dwc3MonStart (
 
 /**
   Make the DWC3 aperture uncacheable.
-
-  The aperture is a 1 MiB island inside one 0x7EBFF000-byte SFI MMIO window, and
-  DxeIpl identity-maps all physical memory with plain write-back 2 MiB entries.
-  Nothing else in this firmware sets an MTRR, so the aperture is reached through
-  PAT entry 3, i.e. cached. That works by luck for a read-only ID register and
-  breaks on everything this driver polls: PHY status, the reset and host-mode
-  handshake bits, and the doorbell ring the xHCI driver rings. PlatformPei used to
-  split the window into three around the aperture, which changed the reported
-  descriptor granularity and nothing else, because the split never reached an MTRR.
-
-  MtrrLib rather than the SetMemoryAttribute() boot service, which this tree does
-  not have and which nothing calls through CpuArchProtocol. One variable MTRR is
-  spent, on the BSP only, since APs never touch the aperture.
-
-  Failure is deliberately not fatal: erroring out here stops DXE dispatch for
-  everything behind it, which is worse than USB3 being unusable. It is logged
-  instead and shows up at once as the GSNPSID check failing.
+  DxeIpl maps everything write-back and nothing else sets an MTRR, so the aperture
+  comes in cached: fine for a read-only ID register, fatal for polled bits.
+  MtrrLib and one MTRR, BSP only, as this tree has no SetMemoryAttribute().
 
   @retval TRUE   The aperture is uncacheable.
   @retval FALSE  Attributes could not be programmed; reads may be wrong.

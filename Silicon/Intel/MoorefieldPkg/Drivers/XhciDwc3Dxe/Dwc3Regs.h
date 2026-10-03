@@ -1,12 +1,9 @@
 /** @file
   Register and PMIC definitions for the Synopsys DWC3 OTG core on Moorefield.
 
-  All offsets are relative to the DWC3 aperture base (PcdDwc3Base, 0xF9100000),
-  exactly as the ZX551ML kernel spells them, so this file can be diffed against
-  drivers/usb/dwc3/{core.h,otg.h} and include/linux/usb/dwc3-intel-mid.h in
-  ZX551ML/kernel_MM/kernel line by line. The xHCI capability/operational
-  registers occupy the bottom of the same aperture and are owned by
-  MdeModulePkg's XhciDxe.
+  Offsets are relative to the aperture base (PcdDwc3Base, 0xF9100000) and spelled
+  as the ZX551ML kernel spells them, so the two can be diffed line by line. The
+  xHCI registers at the bottom of that aperture belong to MdeModulePkg's XhciDxe.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/

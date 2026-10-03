@@ -84,9 +84,8 @@
 
 //
 // langwell GPIO (TANGIER_GPIO), reached as gpio-langwell.c reaches it on Annedal:
-// BAR0 of 00:0c.0, fixed by PcdGpioBase because firmware has no PCI bus to probe.
-// GPLR[n] is at base + gplr_offset + (n / 32) * 4, and gplr_offset is 4 here, so
-// GPLR[0] is at PcdGpioBase + 4, not at the base.
+// BAR0 of 00:0c.0, fixed by PcdGpioBase since firmware has no PCI bus to probe.
+// GPLR[n] is at base + gplr_offset + (n / 32) * 4, and gplr_offset is 4.
 //
 #define LNW_TNG_GPLR_OFFSET  4
 #define LNW_TNG_NGPIO        192
@@ -106,12 +105,9 @@
 //
 #define MOFD_SD_CD_PIN_NAME    "sd_cd_pin"
 
-// Card detect sense: a card pulls the line to ground, so the pin reads LOW when
-// present and HIGH when the slot is empty. Getting this backwards is silent: the
-// driver sets the controller's CD test level from this verdict, so an empty slot
-// is reported as a card the stack keeps retrying, and a real card is reported as
-// a disconnect and ignored. MofdCardDetectInit() logs both every boot: empty must
-// say "absent".
+// Card detect sense: a card pulls the line to ground, so LOW means present. Getting
+// this backwards is silent, because the controller's CD test level comes from this
+// verdict: an empty slot looks like a card the stack retries forever.
 #define MOFD_SD_CD_ACTIVE_HIGH  FALSE
 
 #pragma pack(1)
@@ -305,11 +301,8 @@ MofdSdMmcCapability (
 
 /**
   Compare one fixed-width SFI name field against a NUL-terminated string.
-
-  The field is SFI_NAME_LEN bytes and only NUL-padded by convention, so it cannot go
-  to AsciiStrCmp() without risking a read past the table. The end of Name is tested
-  before each byte: a name filling its field exactly would otherwise have its
-  terminator compared against the next field's first byte and be rejected.
+  The field is SFI_NAME_LEN bytes and only NUL-padded by convention, so AsciiStrCmp()
+  risks reading past the table. Each byte tests the end of Name first.
 **/
 STATIC
 BOOLEAN
@@ -548,10 +541,9 @@ MofdCardDetectInit (
 }
 
 /**
-  Log the host controller state that decides whether the card is reachable at
-  all, alongside what the card detect GPIO says. Called from the init-host-post
-  phase, which the stack re-enters on every 100 ms tick for as long as the slot
-  will not come up, so this emits once per distinct state.
+  Log the host controller state that decides whether the card is reachable, next to
+  what card detect says. Called from init-host-post, which the stack re-enters every
+  100 ms while the slot will not come up, so this emits once per distinct state.
 **/
 STATIC
 VOID
@@ -647,10 +639,9 @@ MofdDumpHcState (
 }
 
 /**
-  Power the SD bus up with the clock gated, the way u-boot's tangier driver does
-  it: sdhci_init() runs sdhci_reset() (which clears the clock control register),
-  then sdhci_set_power(), and the SD clock is only programmed later from
-  sdhci_set_ios().
+  Power the SD bus up with the clock gated, the way u-boot's tangier driver does:
+  reset() clears the clock control register, then set_power(), and the SD clock is
+  only programmed later from set_ios().
 **/
 STATIC
 VOID
@@ -707,10 +698,8 @@ MofdSdMmcNotifyPhase (
     CardPresent = MofdCardPresent (mSdCardCdPin);
 
     // Refuse the init before anything is powered or clocked. SdMmcHcInitHost()
-    // propagates this without touching the bus, so no card command is issued and
-    // the 100 ms enumeration timer retries only this GPIO read instead of sending
-    // CMD0/CMD8 at an empty slot forever, which is the "TRB failed" flood this
-    // path exists to stop.
+    // propagates this without touching the bus, so the 100 ms enumeration timer retries
+    // only this GPIO read instead of sending CMD0/CMD8 at an empty slot forever.
     if (!CardPresent) {
       // Runs on every enumeration tick while the slot stays empty, so report once.
       if (!mNoCardReported) {

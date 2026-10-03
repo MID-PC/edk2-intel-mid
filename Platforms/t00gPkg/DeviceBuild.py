@@ -132,12 +132,9 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
         if self.env.GetValue("KDNET_USB") == "1":
             self.env.SetValue("BLD_*_KDNET_USB", "1", "Platform Hardcoded (KDNET_USB=1)")
 
-        #
-        # FD geometry, supplied by build_uefi.py from the device's TOML config
-        # in Resources/Configs/. The platform FDF picks these up as $(FD_BASE),
-        # $(FD_SIZE) and $(FD_BLOCKS), which also sets the PcdFdBaseAddress and
-        # PcdFdSize PCDs read by SecMain, PlatformPei and SmBiosTableDxe.
-        #
+        # FD geometry comes from build_uefi.py via the device TOML, and reaches
+        # the FDF as $(FD_BASE)/$(FD_SIZE)/$(FD_BLOCKS) and the PCDs SecMain and
+        # PlatformPei read.
         for _name in ("FD_BASE", "FD_SIZE"):
             _value = self.env.GetValue(_name)
             if _value:
@@ -148,11 +145,8 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
 
         return 0
 
-    #
-    # Boot image packing is handled by build_uefi.py from the device's config
-    # in Resources/Configs/<device>.toml, which selects the format and its
-    # options. Nothing device-specific belongs here.
-    #
+    # Boot image packing is build_uefi.py's job, driven by the device TOML.
+    # Nothing device-specific belongs here.
     def PlatformPostBuild(self):
         return 0
 

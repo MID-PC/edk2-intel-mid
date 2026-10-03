@@ -22,18 +22,12 @@
 !include MoorefieldPkg/MoorefieldPkg.dsc.inc
 
 [PcdsFixedAtBuild]
-  # Device framebuffer: 1080x1920, stride 1088 pixels, 4 bytes/pixel,
-  # pre-lit by the bootloader at 0x7F700000 (inside the 0x7F600000-0x80000000
-  # reserved/MMIO window per ZX551ML/iomem.txt).
+  # Device framebuffer
   gIntelMidTokenSpaceGuid.PcdFrameBufferBase|0x7F700000
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth|1080
   gIntelMidTokenSpaceGuid.PcdFrameBufferStride|1088
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight|1920
   gIntelMidTokenSpaceGuid.PcdFrameBufferBpp|4
-  # Console-state scratch page: in the 0x06000000-0x7F600000 System RAM window,
-  # above the FD image (0x10F00000 + 0x300000 = 0x11200000) but below the
-  # permanent PEI memory window (PcdPeiMemoryBase = 0x12000000) so the PEI heap
-  # never allocates over it. Reserved via a carve-out HOB in PlatformPei.
   gIntelMidTokenSpaceGuid.PcdConsoleStateBase|0x11FFF000
 
   # SMBIOS
@@ -44,10 +38,5 @@
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemBoardModel|"ZX551ML"
 
 [Components]
-  #
-  # Board DSDT. Built from Dsdt.asl and wrapped in an FFS file keyed by
-  # gMoorefieldAcpiTableStorageGuid, which MoorefieldPkg/Drivers/AcpiPlatformDxe
-  # picks up with GetSectionFromAnyFv(). Referenced from z00xsPkg.fdf as
-  # "INF RuleOverride = ACPITABLE z00xsPkg/AcpiPlatformDxe/AcpiTables.inf".
-  #
+  # ACPI
   z00xsPkg/AcpiPlatformDxe/AcpiTables.inf

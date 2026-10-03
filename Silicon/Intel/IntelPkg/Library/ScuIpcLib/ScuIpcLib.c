@@ -3,11 +3,9 @@
 **/
 
 //
-// A library instance is private to the module that links it, so two modules can
-// be inside a command at once and nothing here can prevent it. That is safe
-// because a command runs to completion without yielding and every caller's TPL is
-// high enough that none can preempt another. An SMM driver, or a DXE entry that
-// drops to a blocking TPL, breaks that argument.
+// A library instance is private to its module, so two modules can be inside a
+// command at once. That is safe because a command never yields and every caller's
+// TPL is high enough to stay out of each other's way. An SMM driver breaks that.
 //
 
 #include <Library/ScuIpcLib.h>
@@ -36,29 +34,16 @@
 // page is what gets programmed. Both PcdScuIpcBase values are page-aligned.
 #define SCU_IPC_APERTURE_SIZE     SIZE_4KB
 
-// Poll budget, matching intel_scu_ipc_check_status(): three million reads with a
-// microsecond between them, so about three seconds. The earlier copies in this
-// tree spun on CpuPause, which retires in nanoseconds, and gave up thousands of
-// times sooner.
+// Three million reads a microsecond apart, about three seconds, matching
+// intel_scu_ipc_check_status(). The CpuPause loop this replaced gave up far sooner.
 #define SCU_IPC_POLL_LIMIT        3000000U
 
 STATIC BOOLEAN  mScuIpcPrepared = FALSE;
 
 /**
   Make the register block uncacheable, once.
-
-  The block sits inside the one identity-mapped write-back MTRR window that
-  VirtualMemory.c builds, so every access to it is cached. The SCU updates the status
-  register by read-modify-write in ways a cached read can miss, and writes the read
-  buffer we then read, so a stale line is a wrong PMIC value rather than a wrong
-  status bit.
-
-  Not a library constructor: we are linked from PEI, which has no boot services and
-  no way to tell. Deferring to the first command also means the linking module has
-  finished its own setup by then.
-
-  The status is not checked against later use: a failure leaves the block cached,
-  which is the bug this exists to fix, and the cause is not transient.
+  It sits inside the write-back window VirtualMemory.c builds, so a stale line means
+  a wrong PMIC value. Not a constructor: PEI links us too and cannot tell.
 **/
 STATIC
 VOID
@@ -91,7 +76,6 @@ ScuIpcPrepare (
   Wait for the SCU to go idle, and report the outcome.
 
   @param[in] Command  Command being waited on, for the debug log only.
-
   @retval EFI_SUCCESS      Idle, no error.
   @retval EFI_NOT_FOUND    No SCU answers.
   @retval EFI_TIMEOUT      Still busy after the poll budget.
@@ -186,7 +170,6 @@ ScuIpcSimpleCommand (
   @param[in]  InLen   Valid bytes in InWord.
   @param[in]  InWord  Write buffer contents.
   @param[out] OutWord First dword of the read buffer. OPTIONAL.
-
   @retval EFI_SUCCESS      The SCU completed the command.
   @retval EFI_NOT_FOUND    No SCU answers; nothing was written.
   @retval EFI_TIMEOUT      The SCU did not go idle.
@@ -216,9 +199,8 @@ ScuIpcCommand (
   }
 
   // The SRAM controller has no byte-granular write, so the command goes out as one
-  // dword and the SCU uses InLen to know how much of it is real. SPTR and DPTR are
-  // offsets into the buffers; nothing here needs non-zero, and a stale value from
-  // a previous command would point the SCU at the wrong place.
+  // dword and InLen says how much is real. SPTR and DPTR stay zero: nothing here
+  // needs them, and a stale value would point the SCU at the wrong place.
   MmioWrite32 (Ipc + SCU_IPC_DPTR_OFFSET, 0);
   MmioWrite32 (Ipc + SCU_IPC_SPTR_OFFSET, 0);
   MmioWrite32 (Ipc + SCU_IPC_WRITE_BUFFER, InWord);

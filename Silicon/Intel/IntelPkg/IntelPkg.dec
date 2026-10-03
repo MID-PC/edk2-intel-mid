@@ -64,10 +64,9 @@
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase|0xFA000000|UINT64|0x0000001A
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize|0x04000000|UINT64|0x0000001B
 
-  ## SCU IPC-1 register block ("intel_scu_ipc"), used by ResetSystemLib to
-  #  request warm/cold reset and by PlatformPei to send the SD/OTG power-up
-  #  sequence. The address moved between SoC generations, so every platform
-  #  overrides it: Cloverview ff11c000, Moorefield ff009000.
+  ## SCU IPC-1 register block ("intel_scu_ipc"): warm/cold reset and the SD/OTG
+  #  power-up sequence. The address moved between SoC generations, so platforms
+  #  override it: Cloverview ff11c000, Moorefield ff009000.
   gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF11C000|UINT32|0x0000000E
 
   ## South-complex PMU register block ("intel_pmu_driver"), used by

@@ -92,8 +92,8 @@ PlatformKindToResource (
 /**
   Round a window to page boundaries, rejecting one that cannot be described.
 
-  Discovery tables are not required to be page aligned, and a window that wraps
-  the address space would make BuildResourceDescriptorHob operate on garbage.
+  Discovery tables need not be page aligned, and a window that wraps the address
+  space would make BuildResourceDescriptorHob operate on garbage.
 
   @retval TRUE   Base and Size describe a usable window.
   @retval FALSE  The window is empty, wraps, or vanishes at page alignment.
@@ -171,19 +171,16 @@ PlatformReportWindow (
 
   PlatformKindToResource (Kind, &ResourceType, &Attributes);
 
-  //
-  // BuildResourceDescriptorHob is VOID; it asserts when the HOB pool cannot
-  // take another descriptor, which is the failure worth stopping for.
-  //
+  // BuildResourceDescriptorHob is VOID; it asserts when the HOB pool is full,
+  // which is the failure worth stopping for.
   BuildResourceDescriptorHob (ResourceType, Attributes, Base, Size);
 }
 
 /**
   Install permanent PEI memory inside the discovered window holding the FD.
 
-  PcdPeiMemoryBase is honoured when it falls inside that window. Otherwise the
-  window is consumed from the top down, which is what a board whose PCD was
-  written for a different DRAM configuration needs.
+  PcdPeiMemoryBase is honoured when it lands in that window; otherwise the window
+  is consumed from the top down, which suits a PCD written for other DRAM.
 **/
 STATIC
 EFI_STATUS
@@ -272,9 +269,8 @@ PlatformInstallPeiMemory (
 /**
   Report device windows the discovery pass cannot know about.
 
-  Anything overlapping an already-reported window is dropped: the bootloader
-  already described that address range, and a second descriptor for it would
-  leave the OS with an overlapping memory map.
+  Anything overlapping an already-reported window is dropped, since a second
+  descriptor for it would leave the OS an overlapping map.
 **/
 STATIC
 VOID
@@ -334,8 +330,8 @@ PlatformReportDeviceWindows (
 }
 
 /**
-  Check every carve-out sits inside reported system memory and that no two of
-  them overlap, then reserve them all.
+  Check every carve-out sits inside reported system memory and that no two
+  overlap, then reserve them all.
 **/
 STATIC
 VOID
@@ -437,10 +433,8 @@ PlatformReserveCarveOuts (
     }
   }
 
-  //
-  // Reserve last: every window has been checked by now, so nothing can claim
-  // firmware memory after this point.
-  //
+  // Reserve last: every window is checked by now, so nothing can claim firmware
+  // memory after this point.
   for (Index = 0; Index < CarveOutCount; Index++) {
     if (CarveOuts[Index].Size == 0) {
       continue;
@@ -606,10 +600,8 @@ CollectPlatformDeviceMmio (
 }
 
 /**
-  Append one carve-out, dropping it if the caller's buffer is full.
-
-  Dropping one costs the OS a reserved range but does not corrupt the map, which
-  is why this reports rather than stops.
+  Append one carve-out, dropping it if the caller's buffer is full. Dropping one
+  costs the OS a reserved range but does not corrupt the map.
 **/
 STATIC
 VOID
@@ -673,16 +665,9 @@ CollectPlatformCarveOuts (
     EfiReservedMemoryType
     );
 
-  // EXPERIMENT: hand the FD back to the OS rather than holding it reserved. The
-  // bootloader loads the whole FD into DRAM and transfers control there, so this
-  // is ordinary RAM, not a flash mapping, and nothing in it is live once Boot
-  // Services start: the images are shadowed into RAM at load time, the FV is only
-  // their source, and AuthVariableLibNull leaves no NVRAM. BDS does read the FV to
-  // register the Shell boot option by FvFile GUID, but that is long finished by
-  // ExitBootServices.
-  //
-  // Revert to EfiReservedMemoryType if anything misbehaves. A late FV read fails
-  // as a hang under memory pressure rather than cleanly at boot.
+  // EXPERIMENT: hand the FD back to the OS. The bootloader loads it into DRAM and
+  // jumps there, so it is ordinary RAM and dead once Boot Services start. Revert to
+  // EfiReservedMemoryType if anything misbehaves: a late FV read hangs, not stops.
   PlatformAppendCarveOut (
     CarveOuts,
     Capacity,

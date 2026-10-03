@@ -657,9 +657,8 @@ STATIC EFI_EVENT  mOtgExitBootServicesEvent = NULL;
 
 /**
   ExitBootServices: stop firmware polling and keep the pads Windows needs.
-  Windows' usbehci.sys only programs UFOR/UFOT/UFOS - no driver for the
-  TUSB1211 CS/RST or CHG_OTG VBUS lines - so re-assert them and clear HOSTPC1's
-  PHY low-power/auto-suspend bits for the hand-off.
+  usbehci.sys only programs UFOR/UFOT/UFOS, with no driver for the TUSB1211 CS/RST or
+  CHG_OTG VBUS lines, so re-assert them and clear HOSTPC1's PHY suspend bits.
 **/
 STATIC
 VOID

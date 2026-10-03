@@ -49,15 +49,9 @@ ScuResetSystemLibConstructor (
   EFI_STATUS            Status;
   EFI_PHYSICAL_ADDRESS  Base;
 
-  //
-  // The SCU IPC block needs no attention here: ScuIpcLib makes its own aperture
-  // uncacheable the first time it is used. SetMemorySpaceAttributes only
-  // records a GCD attribute, and nothing turns that into an MTRR.
-  //
-  // The PMU block is ours to look after, and this does not help it either --
-  // see the DWC3 aperture for the same problem -- but it is the only path we
-  // have for a block we must read across ExitBootServices.
-  //
+  // ScuIpcLib makes its own aperture uncacheable on first use. The PMU block does
+  // not help itself, so map it here; SetMemorySpaceAttributes only records a GCD
+  // attribute, and this is the only path we have across ExitBootServices.
   Base     = (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdPmuBase);
   mPmuBase = (VOID *)(UINTN)Base;
 
@@ -84,9 +78,8 @@ ScuResetSystemLibConstructor (
 /**
   Ask the SCU to reset, then wait for it to happen.
 
-  Whether the command was accepted makes no difference to what happens next: if
-  the SCU did not take it, nothing else is going to reset the board, so the
-  alternatives are a hang either way and the one we are in is more informative.
+  Whether the command was accepted makes no difference: if the SCU did not take it
+  nothing else resets the board, so the alternatives are a hang either way.
 **/
 STATIC
 VOID

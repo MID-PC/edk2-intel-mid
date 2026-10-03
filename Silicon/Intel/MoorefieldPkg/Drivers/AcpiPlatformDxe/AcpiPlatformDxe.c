@@ -1,13 +1,8 @@
 /** @file
   Moorefield (Silvermont / Z3580) platform ACPI table set.
 
-  Builds FACS, FADT, MADT, HPET and MCFG in memory and installs them with the
-  board DSDT, giving a hardware-reduced namespace enough for Windows to bring up
-  the four cores and the MMIO devices the DSDT describes. Windows starts the APs
-  itself with INIT/SIPI from the MADT; no firmware MP wake-up is involved.
-
-  FACS and DSDT are installed before FADT. AcpiTableDxe patches the FADT
-  FIRMWARE_CTRL and DSDT pointers itself, so they are left zero here.
+  Builds FACS, FADT, MADT, HPET and MCFG in memory and installs them with the board
+  DSDT. Hardware-reduced, so Windows starts the APs itself from the MADT.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
  **/
@@ -26,10 +21,9 @@
 #include <IndustryStandard/MemoryMappedConfigurationSpaceAccessTable.h>
 #include <Protocol/AcpiTable.h>
 
-// No ACPI fixed hardware on this part, so the PM1xxx/PM2/PMTimer/GPE blocks stay
-  // zero and the FADT advertises HARDWARE_REDUCED_ACPI. WBINVD is set, not
-  // cleared: the bit means "WBINVD works", so the OS may use it to flush the
-  // hand-off caches at ExitBootServices.
+// No ACPI fixed hardware here, so the PM1xxx/PM2/PMTimer/GPE blocks stay zero and
+  // the FADT advertises HARDWARE_REDUCED_ACPI. WBINVD is set, not cleared: the bit
+  // means "WBINVD works", so the OS may use it to flush caches at ExitBootServices.
 #define MF_FADT_FLAGS  (EFI_ACPI_6_5_WBINVD | EFI_ACPI_6_5_SLP_BUTTON | \
                         EFI_ACPI_6_5_HW_REDUCED_ACPI | \
                         EFI_ACPI_6_5_LOW_POWER_S0_IDLE_CAPABLE)
@@ -65,9 +59,8 @@ typedef struct {
 } MOOREFIELD_MADT;
 
 /**
-  ACPI 2.0+ "HPET" table. MdePkg has the signature but no structure, so it is
-  declared here. Needed on top of the DSDT's PNP0103 device, which only says the
-  block exists: with a hardware-reduced FADT and no CMOS RTC, this is the only
+  ACPI 2.0+ "HPET" table; MdePkg has the signature but no structure, so it is
+  declared here. With a hardware-reduced FADT and no CMOS RTC this is the only
   ACPI-visible time source, so without it ACPI.sys falls back to the APIC timer.
 **/
 typedef struct {
@@ -209,10 +202,9 @@ STATIC CONST MOOREFIELD_MCFG  mMcfg = {
 };
 
 /**
-  Fill in the 8-bit checksum of a writable ACPI table. AcpiTableDxe recomputes
-  this on install, so it is not load-bearing; doing it here keeps each table well
-  formed the moment it leaves this module, and makes an accidental length change
-  show up as a bad checksum.
+  Fill in the 8-bit checksum of a writable ACPI table. AcpiTableDxe recomputes this
+  on install, so doing it here is only to keep each table well formed on the way
+  out, and to make an accidental length change show up as a bad checksum.
 
   @param[in, out]  Table  Table to checksum, in writable memory.
 **/
