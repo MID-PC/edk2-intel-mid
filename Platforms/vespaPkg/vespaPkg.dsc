@@ -8,7 +8,7 @@
   SUPPORTED_ARCHITECTURES        = IA32
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
-  FLASH_DEFINITION               = ducatiPkg/ducatiPkg.fdf
+  FLASH_DEFINITION               = vespaPkg/vespaPkg.fdf
 
   DEFINE SHELL_TYPE              = BUILD_SHELL
   #
@@ -38,5 +38,4 @@
 
 [Components]
   # ACPI
-  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
   ducatiPkg/AcpiPlatformDxe/AcpiTables.inf
