@@ -13,35 +13,6 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
 
     Scope (\_SB)
     {
-        // System memory reservations
-        Device (SYSR)
-        {
-            Name (_HID, EisaId ("PNP0C02"))
-            Name (_UID, 0x01)
-            Name (_CRS, ResourceTemplate ()
-            {
-                Memory32Fixed (ReadWrite, 0x00D00000, 0x00300000) // low MMIO
-                Memory32Fixed (ReadWrite, 0x36FF0000, 0x00A0D000) // SoC MMIO
-                Memory32Fixed (ReadWrite, 0x3EF00000, 0x000000D0) // MMCONFIG below MBI mailbox
-                Memory32Fixed (ReadWrite, 0x3EF000D8, 0x000FFF28) // MMCONFIG above MBI mailbox
-                // Framebuffer (0x3F000000) and GPU (0x40000000) windows are produced by \_SB.PCI0 (GFX0)
-                Memory32Fixed (ReadWrite, 0xDF800000, 0x00600000) // 0xDFE00000+ produced by PCI0 for GFX0
-                Memory32Fixed (ReadWrite, 0xFA000000, 0x04000000)
-                Memory32Fixed (ReadWrite, 0xFEC00000, 0x00001000) // IOAPIC 0
-                Memory32Fixed (ReadWrite, 0xFEC10000, 0x00001000) // IOAPIC 1
-                Memory32Fixed (ReadWrite, 0xFEE00000, 0x00001000) // LAPIC
-                Memory32Fixed (ReadWrite, 0xFF000000, 0x0011C000) // SoC MMIO below SCU IPC
-                Memory32Fixed (ReadWrite, 0xFF11C400, 0x00943C00) // SoC MMIO above SCU IPC
-                Memory32Fixed (ReadWrite, 0xFFA61000, 0x00596FC0) // below IPC mailbox
-                Memory32Fixed (ReadWrite, 0xFFFF8000, 0x00008000) // above IPC mailbox
-                Memory32Fixed (ReadWrite, 0x3EEFD000, 0x00001000) // console state page
-            })
-            Method (_STA, 0, NotSerialized)
-            {
-                Return (0x0F)
-            }
-        }
-
         Device (PEP)
         {
             Name (_HID, "INT3395")
@@ -225,6 +196,10 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             {
                 Name (_ADR, 0x00020000)
                 Name (_DDN, "PowerVR SGX544MP Graphics")
+                Name (_DEP, Package (0x01)
+                {
+                    \_SB.PEP
+                })
                 Method (_STA, 0, NotSerialized)
                 {
                     Return (0x0F)
@@ -341,7 +316,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                     Return (0x04)
                 }
             }
-            Name (_DEP, Package (0x01) { \_SB.PEP })
+            Name (_DEP, Package (0x01) { \_SB.IPC })
             Method (_CRS, 0, NotSerialized)
             {
                 Name (CBUF, ResourceTemplate ()
@@ -424,7 +399,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                     Return (0x04)
                 }
             }
-            Name (_DEP, Package (0x01) { \_SB.PEP })
+            Name (_DEP, Package (0x01) { \_SB.IPC })
             Method (_CRS, 0, NotSerialized)
             {
                 Name (RBUF, ResourceTemplate ()
@@ -755,6 +730,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             Name (_CID, EisaId ("PNP0D40"))
             Name (_UID, 0x02)
             Name (_HRV, 0x01)
+            Name (_DEP, Package (0x01) { \_SB.PEP })
             Name (RBUF, ResourceTemplate ()
             {
                 Memory32Fixed (ReadWrite, 0xFFA58000, 0x00000100)
@@ -1130,10 +1106,11 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 Return (0x0F)
             }
 
-            Name (_DEP, Package (0x02)
+            Name (_DEP, Package (0x03)
             {
                 \_SB.PEP,
-                \_SB.IPC
+                \_SB.IPC,
+                \_SB.GPO0
             })
 
             Method (_HRV, 0, NotSerialized)
