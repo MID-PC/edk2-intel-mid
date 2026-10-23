@@ -240,7 +240,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             {
                 Memory32Fixed (ReadWrite, 0xFF11C000, 0x00000400)
                 Memory32Fixed (ReadOnly, 0xFFFF7FC0, 0x00000040)
-                Interrupt (ResourceConsumer, Level, ActiveLow, Exclusive, ,, )
+                Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                 {
                     0x00000017,
                 }
@@ -248,6 +248,55 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             Method (_STA, 0, NotSerialized)
             {
                 Return (0x0F)
+            }
+
+            // SCU IPC-1 register block
+            OperationRegion (IPCR, SystemMemory, 0xFF11C000, 0x00000100)
+            Field (IPCR, DWordAcc, NoLock, Preserve)
+            {
+                CMDR,   32,
+                STSR,   32,
+                SPTR,   32,
+                DPTR,   32,
+                Offset (0x80),
+                WBUF,   128,
+                RBUF,   128
+            }
+
+            Method (IPCC, 4, Serialized)
+            {
+                Name (RTRY, Zero)
+                Name (PKG, Package (0x02) { Zero, Zero })
+
+                // Wait for any previous command to complete
+                While (((STSR & One) != Zero) && (RTRY < 0x000186A0))
+                {
+                    RTRY++
+                }
+
+                WBUF = Arg3
+                SPTR = Arg1
+                DPTR = Arg2
+                CMDR = Arg0
+                RTRY = Zero
+                While (((STSR & One) != Zero) && (RTRY < 0x000186A0))
+                {
+                    RTRY++
+                }
+
+                If (((STSR & 0x02) != Zero))
+                {
+                    PKG [Zero] = ((STSR >> 0x10) & 0xFF)
+                    Return (PKG)
+                }
+
+                PKG [One] = RBUF
+                Return (PKG)
+            }
+
+            Method (LIPC, 4, Serialized)
+            {
+                Return (IPCC (Arg0, Arg1, Arg2, Arg3))
             }
 
             Device (MREG)
@@ -264,6 +313,328 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 {
                     Return (0x0F)
                 }
+            }
+        }
+
+        // SCU virtual RTC
+        // Registers taken from the Android rtc_mrst driver, year base is 1972
+        Device (ATAD)
+        {
+            Name (_ADR, Zero)
+            Name (_HID, "ACPI000E")
+            Name (_CID, "ACPI000E")
+            Name (_UID, One)
+            Name (TMZN, 0x07FF)
+            Name (DAYL, Zero)
+            Name (ALWS, 0x0F)
+            Mutex (RTCL, 0x00)
+            OperationRegion (VRTC, SystemMemory, 0xFF108C00, 0x38)
+            Field (VRTC, ByteAcc, NoLock, Preserve)
+            {
+                SEC,    8,
+                Offset (0x04),
+                SECA,   8,
+                Offset (0x08),
+                MIN,    8,
+                Offset (0x0C),
+                MINA,   8,
+                Offset (0x10),
+                HOR,    8,
+                Offset (0x14),
+                HORA,   8,
+                Offset (0x18),
+                DAYW,   8,
+                Offset (0x1C),
+                DAY,    8,
+                Offset (0x20),
+                MON,    8,
+                Offset (0x24),
+                YEAR,   8,
+                Offset (0x28),
+                STAA,   8,
+                Offset (0x2C),
+                STAB,   8,
+                Offset (0x30),
+                STAC,   8,
+                Offset (0x34),
+                STAD,   8
+            }
+
+            Method (INUP, 0, Serialized)
+            {
+                Name (TSTB, Zero)
+                TSTB = STAB
+                TSTB |= 0x80
+                STAB = TSTB
+            }
+
+            Method (ALLW, 0, Serialized)
+            {
+                Name (TSTB, Zero)
+                TSTB = STAB
+                TSTB &= 0x7F
+                STAB = TSTB
+            }
+
+            Method (RTWT, 0, NotSerialized)
+            {
+                Name (RTRY, Zero)
+                Name (STAT, Zero)
+                Acquire (RTCL, 0x00C8)
+                STAT = STAA
+                While ((STAT & 0x80))
+                {
+                    RTRY += One
+                    If ((RTRY == 0x000186A0))
+                    {
+                        Return (Zero)
+                    }
+
+                    STAT = STAA
+                }
+            }
+
+            Method (_GCP, 0, NotSerialized)
+            {
+                Return (0x05)
+            }
+
+            Method (_GRT, 0, Serialized)
+            {
+                Name (LCTR, Zero)
+                Name (RBUF, Buffer (0x10)
+                {
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+                })
+                CreateWordField (RBUF, Zero, TYAR)
+                CreateByteField (RBUF, 0x02, TMON)
+                CreateByteField (RBUF, 0x03, TDAY)
+                CreateByteField (RBUF, 0x04, THOR)
+                CreateByteField (RBUF, 0x05, TMIN)
+                CreateByteField (RBUF, 0x06, TSEC)
+                CreateByteField (RBUF, 0x07, TVAL)
+                CreateWordField (RBUF, 0x0A, TZN)
+                CreateByteField (RBUF, 0x0C, DYL)
+                RTWT ()
+                TSEC = SEC
+                TMIN = MIN
+                THOR = HOR
+                TDAY = DAY
+                TMON = MON
+                TYAR = YEAR
+                TYAR += 0x07B4
+                TVAL = One
+                TZN = TMZN
+                DYL = DAYL
+                Release (RTCL)
+                Return (RBUF)
+            }
+
+            Method (_SRT, 1, Serialized)
+            {
+                CreateWordField (Arg0, Zero, TYAR)
+                CreateByteField (Arg0, 0x02, TMON)
+                CreateByteField (Arg0, 0x03, TDAY)
+                CreateByteField (Arg0, 0x04, THOR)
+                CreateByteField (Arg0, 0x05, TMIN)
+                CreateByteField (Arg0, 0x06, TSEC)
+                CreateWordField (Arg0, 0x0A, TZN)
+                CreateByteField (Arg0, 0x0C, DYL)
+                Name (LYR, Zero)
+                Name (LCTR, Zero)
+                LYR = (TYAR - 0x07B4)
+                RTWT ()
+                INUP ()
+                YEAR = LYR
+                MON = TMON
+                DAY = TDAY
+                HOR = THOR
+                MIN = TMIN
+                SEC = TSEC
+                ALLW ()
+                \_SB.IPC.IPCC (0x10FA, Zero, Zero, Zero)
+                Release (RTCL)
+                Return (Zero)
+            }
+
+            Method (_STV, 2, Serialized)
+            {
+                Name (THOR, Zero)
+                Name (TMIN, Zero)
+                Name (TSEC, Zero)
+                Name (RSEC, Zero)
+                Name (RMIN, Zero)
+                Name (RHOR, Zero)
+                Name (TSTB, Zero)
+                Name (TSTC, Zero)
+                Name (TSTD, Zero)
+                If ((Zero != Arg0))
+                {
+                    Return (One)
+                }
+
+                If ((Arg1 > 0x0001517F))
+                {
+                    Return (One)
+                }
+
+                Divide (Arg1, 0x3C, TSEC, TMIN)
+                Divide (TMIN, 0x3C, TMIN, THOR)
+                RTWT ()
+                RSEC = SEC
+                RMIN = MIN
+                RHOR = HOR
+                TSEC += RSEC
+                If ((TSEC > 0x3B))
+                {
+                    TSEC -= 0x3C
+                    TMIN++
+                }
+
+                TMIN += RMIN
+                If ((TMIN > 0x3B))
+                {
+                    TMIN -= 0x3C
+                    THOR++
+                }
+
+                THOR += RHOR
+                If ((THOR > 0x17))
+                {
+                    THOR -= 0x18
+                }
+
+                // Disable the alarm interrupt while the alarm registers are being changed
+                TSTB = STAB
+                TSTB &= 0xDF
+                STAB = TSTB
+                INUP ()
+                SECA = TSEC
+                MINA = TMIN
+                HORA = THOR
+                STAB = 0x22
+                ALLW ()
+                \_SB.IPC.IPCC (0x20FA, Zero, Zero, Zero)
+                TSTC = STAC
+                TSTD = STAD
+                Release (RTCL)
+                Return (Zero)
+            }
+
+            Method (_TIV, 1, Serialized)
+            {
+                Name (AHOR, Zero)
+                Name (AMIN, Zero)
+                Name (ASEC, Zero)
+                Name (RSEC, Zero)
+                Name (RMIN, Zero)
+                Name (RHOR, Zero)
+                If ((Zero != Arg0))
+                {
+                    Return (Ones)
+                }
+
+                RTWT ()
+                ASEC = SECA
+                AMIN = MINA
+                AHOR = HORA
+                RSEC = SEC
+                RMIN = MIN
+                RHOR = HOR
+                Release (RTCL)
+                If ((ASEC < RSEC))
+                {
+                    If ((AMIN == Zero))
+                    {
+                        AMIN = 0x3C
+                        If ((AHOR == Zero))
+                        {
+                            AHOR = 0x18
+                        }
+
+                        AHOR--
+                    }
+
+                    AMIN--
+                }
+
+                ASEC -= RSEC
+                If ((AMIN < RMIN))
+                {
+                    If ((AHOR == Zero))
+                    {
+                        AHOR = 0x18
+                    }
+
+                    AHOR--
+                }
+
+                AMIN -= RMIN
+                If ((AHOR < RHOR))
+                {
+                    AHOR += 0x18
+                }
+
+                AHOR -= RHOR
+                AMIN *= 0x3C
+                ASEC += AMIN
+                AHOR *= 0x0E10
+                ASEC += AHOR
+                Return (ASEC)
+            }
+
+            Method (_GWS, 1, Serialized)
+            {
+                Name (TSTC, Zero)
+                If ((Zero != Arg0))
+                {
+                    Return (Zero)
+                }
+
+                If ((0x0F == ALWS))
+                {
+                    Acquire (RTCL, 0x00C8)
+                    TSTC = STAC
+                    Release (RTCL)
+                    TSTC &= 0x20
+                    If (TSTC)
+                    {
+                        ALWS = 0x03
+                        Return (ALWS)
+                    }
+                }
+
+                Return (Zero)
+            }
+
+            Method (_CWS, 1, Serialized)
+            {
+                Name (TSTC, Zero)
+                If ((Zero == Arg0))
+                {
+                    Return (One)
+                }
+
+                If ((0x0F == ALWS))
+                {
+                    Acquire (RTCL, 0x00C8)
+                    TSTC = STAC
+                    Release (RTCL)
+                }
+
+                ALWS = 0x0F
+                Return (Zero)
+            }
+
+            Method (_STP, 2, Serialized)
+            {
+                Return (One)
+            }
+
+            Method (_TIP, 1, Serialized)
+            {
+                Return (Ones)
             }
         }
 
