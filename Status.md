@@ -103,7 +103,7 @@
 | Light Sensor         |               | ❌    |
 | Accelerometer Sensor |               | ✅    |
 | Temperature Sensor   |               | ❌    |
-| Battery              |               | ❌    |
+| Battery              |               | ✅    |
 | USB Host Mode        |               | ✅    |
 | Charging             |               | ❌    |
 | WLAN                 |               | ✅    |
@@ -153,7 +153,7 @@
 | Light Sensor         |               | ❌    |
 | Accelerometer Sensor |               | ✅    |
 | Temperature Sensor   |               | ❌    |
-| Battery              |               | ❌    |
+| Battery              |               | ✅    |
 | USB Host Mode        |               | ✅    |
 | Charging             |               | ❌    |
 | WLAN                 |               | ✅    |

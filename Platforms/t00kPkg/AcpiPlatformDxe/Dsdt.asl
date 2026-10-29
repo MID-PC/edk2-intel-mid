@@ -306,26 +306,22 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 STAB = TSTB
             }
 
+            // Wait for the update-in-progress flag (STAA bit 7) to clear.
+            // The caller holds RTCL; a timeout falls through so the mutex is never leaked.
             Method (RTWT, 0, NotSerialized)
             {
                 Name (RTRY, Zero)
-                Name (STAT, Zero)
-                Acquire (RTCL, 0x00C8)
-                STAT = STAA
-                While ((STAT & 0x80))
+                While (((STAA & 0x80) != Zero) && (RTRY < 0x000186A0))
                 {
-                    RTRY += One
-                    If ((RTRY == 0x000186A0))
-                    {
-                        Return (Zero)
-                    }
-
-                    STAT = STAA
+                    RTRY++
                 }
             }
 
             Method (_GCP, 0, NotSerialized)
             {
+                // ACPI 6.2 section 9.18.2: bit 0 = AC wake timer, bit 2 =
+                // real-time get/set, so 0x05 is "AC alarm plus real time".
+                // Other _GCP objects use a different bit layout.
                 Return (0x05)
             }
 
@@ -346,6 +342,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 CreateByteField (RBUF, 0x07, TVAL)
                 CreateWordField (RBUF, 0x0A, TZN)
                 CreateByteField (RBUF, 0x0C, DYL)
+                Acquire (RTCL, 0x00C8)
                 RTWT ()
                 TSEC = SEC
                 TMIN = MIN
@@ -374,6 +371,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 Name (LYR, Zero)
                 Name (LCTR, Zero)
                 LYR = (TYAR - 0x07B4)
+                Acquire (RTCL, 0x00C8)
                 RTWT ()
                 INUP ()
                 YEAR = LYR
@@ -411,6 +409,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
 
                 Divide (Arg1, 0x3C, TSEC, TMIN)
                 Divide (TMIN, 0x3C, TMIN, THOR)
+                Acquire (RTCL, 0x00C8)
                 RTWT ()
                 RSEC = SEC
                 RMIN = MIN
@@ -435,7 +434,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                     THOR -= 0x18
                 }
 
-                // Disable the alarm interrupt while the alarm registers are being changed
+                // Disable the alarm interrupt while changing the alarm registers, but preserve RTC_CONTROL's mode bits
+                // (0x06 = 24-hour binary; 0x22 would clear RTC_DM_BINARY).
                 TSTB = STAB
                 TSTB &= 0xDF
                 STAB = TSTB
@@ -443,7 +443,9 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                 SECA = TSEC
                 MINA = TMIN
                 HORA = THOR
-                STAB = 0x22
+                TSTB = STAB
+                TSTB |= 0x20
+                STAB = TSTB
                 ALLW ()
                 \_SB.IPC.IPCC (0x20FA, Zero, Zero, Zero)
                 TSTC = STAC
@@ -465,6 +467,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
                     Return (Ones)
                 }
 
+                Acquire (RTCL, 0x00C8)
                 RTWT ()
                 ASEC = SECA
                 AMIN = MINA
@@ -541,7 +544,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000017)
             Method (_CWS, 1, Serialized)
             {
                 Name (TSTC, Zero)
-                If ((Zero == Arg0))
+                // Only the AC timer exists.  _GWS accepts timer ID 0, so _CWS must accept it as well
+                If ((Zero != Arg0))
                 {
                     Return (One)
                 }

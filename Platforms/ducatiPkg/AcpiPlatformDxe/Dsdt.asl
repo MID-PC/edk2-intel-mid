@@ -404,26 +404,22 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 STAB = TSTB
             }
 
+            // Wait for the update-in-progress flag (STAA bit 7) to clear.
+            // The caller holds RTCL; a timeout falls through so the mutex is never leaked.
             Method (RTWT, 0, NotSerialized)
             {
                 Name (RTRY, Zero)
-                Name (STAT, Zero)
-                Acquire (RTCL, 0x00C8)
-                STAT = STAA
-                While ((STAT & 0x80))
+                While (((STAA & 0x80) != Zero) && (RTRY < 0x000186A0))
                 {
-                    RTRY += One
-                    If ((RTRY == 0x000186A0))
-                    {
-                        Return (Zero)
-                    }
-
-                    STAT = STAA
+                    RTRY++
                 }
             }
 
             Method (_GCP, 0, NotSerialized)
             {
+                // ACPI 6.2 section 9.18.2: bit 0 = AC wake timer, bit 2 =
+                // real-time get/set, so 0x05 is "AC alarm plus real time".
+                // Other _GCP objects use a different bit layout.
                 Return (0x05)
             }
 
@@ -444,6 +440,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 CreateByteField (RBUF, 0x07, TVAL)
                 CreateWordField (RBUF, 0x0A, TZN)
                 CreateByteField (RBUF, 0x0C, DYL)
+                Acquire (RTCL, 0x00C8)
                 RTWT ()
                 TSEC = SEC
                 TMIN = MIN
@@ -472,6 +469,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 Name (LYR, Zero)
                 Name (LCTR, Zero)
                 LYR = (TYAR - 0x07B4)
+                Acquire (RTCL, 0x00C8)
                 RTWT ()
                 INUP ()
                 YEAR = LYR
@@ -509,6 +507,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
 
                 Divide (Arg1, 0x3C, TSEC, TMIN)
                 Divide (TMIN, 0x3C, TMIN, THOR)
+                Acquire (RTCL, 0x00C8)
                 RTWT ()
                 RSEC = SEC
                 RMIN = MIN
@@ -533,7 +532,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                     THOR -= 0x18
                 }
 
-                // Disable the alarm interrupt while the alarm registers are being changed
+                // Disable the alarm interrupt while changing the alarm registers, but preserve RTC_CONTROL's mode bits
+                // (0x06 = 24-hour binary; 0x22 would clear RTC_DM_BINARY).
                 TSTB = STAB
                 TSTB &= 0xDF
                 STAB = TSTB
@@ -541,7 +541,9 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 SECA = TSEC
                 MINA = TMIN
                 HORA = THOR
-                STAB = 0x22
+                TSTB = STAB
+                TSTB |= 0x20
+                STAB = TSTB
                 ALLW ()
                 \_SB.IPC.IPCC (0x20FA, Zero, Zero, Zero)
                 TSTC = STAC
@@ -563,6 +565,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                     Return (Ones)
                 }
 
+                Acquire (RTCL, 0x00C8)
                 RTWT ()
                 ASEC = SECA
                 AMIN = MINA
@@ -639,7 +642,8 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             Method (_CWS, 1, Serialized)
             {
                 Name (TSTC, Zero)
-                If ((Zero == Arg0))
+                // Only the AC timer exists.  _GWS accepts timer ID 0, so _CWS must accept it as well
+                If ((Zero != Arg0))
                 {
                     Return (One)
                 }
@@ -1383,49 +1387,240 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 }
             }
 
-            // smb347 charger @ 0x6A
-            Device (CHGR)
+            // MAX17047 registers, taken from Android max17042_battery driver
+            Name (MXFG, ResourceTemplate ()
             {
-                Name (_HID, "SPBT0001") // bind to SpbTestTool peripheral driver
-                Name (_UID, One)
-                Method (_STA, 0, NotSerialized)
-                {
-                    Return (Zero)
-                }
+                I2cSerialBusV2 (0x0036, ControllerInitiated, 0x000186A0,
+                    AddressingMode7Bit, "\\_SB.I2C2",
+                    0x00, ResourceConsumer, , Exclusive,
+                    )
+            })
+            OperationRegion (DVFG, GenericSerialBus, Zero, 0x0100)
+            Field (DVFG, BufferAcc, NoLock, Preserve)
+            {
+                Connection (MXFG),
+                Offset (0x05),
+                AccessAs (BufferAcc, AttribBytes (0x02)),
+                FG05, 8
+            }
+            Field (DVFG, BufferAcc, NoLock, Preserve)
+            {
+                Connection (MXFG),
+                Offset (0x06),
+                AccessAs (BufferAcc, AttribBytes (0x02)),
+                FG06, 8
+            }
+            Field (DVFG, BufferAcc, NoLock, Preserve)
+            {
+                Connection (MXFG),
+                Offset (0x09),
+                AccessAs (BufferAcc, AttribBytes (0x02)),
+                FG09, 8
+            }
+            Field (DVFG, BufferAcc, NoLock, Preserve)
+            {
+                Connection (MXFG),
+                Offset (0x0A),
+                AccessAs (BufferAcc, AttribBytes (0x02)),
+                FG0A, 8
+            }
+            Field (DVFG, BufferAcc, NoLock, Preserve)
+            {
+                Connection (MXFG),
+                Offset (0x10),
+                AccessAs (BufferAcc, AttribBytes (0x02)),
+                FG10, 8
+            }
+            Field (DVFG, BufferAcc, NoLock, Preserve)
+            {
+                Connection (MXFG),
+                Offset (0x17),
+                AccessAs (BufferAcc, AttribBytes (0x02)),
+                FG17, 8
+            }
+            Field (DVFG, BufferAcc, NoLock, Preserve)
+            {
+                Connection (MXFG),
+                Offset (0x18),
+                AccessAs (BufferAcc, AttribBytes (0x02)),
+                FG18, 8
+            }
 
-                Method (_CRS, 0, NotSerialized)
-                {
-                    Name (RBUF, ResourceTemplate ()
-                    {
-                        I2cSerialBusV2 (0x006A, ControllerInitiated, 0x000186A0,
-                            AddressingMode7Bit, "\\_SB.I2C2",
-                            0x00, ResourceConsumer, , Exclusive,
-                            )
-                    })
-                    Return (RBUF)
-                }
+            // SMB347 IRQSTAT_E
+            Name (MXCH, ResourceTemplate ()
+            {
+                I2cSerialBusV2 (0x006A, ControllerInitiated, 0x000186A0,
+                    AddressingMode7Bit, "\\_SB.I2C2",
+                    0x00, ResourceConsumer, , Exclusive,
+                    )
+            })
+            OperationRegion (DVCH, GenericSerialBus, Zero, 0x0100)
+            Field (DVCH, BufferAcc, NoLock, Preserve)
+            {
+                Connection (MXCH),
+                Offset (0x39),
+                AccessAs (BufferAcc, AttribByte),
+                IRQE, 8
             }
 
             // max17047 fuel gauge @ 0x36
-            Device (FGAS)
+            Device (BATC)
             {
-                Name (_HID, "SPBT0002") // bind to SpbTestTool peripheral driver
-                Name (_UID, 0x02)
+                Name (_HID, EisaId ("PNP0C0A"))
+                Name (_UID, One)
+                Name (_DEP, Package (0x01) { \_SB.I2C2 })
+
+                // _BIX and _BST share BUF2, BIXP and BSTP; serialise them
+                Mutex (BT0M, 0x00)
+
+                Name (BUF2, Buffer (0x04) { 0x01, 0x00, 0x00, 0x00 })
+                CreateByteField (BUF2, Zero, BSTS)
+                CreateWordField (BUF2, 0x02, WRD1)
+
                 Method (_STA, 0, NotSerialized)
                 {
-                    Return (Zero)
+                    // don't probe the gauge until I2C2 is up
+                    Return (0x1F)
                 }
 
-                Method (_CRS, 0, NotSerialized)
+                // DesignCap (0x18) is read at runtime to match the fitted battery pack
+                // DSCP is only the read-failure fallback.
+                Name (DSCP, 0x0F9D) // 3997 mAh
+                Name (DSVO, 0x0ED8) // 3800 mV
+                Name (BIXP, Package (0x14)
                 {
-                    Name (RBUF, ResourceTemplate ()
+                    // Last-full-charge is seeded from the design capacity
+                    // and replaced by FullCAP/2 when the gauge read succeeds.
+                    Zero, One, 0xFFFFFFFF, 0x0F9D, One,
+                    0xFFFFFFFF, 0x018F, 0x00C7, Zero, 0x00017318,
+                    0xFFFFFFFF, 0xFFFFFFFF, 0x88B8, 0x61A8,
+                    One, One, "A1-830", "123456789", "LION", "Acer"
+                })
+                Name (BSTP, Package (0x04)
+                {
+                    Zero, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
+                })
+                Method (_BIX, 0, NotSerialized)
+                {
+                    Acquire (BT0M, 0xFFFF)
+                    // LSB is 5 mAh; *5/10 converts the register to mAh.
+                    Local5 = DSCP
+                    BUF2 = FG18
+                    If ((BSTS == Zero))
                     {
-                        I2cSerialBusV2 (0x0036, ControllerInitiated, 0x000186A0,
-                            AddressingMode7Bit, "\\_SB.I2C2",
-                            0x00, ResourceConsumer, , Exclusive,
-                            )
-                    })
-                    Return (RBUF)
+                        If ((WRD1 != Zero))
+                        {
+                            Local1 = WRD1
+                            Local2 = (Local1 * 0x05)
+                            Divide (Local2, 0x0A, Local0, Local1)
+                            Local5 = Local1
+                        }
+                    }
+                    // Last-full-charge seeds from the design capacity and
+                    // is replaced by FullCAP/2 when the gauge read succeeds.
+                    BIXP [0x03] = Local5
+                    BUF2 = FG10
+                    If ((BSTS == Zero))
+                    {
+                        If ((WRD1 != Zero))
+                        {
+                            Local1 = WRD1
+                            Local2 = (Local1 * 0x05)
+                            Divide (Local2, 0x0A, Local0, Local1)
+                            BIXP [0x03] = Local1
+                        }
+                    }
+                    // Cycles (0x17) has a 1% LSB; report whole cycles.
+                    BUF2 = FG17
+                    If ((BSTS == Zero))
+                    {
+                        Local1 = WRD1
+                        Divide (Local1, 0x64, Local0, Local1)
+                        BIXP [0x08] = Local1
+                    }
+                    BIXP [0x02] = Local5
+                    BIXP [0x05] = DSVO
+                    Divide (Local5, 0x0A, Local0, Local1)
+                    BIXP [0x06] = Local1
+                    Divide (Local5, 0x14, Local0, Local1)
+                    BIXP [0x07] = Local1
+                    Release (BT0M)
+                    Return (BIXP)
+                }
+                Method (_BST, 0, NotSerialized)
+                {
+                    Acquire (BT0M, 0xFFFF)
+                    // Keep Android's sign convention (negative while
+                    // discharging). 156 uA/LSB (rsense=1), so 156/1000 gives
+                    // mA without the 2760's divide-by-10 rounding loss.
+                    BUF2 = FG0A
+                    If ((BSTS == Zero))
+                    {
+                        Local1 = WRD1
+                        If ((Local1 & 0x8000))
+                        {
+                            BSTP [Zero] = One
+                            Local1 = (0x10000 - Local1)
+                        }
+                        Else
+                        {
+                            If ((Local1 == Zero))
+                            {
+                                BSTP [Zero] = Zero
+                            }
+                            Else
+                            {
+                                BSTP [Zero] = 0x02
+                            }
+                        }
+                        Local1 = (Local1 * 0x9C)
+                        Divide (Local1, 0x03E8, Local0, Local2)
+                        BSTP [One] = Local2
+                    }
+                    // Android's capacity is RepSOC (1/256 %);
+                    // scale FullCAP/2 by RepSOC/25600 to report the same percent;
+                    // RepCap (0x05) is the read-failure fallback.
+                    BUF2 = FG05
+                    If ((BSTS == Zero))
+                    {
+                        Local1 = WRD1
+                        Local2 = (Local1 * 0x05)
+                        Divide (Local2, 0x0A, Local0, Local1)
+                        BSTP [0x02] = Local1
+                    }
+                    BUF2 = FG06
+                    If ((BSTS == Zero))
+                    {
+                        Local2 = WRD1
+                        BUF2 = FG10
+                        If ((BSTS == Zero))
+                        {
+                            If ((WRD1 != Zero))
+                            {
+                                Local3 = (WRD1 >> 0x01)
+                                Local1 = (Local3 * Local2)
+                                Divide (Local1, 0x6400, Local0, Local1)
+                                // Never report more than the last full
+                                // charge, even if the gauge railed.
+                                If ((Local1 > Local3))
+                                {
+                                    Local1 = Local3
+                                }
+                                BSTP [0x02] = Local1
+                            }
+                        }
+                    }
+                    BUF2 = FG09
+                    If ((BSTS == Zero))
+                    {
+                        Local1 = WRD1
+                        Local2 = (Local1 >> 0x03)
+                        Local1 = (Local2 * 0x0271)
+                        Divide (Local1, 0x03E8, Local0, Local2)
+                        BSTP [0x03] = Local2
+                    }
+                    Release (BT0M)
+                    Return (BSTP)
                 }
             }
 
@@ -1463,6 +1658,35 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                     })
                     Return (RBUF)
                 }
+            }
+        }
+
+        // Dummy AC adapter
+        // IRQSTAT_E bits 0/4 are active-low USB/DC input undervoltage flags; if either input is good, report AC online
+        // Added so Windows does not assume the device is always plugged in/charging
+        Device (ADP1)
+        {
+            Name (_HID, "ACPI0003")
+            Name (_DEP, Package (0x01) { \_SB.I2C2 })
+            Name (BUF1, Buffer (0x03) { 0x01, 0x00, 0x11 })
+            CreateByteField (BUF1, Zero, BYAT)
+            CreateByteField (BUF1, 0x02, DATA)
+            Method (_PSR, 0, NotSerialized)
+            {
+                BUF1 = \_SB.I2C2.IRQE
+                If ((BYAT == Zero))
+                {
+                    If (((DATA & 0x11) != 0x11))
+                    {
+                        Return (One)
+                    }
+                }
+                Return (Zero)
+            }
+
+            Method (_PCL, 0, NotSerialized)
+            {
+                Return (Package (0x01) { \_SB.I2C2.BATC })
             }
         }
 
