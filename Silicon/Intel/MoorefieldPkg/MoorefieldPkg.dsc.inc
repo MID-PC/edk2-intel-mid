@@ -23,6 +23,14 @@
 
 [PcdsFixedAtBuild]
   #
+  # Fixed ACPI table identity
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemTableId|0x00000000524F4F4D # MOOR
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemRevision|0x00000001
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorId|0x4C544E49 # INTL
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision|0x000C0000
+
+  #
   # Temporary RAM is put well above the image inside the first System RAM window
   #
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000

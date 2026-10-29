@@ -1,0 +1,97 @@
+#include <IndustryStandard/Acpi.h>
+#include <IndustryStandard/DebugPort2Table.h>
+
+//
+// DBG2 Table Structure
+//
+#pragma pack(1)
+typedef struct {
+  EFI_ACPI_DEBUG_PORT_2_DESCRIPTION_TABLE        Description;
+  EFI_ACPI_DBG2_DEBUG_DEVICE_INFORMATION_STRUCT  Device;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE         BaseAddress[2];
+  UINT32                                         AddressSize[2];
+  CHAR8                                          Namepath[16];
+} CLOVERVIEW_DBG2;
+#pragma pack()
+
+//
+// DBG2 Table
+//
+CLOVERVIEW_DBG2 Dbg2Table = {
+  //
+  // Description Header
+  //
+  .Description = {
+    .Header = {
+      .Signature       = EFI_ACPI_5_0_DEBUG_PORT_2_TABLE_SIGNATURE,
+      .Length          = sizeof (CLOVERVIEW_DBG2),
+      .Revision        = EFI_ACPI_DEBUG_PORT_2_TABLE_REVISION,
+      .OemId           = {'I', 'N', 'T', 'E', 'L', ' '},
+      .OemTableId      = SIGNATURE_64 ('I', 'N', 'T', 'L', 'D', 'B', 'G', 'O'),
+      .OemRevision     = 0x00000003,
+      .CreatorId       = SIGNATURE_32 ('M', 'S', 'F', 'T'),
+      .CreatorRevision = 0x0100000D
+    },
+    .OffsetDbgDeviceInfo = (UINT32)OFFSET_OF (CLOVERVIEW_DBG2, Device),
+    .NumberDbgDeviceInfo = 1
+  },
+
+  //
+  // Debug Device Information
+  //
+  .Device = {
+    .Revision                        = EFI_ACPI_DBG2_DEBUG_DEVICE_INFORMATION_STRUCT_REVISION,
+    .Length                          = (UINT16)(sizeof (CLOVERVIEW_DBG2) - OFFSET_OF (CLOVERVIEW_DBG2, Device)),
+    .NumberofGenericAddressRegisters = 2,
+    .NameSpaceStringLength           = 16,
+    .NameSpaceStringOffset           = (UINT16)(OFFSET_OF (CLOVERVIEW_DBG2, Namepath) - OFFSET_OF (CLOVERVIEW_DBG2, Device)),
+    .OemDataLength                   = 0,
+    .OemDataOffset                   = 0,
+    .PortType                        = EFI_ACPI_DBG2_PORT_TYPE_USB,
+    .PortSubtype                     = 0x0005,
+    .Reserved                        = {0},
+    .BaseAddressRegisterOffset       = (UINT16)(OFFSET_OF (CLOVERVIEW_DBG2, BaseAddress) - OFFSET_OF (CLOVERVIEW_DBG2, Device)),
+    .AddressSizeOffset               = (UINT16)(OFFSET_OF (CLOVERVIEW_DBG2, AddressSize) - OFFSET_OF (CLOVERVIEW_DBG2, Device))
+  },
+
+  //
+  // Base Address Registers
+  //
+  .BaseAddress = {
+    {
+      .AddressSpaceId    = 0,
+      .RegisterBitWidth  = 0x20,
+      .RegisterBitOffset = 0,
+      .AccessSize        = 0,
+      .Address           = 0xFFA60000
+    },
+    {
+      .AddressSpaceId    = 0,
+      .RegisterBitWidth  = 0x20,
+      .RegisterBitOffset = 0,
+      .AccessSize        = 0,
+      .Address           = 0x0B176000
+    }
+  },
+
+  //
+  // Address Sizes
+  //
+  .AddressSize = {0x00000200, 0x00004000},
+
+  //
+  // Namespace String
+  //
+  .Namepath = "\\_SB.OTG0"
+};
+
+//
+// DBG2 Table Reference
+//
+VOID *
+ReferenceAcpiTable (
+  VOID
+  )
+{
+  return (VOID *)&Dbg2Table;
+}

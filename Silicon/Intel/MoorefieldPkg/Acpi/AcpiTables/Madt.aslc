@@ -1,0 +1,112 @@
+#include <Library/PcdLib.h>
+
+#include <IndustryStandard/Acpi.h>
+
+//
+// MADT Table Structure
+//
+#pragma pack(1)
+typedef struct {
+  EFI_ACPI_6_5_MULTIPLE_APIC_DESCRIPTION_TABLE_HEADER MadtHeader;
+  EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC_STRUCTURE         LocalApic[4];
+  EFI_ACPI_6_5_IO_APIC_STRUCTURE                      IoApic;
+} MOOREFIELD_MADT;
+#pragma pack()
+
+//
+// MADT Table
+//
+MOOREFIELD_MADT MadtTable = {
+  //
+  // MADT Table Header
+  //
+  .MadtHeader = {
+    //
+    // ACPI Table Header
+    //
+    .Header = {
+      .Signature       = EFI_ACPI_6_5_MULTIPLE_APIC_DESCRIPTION_TABLE_SIGNATURE,
+      .Length          = sizeof (MOOREFIELD_MADT),
+      .Revision        = EFI_ACPI_6_5_MULTIPLE_APIC_DESCRIPTION_TABLE_REVISION,
+      .OemId           = {'I', 'N', 'T', 'E', 'L', ' '},
+      .OemTableId      = FixedPcdGet64 (PcdAcpiDefaultOemTableId),
+      .OemRevision     = FixedPcdGet32 (PcdAcpiDefaultOemRevision),
+      .CreatorId       = FixedPcdGet32 (PcdAcpiDefaultCreatorId),
+      .CreatorRevision = FixedPcdGet32 (PcdAcpiDefaultCreatorRevision)
+    },
+    .LocalApicAddress = FixedPcdGet32 (PcdLocalApicBase),
+    .Flags            = 0
+  },
+
+  //
+  // Local APIC Structures
+  //
+  .LocalApic = {
+    //
+    // Core 0
+    //
+    [0] = {
+      .Type             = EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC,
+      .Length           = sizeof (EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC_STRUCTURE),
+      .AcpiProcessorUid = 0,
+      .ApicId           = 0,
+      .Flags            = EFI_ACPI_6_5_LOCAL_APIC_ENABLED
+    },
+
+    //
+    // Core 1
+    //
+    [1] = {
+      .Type             = EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC,
+      .Length           = sizeof (EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC_STRUCTURE),
+      .AcpiProcessorUid = 1,
+      .ApicId           = 2,
+      .Flags            = EFI_ACPI_6_5_LOCAL_APIC_ENABLED
+    },
+
+    //
+    // Core 2
+    //
+    [2] = {
+      .Type             = EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC,
+      .Length           = sizeof (EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC_STRUCTURE),
+      .AcpiProcessorUid = 2,
+      .ApicId           = 4,
+      .Flags            = EFI_ACPI_6_5_LOCAL_APIC_ENABLED
+    },
+
+    //
+    // Core 3
+    //
+    [3] = {
+      .Type             = EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC,
+      .Length           = sizeof (EFI_ACPI_6_5_PROCESSOR_LOCAL_APIC_STRUCTURE),
+      .AcpiProcessorUid = 3,
+      .ApicId           = 6,
+      .Flags            = EFI_ACPI_6_5_LOCAL_APIC_ENABLED
+    }
+  },
+
+  //
+  // I/O APIC
+  //
+  .IoApic = {
+    .Type                      = EFI_ACPI_6_5_IO_APIC,
+    .Length                    = sizeof (EFI_ACPI_6_5_IO_APIC_STRUCTURE),
+    .IoApicId                  = 0,
+    .Reserved                  = 0,
+    .IoApicAddress             = FixedPcdGet32 (PcdIoApicBase),
+    .GlobalSystemInterruptBase = 0
+  }
+};
+
+//
+// MADT Table Reference
+//
+VOID *
+ReferenceAcpiTable (
+  VOID
+  )
+{
+  return (VOID *)&MadtTable;
+}

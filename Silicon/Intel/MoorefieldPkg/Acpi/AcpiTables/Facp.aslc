@@ -1,0 +1,57 @@
+#include <Library/PcdLib.h>
+
+#include <IndustryStandard/Acpi.h>
+
+//
+// FADT Table
+//
+EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE FadtTable = {
+  //
+  // ACPI Table Header
+  //
+  .Header = {
+    .Signature       = EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE_SIGNATURE,
+    .Length          = sizeof (EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE),
+    .Revision        = EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE_REVISION,
+    .OemId           = {'I', 'N', 'T', 'E', 'L', ' '},
+    .OemTableId      = FixedPcdGet64 (PcdAcpiDefaultOemTableId),
+    .OemRevision     = FixedPcdGet32 (PcdAcpiDefaultOemRevision),
+    .CreatorId       = FixedPcdGet32 (PcdAcpiDefaultCreatorId),
+    .CreatorRevision = FixedPcdGet32 (PcdAcpiDefaultCreatorRevision)
+  },
+
+  //
+  // Power Mode Profile
+  //
+  .PreferredPmProfile = EFI_ACPI_6_5_PM_PROFILE_TABLET,
+
+  //
+  // Boot Architecture Flags
+  //
+  .IaPcBootArch       = EFI_ACPI_6_5_VGA_NOT_PRESENT |
+                        EFI_ACPI_6_5_CMOS_RTC_NOT_PRESENT,
+
+  //
+  // Flags
+  //
+  .Flags              = EFI_ACPI_6_5_WBINVD |
+                        EFI_ACPI_6_5_SLP_BUTTON |
+                        EFI_ACPI_6_5_HW_REDUCED_ACPI |
+                        EFI_ACPI_6_5_LOW_POWER_S0_IDLE_CAPABLE,
+
+  //
+  // Minor Version
+  //
+  .MinorVersion       = EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE_MINOR_REVISION
+};
+
+//
+// FADT Table Reference
+//
+VOID *
+ReferenceAcpiTable (
+  VOID
+  )
+{
+  return (VOID *)&FadtTable;
+}

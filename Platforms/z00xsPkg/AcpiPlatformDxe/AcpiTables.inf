@@ -7,10 +7,27 @@
 
 [Sources]
   Dsdt.asl
+  MoorefieldPkg/Acpi/AcpiTables/Facs.aslc
+  MoorefieldPkg/Acpi/AcpiTables/Facp.aslc
+  MoorefieldPkg/Acpi/AcpiTables/Madt.aslc
+  MoorefieldPkg/Acpi/AcpiTables/Hpet.aslc
+  MoorefieldPkg/Acpi/AcpiTables/Mcfg.aslc
 
 [Packages]
   MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
   MoorefieldPkg/MoorefieldPkg.dec
+
+[FixedPcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemTableId
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemRevision
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorId
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision
+  gMoorefieldTokenSpaceGuid.PcdLocalApicBase
+  gMoorefieldTokenSpaceGuid.PcdIoApicBase
+  gMoorefieldTokenSpaceGuid.PcdHpetBase
+  gMoorefieldTokenSpaceGuid.PcdHpetBlockId
+  gMoorefieldTokenSpaceGuid.PcdPciMmcfgBase
 
 [Guids]
   gMoorefieldAcpiTableStorageGuid

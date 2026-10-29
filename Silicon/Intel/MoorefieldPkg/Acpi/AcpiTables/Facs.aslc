@@ -1,0 +1,21 @@
+#include <IndustryStandard/Acpi.h>
+
+//
+// FACS Table
+//
+EFI_ACPI_6_5_FIRMWARE_ACPI_CONTROL_STRUCTURE FacsTable = {
+  .Signature              = EFI_ACPI_6_5_FIRMWARE_ACPI_CONTROL_STRUCTURE_SIGNATURE,
+  .Length                 = sizeof (EFI_ACPI_6_5_FIRMWARE_ACPI_CONTROL_STRUCTURE),
+  .Version                = EFI_ACPI_6_5_FIRMWARE_ACPI_CONTROL_STRUCTURE_VERSION
+};
+
+//
+// FACS Table Reference
+//
+VOID *
+ReferenceAcpiTable (
+  VOID
+  )
+{
+  return (VOID *)&FacsTable;
+}

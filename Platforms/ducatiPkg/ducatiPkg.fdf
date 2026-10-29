@@ -97,18 +97,13 @@ APRIORI DXE {
 
 # ACPI
 INF  RuleOverride = ACPITABLE ducatiPkg/AcpiPlatformDxe/AcpiTables.inf
-FILE  FREEFORM = F77A9DA4-8DF3-4B2C-A1E6-0C57B2D34E91 {
-  SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Facs.aml
-  SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Facp.aml
-  SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Apic.aml
-  SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Mcfg1G.aml
+# Fixed tables (FACS/FACP/APIC/HPET/CSRT) are built from the .aslc sources
+# listed in ducatiPkg/AcpiPlatformDxe/AcpiTables.inf.
+# PPM SSDT is built from SsdPpm*.asl and included in AcpiTables.inf.
+# DBG2 is built from Dbg2.aslc and only packaged for KDNET.
 !ifdef KDNET_USB
-  SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Dbg2.aml
+INF  RuleOverride = ACPITABLE CloverviewPkg/Acpi/AcpiTables/Dbg2.inf
 !endif
-  SECTION RAW = CloverviewPkg/Acpi/AcpiTables/Csrt.aml
-  # z2560 CPU topology/power states SSDT
-  SECTION RAW = CloverviewPkg/Acpi/AcpiTables/SsdPpm2560.aml
-}
 !include IntelPkg/Extra.fdf.inc
 
 # Common FDF rules

@@ -1,0 +1,112 @@
+#include <Library/PcdLib.h>
+
+#include <IndustryStandard/Acpi.h>
+
+//
+// FADT Table Structure
+//
+#pragma pack(1)
+typedef struct {
+  EFI_ACPI_DESCRIPTION_HEADER               Header;
+  UINT32                                    FirmwareCtrl;
+  UINT32                                    Dsdt;
+  UINT8                                     Reserved0;
+  UINT8                                     PreferredPmProfile;
+  UINT16                                    SciInt;
+  UINT32                                    SmiCmd;
+  UINT8                                     AcpiEnable;
+  UINT8                                     AcpiDisable;
+  UINT8                                     S4BiosReq;
+  UINT8                                     PstateCnt;
+  UINT32                                    Pm1aEvtBlk;
+  UINT32                                    Pm1bEvtBlk;
+  UINT32                                    Pm1aCntBlk;
+  UINT32                                    Pm1bCntBlk;
+  UINT32                                    Pm2CntBlk;
+  UINT32                                    PmTmrBlk;
+  UINT32                                    Gpe0Blk;
+  UINT32                                    Gpe1Blk;
+  UINT8                                     Pm1EvtLen;
+  UINT8                                     Pm1CntLen;
+  UINT8                                     Pm2CntLen;
+  UINT8                                     PmTmrLen;
+  UINT8                                     Gpe0BlkLen;
+  UINT8                                     Gpe1BlkLen;
+  UINT8                                     Gpe1Base;
+  UINT8                                     CstCnt;
+  UINT16                                    PLvl2Lat;
+  UINT16                                    PLvl3Lat;
+  UINT16                                    FlushSize;
+  UINT16                                    FlushStride;
+  UINT8                                     DutyOffset;
+  UINT8                                     DutyWidth;
+  UINT8                                     DayAlrm;
+  UINT8                                     MonAlrm;
+  UINT8                                     Century;
+  UINT16                                    IaPcBootArch;
+  UINT8                                     Reserved1;
+  UINT32                                    Flags;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    ResetReg;
+  UINT8                                     ResetValue;
+  UINT8                                     Reserved2[3];
+  UINT64                                    XFirmwareCtrl;
+  UINT64                                    XDsdt;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    XPm1aEvtBlk;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    XPm1bEvtBlk;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    XPm1aCntBlk;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    XPm1bCntBlk;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    XPm2CntBlk;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    XPmTmrBlk;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    XGpe0Blk;
+  EFI_ACPI_5_0_GENERIC_ADDRESS_STRUCTURE    XGpe1Blk;
+} CLOVERVIEW_FADT;
+#pragma pack()
+
+//
+// FADT Table
+//
+CLOVERVIEW_FADT FadtTable = {
+  //
+  // ACPI Table Header
+  //
+  .Header = {
+    .Signature       = EFI_ACPI_5_0_FIXED_ACPI_DESCRIPTION_TABLE_SIGNATURE,
+    .Length          = sizeof (CLOVERVIEW_FADT),
+    .Revision        = EFI_ACPI_5_0_FIXED_ACPI_DESCRIPTION_TABLE_REVISION,
+    .OemId           = {'I', 'N', 'T', 'E', 'L', ' '},
+    .OemTableId      = FixedPcdGet64 (PcdAcpiDefaultOemTableId),
+    .OemRevision     = FixedPcdGet32 (PcdAcpiDefaultOemRevision),
+    .CreatorId       = FixedPcdGet32 (PcdAcpiDefaultCreatorId),
+    .CreatorRevision = FixedPcdGet32 (PcdAcpiDefaultCreatorRevision)
+  },
+
+  //
+  // Power Mode Profile
+  //
+  .PreferredPmProfile = EFI_ACPI_5_0_PM_PROFILE_TABLET,
+
+  //
+  // Boot Architecture Flags
+  //
+  .IaPcBootArch       = EFI_ACPI_5_0_VGA_NOT_PRESENT |
+                        EFI_ACPI_5_0_CMOS_RTC_NOT_PRESENT,
+
+  //
+  // Flags
+  //
+  .Flags              = EFI_ACPI_5_0_WBINVD |
+                        EFI_ACPI_5_0_SLP_BUTTON |
+                        EFI_ACPI_5_0_HW_REDUCED_ACPI |
+                        EFI_ACPI_5_0_LOW_POWER_S0_IDLE_CAPABLE
+};
+
+//
+// FADT Table Reference
+//
+VOID *
+ReferenceAcpiTable (
+  VOID
+  )
+{
+  return (VOID *)&FadtTable;
+}

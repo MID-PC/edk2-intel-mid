@@ -7,7 +7,19 @@
 
 [Sources]
   Dsdt.asl
+  CloverviewPkg/Acpi/AcpiTables/SsdPpm2560.asl
+  CloverviewPkg/Acpi/AcpiTables/Facs.aslc
+  CloverviewPkg/Acpi/AcpiTables/Facp.aslc
+  CloverviewPkg/Acpi/AcpiTables/Madt.aslc
+  CloverviewPkg/Acpi/AcpiTables/Csrt.aslc
 
 [Packages]
   MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
   CloverviewPkg/CloverviewPkg.dec
+
+[FixedPcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemTableId
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemRevision
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorId
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision

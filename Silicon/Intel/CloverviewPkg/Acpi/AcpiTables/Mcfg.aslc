@@ -1,0 +1,58 @@
+#include <Library/PcdLib.h>
+
+#include <IndustryStandard/Acpi.h>
+#include <IndustryStandard/MemoryMappedConfigurationSpaceAccessTable.h>
+
+//
+// MCFG Table Structure
+//
+#pragma pack(1)
+typedef struct {
+  EFI_ACPI_MEMORY_MAPPED_CONFIGURATION_BASE_ADDRESS_TABLE_HEADER                          TableHeader;
+  EFI_ACPI_MEMORY_MAPPED_ENHANCED_CONFIGURATION_SPACE_BASE_ADDRESS_ALLOCATION_STRUCTURE   BaseAddress;
+} CLOVERVIEW_MCFG;
+#pragma pack()
+
+//
+// MCFG Table
+//
+CLOVERVIEW_MCFG McfgTable = {
+  //
+  // ACPI Table Header
+  //
+  .TableHeader = {
+    .Header = {
+      .Signature       = EFI_ACPI_2_0_MEMORY_MAPPED_CONFIGURATION_BASE_ADDRESS_TABLE_SIGNATURE,
+      .Length          = sizeof (CLOVERVIEW_MCFG),
+      .Revision        = EFI_ACPI_MEMORY_MAPPED_CONFIGURATION_SPACE_ACCESS_TABLE_REVISION,
+      .OemId           = {'I', 'N', 'T', 'E', 'L', ' '},
+      .OemTableId      = FixedPcdGet64 (PcdAcpiDefaultOemTableId),
+      .OemRevision     = FixedPcdGet32 (PcdAcpiDefaultOemRevision),
+      .CreatorId       = FixedPcdGet32 (PcdAcpiDefaultCreatorId),
+      .CreatorRevision = FixedPcdGet32 (PcdAcpiDefaultCreatorRevision)
+    },
+    .Reserved = 0
+  },
+
+  //
+  // ECAM Allocation
+  //
+  .BaseAddress = {
+    .BaseAddress           = FixedPcdGet64 (PcdMcfgBaseAddress),
+    .PciSegmentGroupNumber = 0,
+    .StartBusNumber        = 0,
+    .EndBusNumber          = 0,
+    .Reserved              = 0
+  }
+};
+
+//
+// MCFG Table Reference
+//
+VOID *
+ReferenceAcpiTable (
+  VOID
+  )
+{
+  return (VOID *)&McfgTable;
+}

@@ -62,7 +62,6 @@ jobs:
             llvm \
             nasm \
             python3 \
-            python3-venv \
             python3-pip \
             uuid-dev
           python -m pip install -r pip-requirements.txt --break-system-packages
@@ -81,4 +80,3 @@ jobs:
           path: out/*.img
           if-no-files-found: error
           compression-level: 9
-          retention-days: 14

@@ -1236,6 +1236,66 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             }
         }
 
+        // I2C0: no on-board device is populated on this bus.
+        Device (I2C0)
+        {
+            Name (_ADR, Zero)
+            Name (_HID, "INT33B1")
+            Name (_CID, "INT33B1")
+            Name (_UID, One)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+
+            Method (_HRV, 0, NotSerialized)
+            {
+                Return (STEP) // Driver variant selection: B0 stepping
+            }
+
+            Name (_DEP, Package (0x02)
+            {
+                \_SB.PEP,
+                \_SB.IPC
+            })
+
+            Method (_CRS, 0, NotSerialized)
+            {
+                Name (RBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF138000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000000A,
+                    }
+                })
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF138000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000000A,
+                    }
+                    FixedDMA (0x0017, 0x0000, Width32bit, )
+                    FixedDMA (0x0016, 0x0001, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
+                }
+            }
+        }
+
         Device (I2C1)
         {
             Name (_ADR, Zero)
@@ -1466,6 +1526,107 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                             }
                     })
                     Return (RBUF)
+                }
+            }
+        }
+
+        // I2C3 is the HDMI DDC bus.  The Cloverview reference table assigns
+        // no DMA request lines to this controller, so it uses PIO only.
+        Device (I2C3)
+        {
+            Name (_ADR, Zero)
+            Name (_HID, "INT33B1")
+            Name (_CID, "INT33B1")
+            Name (_UID, 0x04)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+
+            Method (_HRV, 0, NotSerialized)
+            {
+                Return (STEP) // Driver variant selection: B0 stepping
+            }
+
+            Name (_DEP, Package (0x02)
+            {
+                \_SB.PEP,
+                \_SB.IPC
+            })
+
+            Method (_CRS, 0, NotSerialized)
+            {
+                Name (RBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13B000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000002C,
+                    }
+                })
+                Return (RBUF)
+            }
+        }
+
+        // I2C4: camera bus (OV5645 at 0x3C, OV2675 at 0x30).
+        Device (I2C4)
+        {
+            Name (_ADR, Zero)
+            Name (_HID, "INT33B1")
+            Name (_CID, "INT33B1")
+            Name (_UID, 0x05)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+
+            Method (_HRV, 0, NotSerialized)
+            {
+                Return (STEP) // Driver variant selection: B0 stepping
+            }
+
+            Name (_DEP, Package (0x02)
+            {
+                \_SB.PEP,
+                \_SB.IPC
+            })
+
+            Method (_CRS, 0, NotSerialized)
+            {
+                Name (RBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13C000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000002D,
+                    }
+                })
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13C000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000002D,
+                    }
+                    FixedDMA (0x001D, 0x0004, Width32bit, )
+                    FixedDMA (0x001C, 0x0005, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
                 }
             }
         }

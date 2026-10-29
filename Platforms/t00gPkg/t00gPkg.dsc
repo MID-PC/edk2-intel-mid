@@ -22,6 +22,9 @@
 !include CloverviewPkg/CloverviewPkg.dsc.inc
 
 [PcdsFixedAtBuild]
+  # The 2 GiB layout puts ECAM at 0x7FB00000 (SoC default is 0x3EF00000).
+  gCloverviewTokenSpaceGuid.PcdMcfgBaseAddress|0x7FB00000
+
   # Device Framebuffer
   gIntelMidTokenSpaceGuid.PcdFrameBufferBase|0x7FC00000
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth|720

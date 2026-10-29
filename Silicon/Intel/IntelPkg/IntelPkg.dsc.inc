@@ -152,6 +152,8 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|TRUE
 
 [PcdsFixedAtBuild]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemId|"INTEL "
+
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength|1000000
   gEfiMdePkgTokenSpaceGuid.PcdMaximumAsciiStringLength|1000000
   gEfiMdePkgTokenSpaceGuid.PcdMaximumLinkedListLength|1000000

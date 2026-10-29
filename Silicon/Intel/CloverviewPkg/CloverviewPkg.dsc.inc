@@ -23,6 +23,16 @@
 
 [PcdsFixedAtBuild]
   #
+  # Fixed ACPI table identity
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemTableId|0x4344524F464E414C # LANFORDC
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemRevision|0x00000003
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorId|0x5446534D # MSFT
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision|0x0100000D
+  # Cloverview does not support the standard S3 sleep state, instead using S0ix
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiS3Enable|FALSE
+
+  #
   # Temporary RAM is put well above the image inside the first System RAM window
   #
   gIntelMidTokenSpaceGuid.PcdSecPeiTemporaryRamBase|0x02000000
@@ -92,3 +102,10 @@
   # ACPI installation
   #
   CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
+
+  #
+  # DBG2 table (packaged only in KDNET_USB builds)
+  #
+!ifdef KDNET_USB
+  CloverviewPkg/Acpi/AcpiTables/Dbg2.inf
+!endif

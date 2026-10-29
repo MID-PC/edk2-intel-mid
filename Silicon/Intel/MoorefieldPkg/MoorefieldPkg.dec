@@ -24,6 +24,11 @@
   gMoorefieldTokenSpaceGuid.PcdHpetBase|0xFED00000|UINT32|0x0000000A
   gMoorefieldTokenSpaceGuid.PcdHpetSize|0x00000400|UINT32|0x0000000B
 
+  ## HPET capability block ID reported in the ACPI HPET table
+  ## (vendor, revision, timer count, 64-bit and legacy-route flags)
+  ## Must match CAP_ID at PcdHpetBase + 0x00
+  gMoorefieldTokenSpaceGuid.PcdHpetBlockId|0x8086A201|UINT32|0x00000011
+
   ## SD host controller (mmc1, SD card slot) MMIO window
   gMoorefieldTokenSpaceGuid.PcdSdHostBase|0xFF3FA000|UINT32|0x00000003
   gMoorefieldTokenSpaceGuid.PcdSdHostSize|0x00001000|UINT32|0x00000004

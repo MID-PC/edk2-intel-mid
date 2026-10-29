@@ -1,0 +1,175 @@
+#include <Library/PcdLib.h>
+
+#include <IndustryStandard/Acpi.h>
+
+//
+// CSRT Table Structures
+//
+#pragma pack(1)
+typedef struct {
+  UINT32    Length;
+  UINT16    Type;
+  UINT16    Subtype;
+  UINT32    UID;
+} CLOVERVIEW_CSRT_RESOURCE;
+
+typedef struct {
+  UINT32    Length;
+  UINT32    VendorId;
+  UINT32    SubvendorId;
+  UINT16    DeviceId;
+  UINT16    SubdeviceId;
+  UINT16    Revision;
+  UINT16    Reserved;
+  UINT32    SharedInfoLength;
+  UINT16    MajorVersion;
+  UINT16    MinorVersion;
+  UINT32    MmioBaseLow;
+  UINT32    MmioBaseHigh;
+  UINT32    GsiInterrupt;
+  UINT8     InterruptPolarity;
+  UINT8     InterruptMode;
+  UINT8     NumChannels;
+  UINT8     DmaAddressWidth;
+  UINT16    BaseRequestLine;
+  UINT16    NumHandshakeSignals;
+  UINT32    MaxBlockSize;
+} CLOVERVIEW_CSRT_GROUP;
+
+typedef struct {
+  CLOVERVIEW_CSRT_GROUP       Group;
+  CLOVERVIEW_CSRT_RESOURCE    Resources[11];
+} CLOVERVIEW_CSRT_HSU_GROUP;
+
+typedef struct {
+  CLOVERVIEW_CSRT_GROUP       Group;
+  CLOVERVIEW_CSRT_RESOURCE    Resources[9];
+} CLOVERVIEW_CSRT_SPI_GROUP;
+
+typedef struct {
+  EFI_ACPI_DESCRIPTION_HEADER       Header;
+  CLOVERVIEW_CSRT_HSU_GROUP         Hsu;
+  CLOVERVIEW_CSRT_SPI_GROUP         Spi;
+} CLOVERVIEW_CSRT;
+#pragma pack()
+
+#define CLOVERVIEW_CSRT_RESOURCE_ENTRY(Subtype, Uid)  \
+  { sizeof (CLOVERVIEW_CSRT_RESOURCE), 3, (Subtype), (Uid) }
+
+//
+// CSRT Table
+//
+CLOVERVIEW_CSRT CsrtTable = {
+  //
+  // ACPI Table Header
+  //
+  .Header = {
+    .Signature       = EFI_ACPI_5_0_CORE_SYSTEM_RESOURCE_TABLE_SIGNATURE,
+    .Length          = sizeof (CLOVERVIEW_CSRT),
+    .Revision        = 0x00,
+    .OemId           = {'I', 'N', 'T', 'E', 'L', ' '},
+    .OemTableId      = FixedPcdGet64 (PcdAcpiDefaultOemTableId),
+    .OemRevision     = FixedPcdGet32 (PcdAcpiDefaultOemRevision),
+    .CreatorId       = FixedPcdGet32 (PcdAcpiDefaultCreatorId),
+    .CreatorRevision = FixedPcdGet32 (PcdAcpiDefaultCreatorRevision)
+  },
+
+  //
+  // HSU DMA Controller
+  //
+  .Hsu = {
+    .Group = {
+      .Length              = sizeof (CLOVERVIEW_CSRT_HSU_GROUP),
+      .VendorId            = SIGNATURE_32 ('I', 'N', 'T', 'L'),
+      .SubvendorId         = 0,
+      .DeviceId            = 0x0004,
+      .SubdeviceId         = 0,
+      .Revision            = 0x0001,
+      .Reserved            = 0,
+      .SharedInfoLength    = 0x0000001C,
+      .MajorVersion        = 0x0001,
+      .MinorVersion        = 0x0000,
+      .MmioBaseLow         = 0xFFA28400,
+      .MmioBaseHigh        = 0x00000000,
+      .GsiInterrupt        = 0x0000003B,
+      .InterruptPolarity   = 0x01,
+      .InterruptMode       = 0x00,
+      .NumChannels         = 0x0A,
+      .DmaAddressWidth     = 0x20,
+      .BaseRequestLine     = 0x0000,
+      .NumHandshakeSignals = 0x000A,
+      .MaxBlockSize        = 0x00001000
+    },
+
+    //
+    // HSU Resources
+    //
+    .Resources = {
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (1, SIGNATURE_32 ('U', 'A', 'R', 'T')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '0')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '1')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '2')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '3')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '4')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '5')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '6')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '7')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '8')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '9'))
+    }
+  },
+
+  //
+  // SPI DMA Controller
+  //
+  .Spi = {
+    .Group = {
+      .Length              = sizeof (CLOVERVIEW_CSRT_SPI_GROUP),
+      .VendorId            = SIGNATURE_32 ('I', 'N', 'T', 'L'),
+      .SubvendorId         = 0,
+      .DeviceId            = 0x0005,
+      .SubdeviceId         = 0,
+      .Revision            = 0x0001,
+      .Reserved            = 0,
+      .SharedInfoLength    = 0x0000001C,
+      .MajorVersion        = 0x0001,
+      .MinorVersion        = 0x0000,
+      .MmioBaseLow         = 0xFF13E000,
+      .MmioBaseHigh        = 0x00000000,
+      .GsiInterrupt        = 0x00000031,
+      .InterruptPolarity   = 0x01,
+      .InterruptMode       = 0x00,
+      .NumChannels         = 0x08,
+      .DmaAddressWidth     = 0x20,
+      .BaseRequestLine     = 0x0010,
+      .NumHandshakeSignals = 0x0010,
+      .MaxBlockSize        = 0x00000FFF
+    },
+
+    //
+    // SPI Resources
+    //
+    .Resources = {
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (1, SIGNATURE_32 ('S', 'P', 'I', ' ')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '0')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '1')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '2')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '3')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '4')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '5')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '6')),
+      CLOVERVIEW_CSRT_RESOURCE_ENTRY (0, SIGNATURE_32 ('C', 'H', 'A', '7'))
+    }
+  }
+};
+
+//
+// CSRT Table Reference
+//
+VOID *
+ReferenceAcpiTable (
+  VOID
+  )
+{
+  return (VOID *)&CsrtTable;
+}

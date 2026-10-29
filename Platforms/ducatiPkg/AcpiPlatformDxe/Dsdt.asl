@@ -2,6 +2,7 @@
 DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
 {
     // System power states
+    // Cloverview does not support the standard S3 sleep/S4 hibernate, instead using S0ix
     Name (\_S0, Package (0x04) { 0x05, 0x00, 0x00, 0x00 })
     Name (\_S5, Package (0x04) { 0x00, 0x00, 0x00, 0x00 })
 
@@ -268,7 +269,6 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 Name (RTRY, Zero)
                 Name (PKG, Package (0x02) { Zero, Zero })
 
-                // Wait for any previous command to complete
                 While (((STSR & One) != Zero) && (RTRY < 0x000186A0))
                 {
                     RTRY++
@@ -1128,7 +1128,9 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 Name (_ADR, 0x08)
                 Method (_RMV, 0, NotSerialized)
                 {
-                    Return (Zero) // force non-removable
+                    // force non-removable
+                    // (Windows really doesn't like being installed to removable storage)
+                    Return (Zero)
                 }
             }
         }
@@ -1233,6 +1235,65 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
 
             Method (_OFF, 0, NotSerialized)
             {
+            }
+        }
+
+        Device (I2C0)
+        {
+            Name (_ADR, Zero)
+            Name (_HID, "INT33B1")
+            Name (_CID, "INT33B1")
+            Name (_UID, One)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+
+            Method (_HRV, 0, NotSerialized)
+            {
+                Return (STEP) // Driver variant selection: B0 stepping
+            }
+
+            Name (_DEP, Package (0x02)
+            {
+                \_SB.PEP,
+                \_SB.IPC
+            })
+
+            Method (_CRS, 0, NotSerialized)
+            {
+                Name (RBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF138000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000000A,
+                    }
+                })
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF138000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000000A,
+                    }
+                    FixedDMA (0x0017, 0x0000, Width32bit, )
+                    FixedDMA (0x0016, 0x0001, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
+                }
             }
         }
 
@@ -1642,9 +1703,9 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                 {
                     Name (RBUF, ResourceTemplate ()
                     {
-                        // Currently, the I2C bus speed is set to 100KHz on all controllers.
-                        // Else, all I2C devices would timeout on reads and writes (Error 995 in SpbTestTool)
-                        // TODO: Figure out if it can be raised to the ordinary value of 400KHz. Maybe something here is wrong.
+                        // While z25xx's I2C clock is ~96MHz, the z2760 inteli2c driver hardcodes calibration for ~19.2MHz.
+                        // Therefore, despite that the controller is capable of 400KHz bus speeds, we set it to 100KHz here.
+                        // Setting it to 400KHz makes all I2C transfers fail. 100KHz doesn't really make any difference here.
                         I2cSerialBusV2 (0x0038, ControllerInitiated, 0x000186A0,
                             AddressingMode7Bit, "\\_SB.I2C2",
                             0x00, ResourceConsumer, , Exclusive,
@@ -1687,6 +1748,107 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             Method (_PCL, 0, NotSerialized)
             {
                 Return (Package (0x01) { \_SB.I2C2.BATC })
+            }
+        }
+
+        // I2C3 is the HDMI DDC bus
+        // No DMA channels are assigned to this bus
+        Device (I2C3)
+        {
+            Name (_ADR, Zero)
+            Name (_HID, "INT33B1")
+            Name (_CID, "INT33B1")
+            Name (_UID, 0x04)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+
+            Method (_HRV, 0, NotSerialized)
+            {
+                Return (STEP) // Driver variant selection: B0 stepping
+            }
+
+            Name (_DEP, Package (0x02)
+            {
+                \_SB.PEP,
+                \_SB.IPC
+            })
+
+            Method (_CRS, 0, NotSerialized)
+            {
+                Name (RBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13B000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000002C,
+                    }
+                })
+                Return (RBUF)
+            }
+        }
+
+        // I2C4: camera bus (OV5645 at 0x3C, OV2675 at 0x30)
+        Device (I2C4)
+        {
+            Name (_ADR, Zero)
+            Name (_HID, "INT33B1")
+            Name (_CID, "INT33B1")
+            Name (_UID, 0x05)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+
+            Method (_HRV, 0, NotSerialized)
+            {
+                Return (STEP) // Driver variant selection: B0 stepping
+            }
+
+            Name (_DEP, Package (0x02)
+            {
+                \_SB.PEP,
+                \_SB.IPC
+            })
+
+            Method (_CRS, 0, NotSerialized)
+            {
+                Name (RBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13C000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000002D,
+                    }
+                })
+                Name (SBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite,
+                        0xFF13C000,
+                        0x00000400,
+                        )
+                    Interrupt (ResourceConsumer, Level, ActiveLow, Shared, ,, )
+                    {
+                        0x0000002D,
+                    }
+                    FixedDMA (0x001D, 0x0004, Width32bit, )
+                    FixedDMA (0x001C, 0x0005, Width32bit, )
+                })
+                If ((STEP == Zero))
+                {
+                    Return (RBUF)
+                }
+                Else
+                {
+                    Return (SBUF)
+                }
             }
         }
 
@@ -1779,7 +1941,7 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
                     Return (RBUF)
                 }
 
-                // Sensor-device _DSM (Microsoft sensor ACPI contract, GUID 7681541e-8827-4239-8d9d-36be7fe12542)
+                // Sensor device _DSM (Microsoft sensor ACPI method, GUID 7681541e-8827-4239-8d9d-36be7fe12542)
                 // Taken from Chuwi Vi8 ACPI dumps, changed according to ducati's Android sensor_hal_config_az2.xml
                 Method (_DSM, 4, NotSerialized)
                 {

@@ -15,13 +15,9 @@
   MoorefieldPkg/MoorefieldPkg.dec
 
 [LibraryClasses]
-  BaseLib
-  BaseMemoryLib
   DebugLib
   DxeServicesLib
-  IoLib
   MemoryAllocationLib
-  PcdLib
   UefiBootServicesTableLib
   UefiDriverEntryPoint
 
@@ -30,15 +26,6 @@
 
 [Guids]
   gMoorefieldAcpiTableStorageGuid               ## CONSUMES
-
-[Pcd]
-  gMoorefieldTokenSpaceGuid.PcdLocalApicBase    ## FixedAtBuild
-  gMoorefieldTokenSpaceGuid.PcdLocalApicSize    ## FixedAtBuild
-  gMoorefieldTokenSpaceGuid.PcdIoApicBase       ## FixedAtBuild
-  gMoorefieldTokenSpaceGuid.PcdIoApicSize       ## FixedAtBuild
-  gMoorefieldTokenSpaceGuid.PcdHpetBase         ## FixedAtBuild
-  gMoorefieldTokenSpaceGuid.PcdHpetSize         ## FixedAtBuild
-  gMoorefieldTokenSpaceGuid.PcdPciMmcfgBase     ## FixedAtBuild
 
 [Depex]
   gEfiAcpiTableProtocolGuid

@@ -27,3 +27,6 @@
 
   ## Langwell GPIO AON bank (clv_gpio_0), global GPIO base 0
   gCloverviewTokenSpaceGuid.PcdGpioAuxBase|0xFF119000|UINT32|0x00000026
+
+  ## ACPI MCFG ECAM base: usually 0x3EF00000 for 1 GiB DRAM, 0x7FB00000 for 2 GiB
+  gCloverviewTokenSpaceGuid.PcdMcfgBaseAddress|0x3EF00000|UINT64|0x00000027
