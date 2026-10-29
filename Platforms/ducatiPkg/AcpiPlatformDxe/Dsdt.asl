@@ -63,6 +63,29 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             }
         }
 
+        Device (HPET)
+        {
+            Name (_HID, EisaId ("PNP0103"))
+            Name (_UID, Zero)
+            Method (_STA, 0, NotSerialized)
+            {
+                Return (0x0F)
+            }
+
+            Method (_CRS, 0, Serialized)
+            {
+                Name (RBUF, ResourceTemplate ()
+                {
+                    Memory32Fixed (ReadWrite, 0xFF11A000, 0x00000400) // This always has to be in sync with PcdHpetBase.
+                    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                    {
+                        0x00000008,
+                    }
+                })
+                Return (RBUF)
+            }
+        }
+
         Device (AUD1)
         {
             Name (_ADR, Zero)

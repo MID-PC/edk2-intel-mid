@@ -11,6 +11,7 @@
   CloverviewPkg/Acpi/AcpiTables/Facs.aslc
   CloverviewPkg/Acpi/AcpiTables/Facp.aslc
   CloverviewPkg/Acpi/AcpiTables/Madt.aslc
+  CloverviewPkg/Acpi/AcpiTables/Hpet.aslc
   CloverviewPkg/Acpi/AcpiTables/Csrt.aslc
 
 [Packages]
@@ -23,3 +24,5 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemRevision
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorId
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision
+  gCloverviewTokenSpaceGuid.PcdHpetBase
+  gCloverviewTokenSpaceGuid.PcdHpetBlockId

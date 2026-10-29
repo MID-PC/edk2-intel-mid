@@ -1,0 +1,61 @@
+#include <Library/PcdLib.h>
+
+#include <IndustryStandard/Acpi.h>
+#include <IndustryStandard/HighPrecisionEventTimerTable.h>
+
+//
+// HPET Table
+//
+EFI_ACPI_HIGH_PRECISION_EVENT_TIMER_TABLE_HEADER HpetTable = {
+  //
+  // ACPI Table Header
+  //
+  .Header = {
+    .Signature       = EFI_ACPI_5_0_HIGH_PRECISION_EVENT_TIMER_TABLE_SIGNATURE,
+    .Length          = sizeof (EFI_ACPI_HIGH_PRECISION_EVENT_TIMER_TABLE_HEADER),
+    .Revision        = EFI_ACPI_HIGH_PRECISION_EVENT_TIMER_TABLE_REVISION,
+    .OemId           = {'I', 'N', 'T', 'E', 'L', ' '},
+    .OemTableId      = FixedPcdGet64 (PcdAcpiDefaultOemTableId),
+    .OemRevision     = FixedPcdGet32 (PcdAcpiDefaultOemRevision),
+    .CreatorId       = FixedPcdGet32 (PcdAcpiDefaultCreatorId),
+    .CreatorRevision = FixedPcdGet32 (PcdAcpiDefaultCreatorRevision)
+  },
+
+  //
+  // Event Timer Block
+  //
+  .EventTimerBlockId = FixedPcdGet32 (PcdHpetBlockId),
+
+  //
+  // Base Address
+  //
+  .BaseAddressLower32Bit = {
+    .AddressSpaceId    = EFI_ACPI_2_0_SYSTEM_MEMORY,
+    .RegisterBitWidth  = 0x20,
+    .RegisterBitOffset = 0,
+    //
+    // Fourth byte of the 12-byte ACPI 2.0 generic address structure, named
+    // Reserved in MdePkg. It is the access size: 3 = DWord
+    //
+    .Reserved          = 3,
+    .Address           = FixedPcdGet32 (PcdHpetBase)
+  },
+
+  //
+  // HPET Registers
+  //
+  .HpetNumber                                = 0,
+  .MainCounterMinimumClockTickInPeriodicMode = 0x0080,
+  .PageProtectionAndOemAttribute             = 0
+};
+
+//
+// HPET Table Reference
+//
+VOID *
+ReferenceAcpiTable (
+  VOID
+  )
+{
+  return (VOID *)&HpetTable;
+}

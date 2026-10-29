@@ -30,3 +30,11 @@
 
   ## ACPI MCFG ECAM base: usually 0x3EF00000 for 1 GiB DRAM, 0x7FB00000 for 2 GiB
   gCloverviewTokenSpaceGuid.PcdMcfgBaseAddress|0x3EF00000|UINT64|0x00000027
+
+  ## IA-PC HPET register block (Langwell/Penwell LPSS)
+  gCloverviewTokenSpaceGuid.PcdHpetBase|0xFF11A000|UINT32|0x00000028
+
+  ## HPET capability block ID
+  ## Z25xx report 0x8086A201 (3 timers), Z2760 reports 0x80862301 (4 timers).
+  ## Must match CAP_ID at PcdHpetBase + 0x00
+  gCloverviewTokenSpaceGuid.PcdHpetBlockId|0x8086A201|UINT32|0x00000029
