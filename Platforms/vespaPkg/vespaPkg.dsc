@@ -37,5 +37,5 @@
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemBoardModel|"B1-730"
 
 [Components]
-  # ACPI
+  # ACPI (inherited from ducati as hardware is 99% identical)
   ducatiPkg/AcpiPlatformDxe/AcpiTables.inf

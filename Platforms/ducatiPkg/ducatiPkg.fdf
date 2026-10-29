@@ -97,10 +97,6 @@ APRIORI DXE {
 
 # ACPI
 INF  RuleOverride = ACPITABLE ducatiPkg/AcpiPlatformDxe/AcpiTables.inf
-# Fixed tables (FACS/FACP/APIC/HPET/CSRT) are built from the .aslc sources
-# listed in ducatiPkg/AcpiPlatformDxe/AcpiTables.inf.
-# PPM SSDT is built from SsdPpm*.asl and included in AcpiTables.inf.
-# DBG2 is built from Dbg2.aslc and only packaged for KDNET.
 !ifdef KDNET_USB
 INF  RuleOverride = ACPITABLE CloverviewPkg/Acpi/AcpiTables/Dbg2.inf
 !endif

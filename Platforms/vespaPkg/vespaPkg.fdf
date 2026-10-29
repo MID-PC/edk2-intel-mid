@@ -95,13 +95,8 @@ APRIORI DXE {
 # DXE drivers
 !include CloverviewPkg/DXE.fdf.inc
 
-# ACPI
+# ACPI (inherited from ducati as hardware is 99% identical)
 INF  RuleOverride = ACPITABLE ducatiPkg/AcpiPlatformDxe/AcpiTables.inf
-# Fixed tables (FACS/FACP/APIC/HPET/MCFG/CSRT) are built from the .aslc
-# sources listed in vespaPkg/AcpiPlatformDxe/AcpiTables.inf. Vespa has its
-# own table set because the ducati family deliberately omits MCFG.
-# PPM SSDT is built from SsdPpm*.asl and included in AcpiTables.inf.
-# DBG2 is built from Dbg2.aslc and only packaged for KDNET.
 !ifdef KDNET_USB
 INF  RuleOverride = ACPITABLE CloverviewPkg/Acpi/AcpiTables/Dbg2.inf
 !endif

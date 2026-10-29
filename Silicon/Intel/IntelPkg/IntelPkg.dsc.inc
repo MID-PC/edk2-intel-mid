@@ -201,6 +201,7 @@
 
 [PcdsPatchableInModule]
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvModeEnable|TRUE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize|0x2000
 
 [PcdsDynamicDefault]
   # Automatically set to max screen resolution
@@ -210,7 +211,8 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow|0
 
   gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|3
-  gEfiMdeModulePkgTokenSpaceGuid.PcdConInConnectOnDemand|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPlatformRecoverySupport|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConInConnectOnDemand|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvStoreReserved|0
 
 # Components: the generic core and driver stack shared by every Intel MID platform
