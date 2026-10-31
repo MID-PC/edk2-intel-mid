@@ -347,9 +347,9 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x01, "INTEL ", "CLOVERVW", 0x00000001)
             Name (_CRS, ResourceTemplate ()
             {
                 Memory32Fixed (ReadWrite,
-                    0x3EF000D0,
+                    0xE00000D0,
                     0x00000008,
-                    )
+                    ) // hardcoded address in clovertrail drivers, has no relation to PCI ECAM
             })
             Method (_STA, 0, NotSerialized)
             {
