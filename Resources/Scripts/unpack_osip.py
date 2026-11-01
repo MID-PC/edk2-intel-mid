@@ -15,7 +15,8 @@ def main():
                          "(e.g. Platforms/<device codename>Pkg/ImageResources)")
     args = ap.parse_args()
 
-    img = open(args.image, "rb").read()
+    with open(args.image, "rb") as fh:
+        img = fh.read()
     if img[:4] != b"$OS$":
         sys.exit("error: %s is not an OSIP image" % args.image)
 
@@ -24,12 +25,15 @@ def main():
         sys.exit("error: %s: kernel size field at base+0x400 is zero" % args.image)
 
     os.makedirs(args.outdir, exist_ok=True)
-    open(os.path.join(args.outdir, "hdr"), "wb").write(img[:512])
-    open(os.path.join(args.outdir, "sig"), "wb").write(img[512:512 + SIG_SIZE])
-    open(os.path.join(args.outdir, "cmdline.txt"), "wb").write(
-        img[base + 0x100:base + 0x400].split(b"\0")[0])
-    open(os.path.join(args.outdir, "parameter"), "wb").write(
-        img[base + 0x408:base + 0x410])
+    blobs = {
+        "hdr": img[:512],
+        "sig": img[512:512 + SIG_SIZE],
+        "cmdline.txt": img[base + 0x100:base + 0x400].split(b"\0")[0],
+        "parameter": img[base + 0x408:base + 0x410],
+    }
+    for name, blob in blobs.items():
+        with open(os.path.join(args.outdir, name), "wb") as fh:
+            fh.write(blob)
     print("unpacked %s into %s (hdr/sig/cmdline.txt/parameter)"
           % (args.image, args.outdir))
 

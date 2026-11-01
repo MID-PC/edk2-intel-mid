@@ -24,7 +24,7 @@ class CommonPlatform:
     PackagesSupported = (PACKAGE_NAME,)
     ArchSupported = ("IA32",)
     TargetsSupported = ("DEBUG", "RELEASE")
-    Scopes = ("t00g", "gcc_ia32_linux")
+    Scopes = ("t00g",)
     WorkspaceRoot = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     PackagesPath = (
         "Platforms",
@@ -118,11 +118,16 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
 
         base_tools = os.path.join(ws, "Common", "edk2", "BaseTools")
         self.env.SetValue("EDK_TOOLS_PATH", base_tools, "Platform Hardcoded")
-        wrappers = "BinWrappers/PosixLike" if os.name != "nt" else "BinWrappers"
-        path_additions = [
-            os.path.join(base_tools, wrappers),
-            os.path.join(base_tools, "Source", "C", "bin"),
-        ]
+
+        # BaseTools path
+        if os.name == "nt":
+            wrappers = os.path.join(base_tools, "BinWrappers", "WindowsLike")
+            tool_bins = [os.path.join(base_tools, "Bin", "Win32"),
+                         os.path.join(base_tools, "Bin", "Win64")]
+        else:
+            wrappers = os.path.join(base_tools, "BinWrappers", "PosixLike")
+            tool_bins = [os.path.join(base_tools, "Source", "C", "bin")]
+        path_additions = [wrappers] + [d for d in tool_bins if os.path.isdir(d)]
         os.environ["PATH"] = os.pathsep.join(path_additions + [os.environ.get("PATH", "")])
         if shutil.which("nasm") is None:
             logging.critical("nasm not found in PATH")
@@ -145,8 +150,6 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
 
         return 0
 
-    # Boot image packing is build_uefi.py's job, driven by the device TOML.
-    # Nothing device-specific belongs here.
     def PlatformPostBuild(self):
         return 0
 

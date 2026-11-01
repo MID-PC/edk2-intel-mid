@@ -60,12 +60,20 @@ python3 build_uefi.py -d ducati -r RELEASE
 python3 build_uefi.py -d t00g -c -u
 ```
 
+To build every device in the tree:
+
+```
+python3 build_active_devices.py -r <TARGET>
+```
+
+`build_active_devices.py --list` also prints the devices that would be built.
+
 ## Output
 
 Each successful build writes a flashable boot image to:
 
 ```
-out/boot_<device>_<TARGET>.img
+out/uefi_<device>_<TARGET>.img
 ```
 
 # Guides

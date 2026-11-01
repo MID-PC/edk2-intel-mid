@@ -1,0 +1,2 @@
+# stop edk2.patch from being affected by line ending format changes
+Resources/edk2.patch -text

@@ -1,11 +1,5 @@
 ##
 # @file DeviceBuild.py
-# Asus Zenfone Zoom (ZX551ML / z00xs) - 64-bit Moorefield (Atom Z3580/Z3590)
-#
-# Unlike the Cloverview boards, this bootloader takes a standard Google mkbootimg
-# image rather than an Intel OSIP container: the whole UEFI FD goes in the "second
-# bootloader" slot at 0x10F00000, entered in 32-bit protected mode, plus an ASUS "sig" blob.
-#
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
@@ -25,13 +19,12 @@ from edk2toolext.invocables.edk2_update import UpdateSettingsManager
 PACKAGE_NAME = "z00xsPkg"
 DEVICE_NAME = "z00xs"
 
-
 # Common Configuration
 class CommonPlatform:
     PackagesSupported = (PACKAGE_NAME,)
     ArchSupported = ("X64",)
     TargetsSupported = ("DEBUG", "RELEASE")
-    Scopes = ("z00xs", "gcc_x64_linux")
+    Scopes = ("z00xs",)
     WorkspaceRoot = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     PackagesPath = (
         "Platforms",
@@ -123,11 +116,16 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
 
         base_tools = os.path.join(self.GetWorkspaceRoot(), "Common", "edk2", "BaseTools")
         self.env.SetValue("EDK_TOOLS_PATH", base_tools, "Platform Hardcoded")
-        wrappers = "BinWrappers/PosixLike" if os.name != "nt" else "BinWrappers"
-        path_additions = [
-            os.path.join(base_tools, wrappers),
-            os.path.join(base_tools, "Source", "C", "bin"),
-        ]
+
+        # BaseTools path
+        if os.name == "nt":
+            wrappers = os.path.join(base_tools, "BinWrappers", "WindowsLike")
+            tool_bins = [os.path.join(base_tools, "Bin", "Win32"),
+                         os.path.join(base_tools, "Bin", "Win64")]
+        else:
+            wrappers = os.path.join(base_tools, "BinWrappers", "PosixLike")
+            tool_bins = [os.path.join(base_tools, "Source", "C", "bin")]
+        path_additions = [wrappers] + [d for d in tool_bins if os.path.isdir(d)]
         os.environ["PATH"] = os.pathsep.join(path_additions + [os.environ.get("PATH", "")])
         if shutil.which("nasm") is None:
             logging.critical("nasm not found in PATH")
@@ -149,8 +147,6 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
 
         return 0
 
-    # Boot image packing is build_uefi.py's job, driven by the device TOML.
-    # Nothing device-specific belongs here.
     def PlatformPostBuild(self):
         return 0
 

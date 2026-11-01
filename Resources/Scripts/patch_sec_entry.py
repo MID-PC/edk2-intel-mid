@@ -10,7 +10,8 @@ def main():
     args = ap.parse_args()
     path = args.path
 
-    data = bytearray(open(path, "rb").read())
+    with open(path, "rb") as fh:
+        data = bytearray(fh.read())
 
     if bytes(data[40:44]) != b"_FVH":
         sys.exit("error: no FV header at offset 0 of the FD")
@@ -47,7 +48,8 @@ def main():
 
     data[0] = 0xE9
     struct.pack_into("<i", data, 1, entry - 5)
-    open(path, "wb").write(data)
+    with open(path, "wb") as fh:
+        fh.write(data)
     print("    SEC entry at 0x%06x, jmp patched at offset 0" % entry)
 
 
