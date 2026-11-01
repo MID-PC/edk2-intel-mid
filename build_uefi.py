@@ -371,7 +371,7 @@ def update_local_repo():
         logger.error("git pull failed")
         return False
     logger.info("==> Syncing git submodules")
-    if subprocess.run(["git", "submodule", "update"]).returncode != 0:
+    if subprocess.run(["git", "submodule", "update", "--init", "--recursive"]).returncode != 0:
         logger.error("git submodule update failed")
         return False
     return True
@@ -390,15 +390,6 @@ def prepare_workspace():
 
     if shutil.which("git") is None:
         logger.error("no git detected in PATH")
-        return 1
-
-    synced = subprocess.run(
-        ["git", "-C", str(workspace), "submodule", "update", "--init", "Common/edk2"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    if synced.returncode != 0:
-        logger.error("failed to initialize Common/edk2")
         return 1
 
     if git("apply", "--reverse", "--check", str(patch_file)).returncode == 0:

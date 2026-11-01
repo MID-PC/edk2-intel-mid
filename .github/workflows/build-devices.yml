@@ -48,7 +48,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install build dependencies
         run: |

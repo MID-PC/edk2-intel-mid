@@ -45,7 +45,7 @@ class SettingsManager(UpdateSettingsManager, SetupSettingsManager, PrEvalSetting
         return CommonPlatform.TargetsSupported
 
     def GetRequiredSubmodules(self):
-        return [RequiredSubmodule("Common/edk2", False)]
+        return [RequiredSubmodule("Common/edk2")]
 
     def SetArchitectures(self, list_of_requested_architectures):
         unsupported = set(list_of_requested_architectures) - set(self.GetArchitecturesSupported())
