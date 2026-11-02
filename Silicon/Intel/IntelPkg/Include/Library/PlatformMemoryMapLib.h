@@ -16,7 +16,6 @@
 // Windows the platform must reserve on its own account. Sized with slack over
 // what any single platform currently claims, so an added region is not a
 // buffer-size change in every caller.
-#define PLATFORM_MAX_DEVICE_MMIO   4
 #define PLATFORM_MAX_CARVE_OUTS    10
 
 /**
@@ -72,13 +71,11 @@ typedef struct {
 
 /**
   Build the platform memory map and install permanent PEI memory.
-  Discovered is reported in order, then unpublished DeviceMmio windows that do not
-  overlap it. CarveOuts are checked against the reported memory, then reserved.
+  Discovered is reported in order; CarveOuts are checked against the reported
+  memory, then reserved.
 
   @param[in] Discovered        Windows found by the caller's discovery pass.
   @param[in] DiscoveredCount   Number of entries in Discovered.
-  @param[in] DeviceMmio        Device windows discovery cannot know about, typically PCI BARs. NULL when DeviceMmioCount is 0.
-  @param[in] DeviceMmioCount   Number of entries in DeviceMmio.
   @param[in] CarveOuts         Firmware-owned windows to reserve.
   @param[in] CarveOutCount     Number of entries in CarveOuts.
   @retval EFI_SUCCESS            The map was built and PEI memory installed.
@@ -90,26 +87,8 @@ EFIAPI
 BuildPlatformMemoryMap (
   IN CONST PLATFORM_MEMORY_REGION  *Discovered,
   IN UINTN                         DiscoveredCount,
-  IN CONST PLATFORM_MEMORY_REGION  *DeviceMmio,
-  IN UINTN                         DeviceMmioCount,
   IN CONST PLATFORM_MEMORY_CARVE_OUT  *CarveOuts,
   IN UINTN                         CarveOutCount
-  );
-
-/**
-  Collect this platform's PCI-device MMIO windows.
-  The bootloader map does not describe BARs, so these come from PCDs, with the PCI
-  address in the name recording how. A zero-size PCD means "no such device here".
-
-  @param[out] DeviceMmio  Window list; caller provides storage.
-  @param[in]  Capacity    Entries DeviceMmio can hold. Windows past this are dropped with a DEBUG warning.
-  @return Number of entries written to DeviceMmio.
-**/
-UINTN
-EFIAPI
-CollectPlatformDeviceMmio (
-  OUT PLATFORM_MEMORY_REGION  *DeviceMmio,
-  IN  UINTN                   Capacity
   );
 
 /**

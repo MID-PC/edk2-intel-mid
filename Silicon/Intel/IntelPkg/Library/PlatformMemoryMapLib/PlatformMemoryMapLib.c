@@ -267,69 +267,6 @@ PlatformInstallPeiMemory (
 }
 
 /**
-  Report device windows the discovery pass cannot know about.
-
-  Anything overlapping an already-reported window is dropped, since a second
-  descriptor for it would leave the OS an overlapping map.
-**/
-STATIC
-VOID
-PlatformReportDeviceWindows (
-  IN CONST PLATFORM_MEMORY_REGION  *Discovered,
-  IN UINTN                         DiscoveredCount,
-  IN CONST PLATFORM_MEMORY_REGION  *DeviceMmio,
-  IN UINTN                         DeviceMmioCount
-  )
-{
-  UINTN       Index;
-  UINTN       Other;
-  UINT64      Base;
-  UINT64      Size;
-  UINT64      WindowBase;
-  UINT64      WindowSize;
-  BOOLEAN     Found;
-
-  if (DeviceMmio == NULL) {
-    return;
-  }
-
-  for (Index = 0; Index < DeviceMmioCount; Index++) {
-    if (!PlatformNormalizeRegion (&DeviceMmio[Index], &WindowBase, &WindowSize)) {
-      continue;
-    }
-
-    Found = FALSE;
-    for (Other = 0; !Found && (Other < DiscoveredCount); Other++) {
-      if (!PlatformNormalizeRegion (&Discovered[Other], &Base, &Size)) {
-        continue;
-      }
-
-      if (PlatformRangeOverlaps (WindowBase, WindowSize, Base, Size)) {
-        Found = TRUE;
-      }
-    }
-
-    if (Found) {
-      DEBUG ((
-        DEBUG_ERROR,
-        "PlatformMemoryMapLib: device window %a (%lx-%lx) overlaps a discovered window, skipped\n",
-        DeviceMmio[Index].Name,
-        WindowBase,
-        (WindowBase + WindowSize) - 1
-        ));
-      continue;
-    }
-
-    PlatformReportWindow (
-      DeviceMmio[Index].Kind,
-      WindowBase,
-      WindowSize,
-      DeviceMmio[Index].Name
-      );
-  }
-}
-
-/**
   Check every carve-out sits inside reported system memory and that no two
   overlap, then reserve them all.
 **/
@@ -461,8 +398,6 @@ EFIAPI
 BuildPlatformMemoryMap (
   IN CONST PLATFORM_MEMORY_REGION  *Discovered,
   IN UINTN                         DiscoveredCount,
-  IN CONST PLATFORM_MEMORY_REGION  *DeviceMmio,
-  IN UINTN                         DeviceMmioCount,
   IN CONST PLATFORM_MEMORY_CARVE_OUT  *CarveOuts,
   IN UINTN                         CarveOutCount
   )
@@ -480,9 +415,8 @@ BuildPlatformMemoryMap (
 
   DEBUG ((
     DEBUG_INIT,
-    "PlatformMemoryMapLib: building map from %d discovered, %d device, %d carve-out windows\n",
+    "PlatformMemoryMapLib: building map from %d discovered, %d carve-out windows\n",
     (UINT32)DiscoveredCount,
-    (UINT32)DeviceMmioCount,
     (UINT32)CarveOutCount
     ));
 
@@ -504,13 +438,6 @@ BuildPlatformMemoryMap (
     return Status;
   }
 
-  PlatformReportDeviceWindows (
-    Discovered,
-    DiscoveredCount,
-    DeviceMmio,
-    DeviceMmioCount
-    );
-
   PlatformReserveCarveOuts (
     Discovered,
     DiscoveredCount,
@@ -524,79 +451,6 @@ BuildPlatformMemoryMap (
     );
 
   return EFI_SUCCESS;
-}
-
-/**
-  Append one device window, dropping it if the caller's buffer is full.
-**/
-STATIC
-VOID
-PlatformAppendDeviceMmio (
-  IN OUT PLATFORM_MEMORY_REGION  *DeviceMmio,
-  IN     UINTN                   Capacity,
-  IN OUT UINTN                   *Count,
-  IN     CONST CHAR8             *Name,
-  IN     UINT64                  Base,
-  IN     UINT64                  Size
-  )
-{
-  if (*Count >= Capacity) {
-    DEBUG ((DEBUG_ERROR, "PlatformMemoryMapLib: device MMIO buffer full, dropping %a\n", Name));
-    return;
-  }
-
-  DeviceMmio[*Count].Base = Base;
-  DeviceMmio[*Count].Size = Size;
-  DeviceMmio[*Count].Kind = PlatformMemoryMappedIo;
-  DeviceMmio[*Count].Name = Name;
-  (*Count)++;
-}
-
-UINTN
-EFIAPI
-CollectPlatformDeviceMmio (
-  OUT PLATFORM_MEMORY_REGION  *DeviceMmio,
-  IN  UINTN                   Capacity
-  )
-{
-  UINTN  Count;
-
-  Count = 0;
-
-  if (FixedPcdGet64 (PcdPciGpuMmioSize) != 0) {
-    PlatformAppendDeviceMmio (
-      DeviceMmio,
-      Capacity,
-      &Count,
-      "GPU 00:02.0",
-      FixedPcdGet64 (PcdPciGpuMmioBase),
-      FixedPcdGet64 (PcdPciGpuMmioSize)
-      );
-  }
-
-  if (FixedPcdGet64 (PcdPciIspMmioSize) != 0) {
-    PlatformAppendDeviceMmio (
-      DeviceMmio,
-      Capacity,
-      &Count,
-      "ISP 00:03.0",
-      FixedPcdGet64 (PcdPciIspMmioBase),
-      FixedPcdGet64 (PcdPciIspMmioSize)
-      );
-  }
-
-  if (FixedPcdGet64 (PcdPciEmacMmioSize) != 0) {
-    PlatformAppendDeviceMmio (
-      DeviceMmio,
-      Capacity,
-      &Count,
-      "EMAC 00:06.0",
-      FixedPcdGet64 (PcdPciEmacMmioBase),
-      FixedPcdGet64 (PcdPciEmacMmioSize)
-      );
-  }
-
-  return Count;
 }
 
 /**

@@ -68,16 +68,6 @@
   gEfiMdePkgTokenSpaceGuid.PcdFSBClock|100000000
 
   #
-  # PCI device MMIO windows for SfiMemoryMapLib
-  #
-  gIntelMidTokenSpaceGuid.PcdPciGpuMmioBase|0x80000000
-  gIntelMidTokenSpaceGuid.PcdPciGpuMmioSize|0x20000000
-  gIntelMidTokenSpaceGuid.PcdPciIspMmioBase|0xC2000000
-  gIntelMidTokenSpaceGuid.PcdPciIspMmioSize|0x00400000
-  # No separate EMAC window on Moorefield
-  gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize|0x0
-
-  #
   # SMBIOS Processor (Type 4) defines
   #
 !if $(SOC_VARIANT) == SOC_VARIANT_Z3560

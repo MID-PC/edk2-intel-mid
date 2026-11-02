@@ -56,14 +56,6 @@
   ## Shared framebuffer console-state page; reserved so no phase allocates over it
   gIntelMidTokenSpaceGuid.PcdConsoleStateBase|0x3EEFD000|UINT32|0x0000000C
 
-  ## PCI device MMIO windows for SfiMemoryMapLib
-  gIntelMidTokenSpaceGuid.PcdPciGpuMmioBase|0x40000000|UINT64|0x00000016
-  gIntelMidTokenSpaceGuid.PcdPciGpuMmioSize|0x10000000|UINT64|0x00000017
-  gIntelMidTokenSpaceGuid.PcdPciIspMmioBase|0xDF800000|UINT64|0x00000018
-  gIntelMidTokenSpaceGuid.PcdPciIspMmioSize|0x00800000|UINT64|0x00000019
-  gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase|0xFA000000|UINT64|0x0000001A
-  gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize|0x04000000|UINT64|0x0000001B
-
   ## SCU IPC-1 register block
   gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF11C000|UINT32|0x0000000E
 

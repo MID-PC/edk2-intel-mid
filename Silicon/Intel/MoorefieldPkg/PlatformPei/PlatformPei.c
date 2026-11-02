@@ -78,10 +78,8 @@ PlatformPeiInstallMemoryMap (
   EFI_STATUS                 Status;
   UINTN                      SfiCount;
   UINTN                      DiscoveredCount;
-  UINTN                      DeviceCount;
   UINTN                      CarveCount;
   PLATFORM_MEMORY_REGION     Discovered[PLATFORM_MAX_MEMORY_REGIONS];
-  PLATFORM_MEMORY_REGION     DeviceMmio[PLATFORM_MAX_DEVICE_MMIO];
   PLATFORM_MEMORY_CARVE_OUT  CarveOuts[PLATFORM_MAX_CARVE_OUTS];
 
   // Room for the legacy window added below.
@@ -100,16 +98,11 @@ PlatformPeiInstallMemoryMap (
   Discovered[SfiCount].Name = "legacy real-mode";
   DiscoveredCount = SfiCount + 1;
 
-  // Device windows need their own buffer; folding them into Discovered would let
-  // the overlap check compare a window against itself.
-  DeviceCount = CollectPlatformDeviceMmio (DeviceMmio, ARRAY_SIZE (DeviceMmio));
-  CarveCount  = CollectPlatformCarveOuts (CarveOuts, ARRAY_SIZE (CarveOuts));
+  CarveCount = CollectPlatformCarveOuts (CarveOuts, ARRAY_SIZE (CarveOuts));
 
   Status = BuildPlatformMemoryMap (
              Discovered,
              DiscoveredCount,
-             DeviceMmio,
-             DeviceCount,
              CarveOuts,
              CarveCount
              );
