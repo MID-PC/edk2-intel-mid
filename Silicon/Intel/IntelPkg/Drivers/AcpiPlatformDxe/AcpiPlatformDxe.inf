@@ -1,7 +1,7 @@
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = AcpiPlatformDxe
-  FILE_GUID                      = 3C7A1E56-0B84-4D19-9A2F-6E5B84C0D771
+  FILE_GUID                      = 8F1E5A34-6C27-4B90-9D3E-2A7C5B1F4E88
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
   ENTRY_POINT                    = AcpiPlatformEntryPoint
@@ -12,20 +12,23 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
-  MoorefieldPkg/MoorefieldPkg.dec
+  IntelPkg/IntelPkg.dec
 
 [LibraryClasses]
+  BaseMemoryLib
   DebugLib
   DxeServicesLib
   MemoryAllocationLib
+  PcdLib
   UefiBootServicesTableLib
   UefiDriverEntryPoint
 
 [Protocols]
   gEfiAcpiTableProtocolGuid                     ## CONSUMES
 
-[Guids]
-  gMoorefieldAcpiTableStorageGuid               ## CONSUMES
+[FixedPcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiTableStorageFile
+  gIntelMidTokenSpaceGuid.PcdAcpiDbg2TableStorageGuid
 
 [Depex]
   gEfiAcpiTableProtocolGuid

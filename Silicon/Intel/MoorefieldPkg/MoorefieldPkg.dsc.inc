@@ -126,8 +126,3 @@
   MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
   MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
   MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
-
-  #
-  # ACPI installation
-  #
-  MoorefieldPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf

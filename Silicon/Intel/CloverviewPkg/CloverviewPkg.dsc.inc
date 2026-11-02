@@ -31,6 +31,8 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision|0x0100000D
   # Cloverview does not support the standard S3 sleep state, instead using S0ix
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiS3Enable|FALSE
+  # DBG2's separate FFS (for KDNET_USB)
+  gIntelMidTokenSpaceGuid.PcdAcpiDbg2TableStorageGuid|{0xa4, 0x9d, 0x7a, 0xf7, 0xf3, 0x8d, 0x2c, 0x4b, 0xa1, 0xe6, 0x0c, 0x57, 0xb2, 0xd3, 0x4e, 0x91}
 
   #
   # Temporary RAM is put well above the image inside the first System RAM window
@@ -97,11 +99,6 @@
   MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
   MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
 !endif
-
-  #
-  # ACPI installation
-  #
-  CloverviewPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
 
   #
   # DBG2 table (packaged only in KDNET_USB builds)

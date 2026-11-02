@@ -32,7 +32,7 @@ INF  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
 
 # ACPI
 INF  MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
-INF  MoorefieldPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
+INF  IntelPkg/Drivers/AcpiPlatformDxe/AcpiPlatformDxe.inf
 
 # SMBIOS
 INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf

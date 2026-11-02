@@ -64,14 +64,10 @@
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioBase|0xFA000000|UINT64|0x0000001A
   gIntelMidTokenSpaceGuid.PcdPciEmacMmioSize|0x04000000|UINT64|0x0000001B
 
-  ## SCU IPC-1 register block ("intel_scu_ipc"): warm/cold reset and the SD/OTG
-  #  power-up sequence. The address moved between SoC generations, so platforms
-  #  override it: Cloverview ff11c000, Moorefield ff009000.
+  ## SCU IPC-1 register block
   gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF11C000|UINT32|0x0000000E
 
-  ## South-complex PMU register block ("intel_pmu_driver"), used by
-  #  ResetSystemLib for the S5 power-off write and by the SD/OTG drivers to
-  #  gate the card power island. Cloverview ff11d000, Moorefield ff00b000.
+  ## South-complex PMU register block
   gIntelMidTokenSpaceGuid.PcdPmuBase|0xFF11D000|UINT32|0x0000000F
 
   ## SMBIOS Type 1
@@ -85,3 +81,6 @@
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorModel|"Not Specified"|VOID*|0x00000032
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"Not Specified"|VOID*|0x00000033
   gIntelMidTokenSpaceGuid.PcdSmbiosProcessorMaxSpeedMHz|0|UINT16|0x00000034
+
+  ## Separate FFS file for DBG2 (used for KDNET_USB)
+  gIntelMidTokenSpaceGuid.PcdAcpiDbg2TableStorageGuid|{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}|VOID*|0x00000037
