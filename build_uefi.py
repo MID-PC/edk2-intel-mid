@@ -152,7 +152,29 @@ class AndroidBootPacker(BootImagePacker):
     def assemble(self, fd_path, res_dir, out_image, options):
         self.reject_unknown_options(options)
 
-        cmd = ["--kernel", str(res_dir / "kernel"),
+        kernel_path = res_dir / "kernel"
+        kernel_to_use = str(kernel_path)
+
+        # In Android boot.img format, bootloader executes kernel rather than second.
+        # Patch kernel entry to trampoline directly to second bootloader (UEFI FD).
+        if self.fd_slot == "second" and kernel_path.is_file():
+            kernel_bytes = bytearray(kernel_path.read_bytes())
+            if len(kernel_bytes) >= 15881:
+                base = options.get("base", 0x10000000)
+                second_offset = options.get("second_offset", 0x00F00000)
+                second_addr = base + second_offset
+
+                # At offset 0: jmp 0x3e00
+                kernel_bytes[0:5] = b"\xe9\xfb\x3d\x00\x00"
+                # At offset 15872 (0x3e00, startup_32): cli; cld; mov eax, second_addr; jmp eax
+                stub = b"\xfa\xfc\xb8" + second_addr.to_bytes(4, "little") + b"\xff\xe0"
+                kernel_bytes[15872:15872 + len(stub)] = stub
+
+                patched_kernel = out_image.parent / "kernel.trampoline"
+                patched_kernel.write_bytes(kernel_bytes)
+                kernel_to_use = str(patched_kernel)
+
+        cmd = ["--kernel", kernel_to_use,
                "--ramdisk", str(res_dir / "ramdisk"),
                f"--{self.fd_slot}", str(fd_path)]
 
