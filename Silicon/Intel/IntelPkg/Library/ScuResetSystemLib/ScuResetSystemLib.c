@@ -1,7 +1,3 @@
-/** @file
-  SPDX-License-Identifier: BSD-2-Clause-Patent
-**/
-
 #include <Uefi.h>
 
 #include <Guid/EventGroup.h>
@@ -11,13 +7,15 @@
 #include <Library/IoLib.h>
 #include <Library/PcdLib.h>
 #include <Library/ResetSystemLib.h>
+// ScuIpcLib is deliberately not linked here, as that breaks reboot
+// The header is only used for message IDs
 #include <Library/ScuIpcLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeLib.h>
 
-// South-complex PMU register block (PcdPmuBase: ff11d000 on Cloverview,
-// ff00b000 on Moorefield)
-// Mirrors Linux pmu_power_off()
+//
+// PMU Registers
+//
 #define PMU_PM_STS_OFFSET          0x00U
 #define PMU_PM_CMD_OFFSET          0x04U
 #define PMU_PM_STS_BUSY            BIT8
@@ -25,7 +23,20 @@
 #define PMU_BUSY_POLL_LIMIT        1000000U
 #define PMU_MMIO_SIZE              SIZE_4KB
 
+//
+// SCU IPC Registers
+//
+#define SCU_IPC_CMD_OFFSET         0x00U
+#define SCU_IPC_STS_OFFSET         0x04U
+#define SCU_IPC_STS_BUSY           BIT0
+#define SCU_IPC_POLL_LIMIT         10000000U
+#define SCU_IPC_MMIO_SIZE          SIZE_4KB
+
+//
+// Global Variables
+//
 STATIC VOID       *mPmuBase;
+STATIC VOID       *mScuIpcBase;
 STATIC EFI_EVENT  mVirtualAddressChangeEvent;
 
 STATIC
@@ -36,7 +47,9 @@ ScuResetVirtualAddressChange (
   IN VOID       *Context
   )
 {
+  // Convert MMIO Base Addresses
   EfiConvertPointer (0, &mPmuBase);
+  EfiConvertPointer (0, &mScuIpcBase);
 }
 
 EFI_STATUS
@@ -47,16 +60,19 @@ ScuResetSystemLibConstructor (
   )
 {
   EFI_STATUS            Status;
-  EFI_PHYSICAL_ADDRESS  Base;
+  EFI_STATUS            ScuStatus;
+  EFI_PHYSICAL_ADDRESS  PmuBase;
+  EFI_PHYSICAL_ADDRESS  ScuIpcBase;
 
-  // ScuIpcLib makes its own aperture uncacheable on first use. The PMU block does
-  // not help itself, so map it here; SetMemorySpaceAttributes only records a GCD
-  // attribute, and this is the only path we have across ExitBootServices.
-  Base     = (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdPmuBase);
-  mPmuBase = (VOID *)(UINTN)Base;
+  // Get MMIO Base Addresses
+  PmuBase     = (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdPmuBase);
+  ScuIpcBase  = (EFI_PHYSICAL_ADDRESS)FixedPcdGet32 (PcdScuIpcBase);
+  mPmuBase    = (VOID *)(UINTN)PmuBase;
+  mScuIpcBase = (VOID *)(UINTN)ScuIpcBase;
 
+  // Mark PMU MMIO Runtime
   Status = gDS->SetMemorySpaceAttributes (
-                  Base,
+                  PmuBase,
                   PMU_MMIO_SIZE,
                   EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
                   );
@@ -64,6 +80,17 @@ ScuResetSystemLibConstructor (
     DEBUG ((DEBUG_WARN, "SCU reset: failed to mark PMU MMIO runtime: %r\n", Status));
   }
 
+  // Mark SCU IPC MMIO Runtime
+  ScuStatus = gDS->SetMemorySpaceAttributes (
+                       ScuIpcBase,
+                       SCU_IPC_MMIO_SIZE,
+                       EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
+                       );
+  if (EFI_ERROR (ScuStatus)) {
+    DEBUG ((DEBUG_WARN, "SCU reset: failed to mark SCU IPC MMIO runtime: %r\n", ScuStatus));
+  }
+
+  // Register Virtual Address Change Event
   Status = gBS->CreateEventEx (
                   EVT_NOTIFY_SIGNAL,
                   TPL_NOTIFY,
@@ -75,20 +102,47 @@ ScuResetSystemLibConstructor (
   return Status;
 }
 
-/**
-  Ask the SCU to reset, then wait for it to happen.
+STATIC
+VOID
+ScuIpcWaitIdle (
+  IN UINTN  Ipc
+  )
+{
+  UINT32  Retry;
 
-  Whether the command was accepted makes no difference: if the SCU did not take it
-  nothing else resets the board, so the alternatives are a hang either way.
-**/
+  // Wait for SCU Idle
+  for (Retry = 0; Retry < SCU_IPC_POLL_LIMIT; Retry++) {
+    // Check Busy Bit
+    if ((MmioRead32 (Ipc + SCU_IPC_STS_OFFSET) & SCU_IPC_STS_BUSY) == 0) {
+      return;
+    }
+
+    CpuPause ();
+  }
+}
+
 STATIC
 VOID
 ScuReset (
   IN UINT32  Command
   )
 {
+  UINTN  Ipc;
+
   DEBUG ((DEBUG_ERROR, "SCU reset: issuing command 0x%02x\n", Command));
-  ScuIpcSimpleCommand (Command, 0);
+
+  // Write Directly, ScuIpcLib Does Not Fit the Runtime Stack
+  Ipc = (UINTN)mScuIpcBase;
+  if (Ipc != 0) {
+    // Wait for Idle Interface
+    ScuIpcWaitIdle (Ipc);
+
+    // Send Reset Command
+    MmioWrite32 (Ipc + SCU_IPC_CMD_OFFSET, Command & 0xFF);
+
+    // Wait for Reset
+    ScuIpcWaitIdle (Ipc);
+  }
 
   CpuDeadLoop ();
 }
@@ -122,15 +176,22 @@ PmuPowerOff (
   UINT32  Status;
   UINT32  Retry;
 
+  // Get PMU Base
   Base = (UINTN)mPmuBase;
+
+  // Verify PMU Present
   if ((Base == 0) ||
       (MmioRead32 (Base + PMU_PM_STS_OFFSET) == MAX_UINT32)) {
     return FALSE;
   }
 
+  // Wait for PMU Idle
   for (Retry = 0; Retry < PMU_BUSY_POLL_LIMIT; Retry++) {
     Status = MmioRead32 (Base + PMU_PM_STS_OFFSET);
+
+    // Check Busy Bit
     if ((Status & PMU_PM_STS_BUSY) == 0) {
+      // Write S5
       MmioWrite32 (Base + PMU_PM_CMD_OFFSET, PMU_S5_VALUE);
       return TRUE;
     }
@@ -147,11 +208,13 @@ ResetShutdown (
   VOID
   )
 {
+  // Power Off PMU
   if (PmuPowerOff ()) {
     DEBUG ((DEBUG_ERROR, "ResetShutdown: S5 written (0x309d2601), waiting for rails to drop\n"));
     CpuDeadLoop ();
   }
 
+  // Do Cold Reset
   ScuReset (SCU_IPC_MSG_COLD_RESET);
 }
 

@@ -21,7 +21,6 @@
   DxeServicesTableLib
   IoLib
   PcdLib
-  ScuIpcLib
   UefiBootServicesTableLib
   UefiRuntimeLib
 
@@ -30,3 +29,4 @@
 
 [FixedPcd]
   gIntelMidTokenSpaceGuid.PcdPmuBase
+  gIntelMidTokenSpaceGuid.PcdScuIpcBase
