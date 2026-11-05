@@ -129,11 +129,26 @@ ScuReset (
 {
   UINTN  Ipc;
 
+  // Stop Moorefield microSD clock and bus power (SDHCI controller at 0xFF3FA000)
+  MmioWrite16 (0xFF3FA000U + 0x2C, 0);
+  MmioWrite8  (0xFF3FA000U + 0x29, 0);
+
   DEBUG ((DEBUG_ERROR, "SCU reset: issuing command 0x%02x\n", Command));
 
   // Write Directly, ScuIpcLib Does Not Fit the Runtime Stack
   Ipc = (UINTN)mScuIpcBase;
   if (Ipc != 0) {
+    // Cut PMIC VLDO rail (SD card VDD: register 0xAF, BIT1) via SCU IPC
+    ScuIpcWaitIdle (Ipc);
+    MmioWrite32 (Ipc + 0x80, 0x000000AFU | (0x02U << 24));
+    MmioWrite32 (Ipc + SCU_IPC_CMD_OFFSET, (4 << 16) | (2 << 12) | 0xE8);
+    ScuIpcWaitIdle (Ipc);
+
+    // Settle delay for card capacitors to discharge
+    for (volatile UINTN Index = 0; Index < 500000; Index++) {
+      CpuPause ();
+    }
+
     // Wait for Idle Interface
     ScuIpcWaitIdle (Ipc);
 

@@ -12,6 +12,7 @@
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/NonDiscoverableDeviceRegistrationLib.h>
 #include <Library/PcdLib.h>
+#include <Library/ScuIpcLib.h>
 #include <Library/SfiTableLib.h>
 #include <Protocol/SdMmcOverride.h>
 
@@ -240,6 +241,14 @@ MoorefieldEnableSdPower (
     EFI_ERROR (Status) ? DEBUG_WARN : DEBUG_INFO,
     "SdHostDxe: PMU LSS %u -> D0: %r\n",
     Lss,
+    Status
+    ));
+
+  // Ensure Shady Cove PMIC VLDO (SD card VDD) rail is powered on
+  Status = ScuIpcPmicUpdate (PMIC_VLDOCNT_ADDR, PMIC_VLDOCNT_VSWITCH, PMIC_VLDOCNT_VSWITCH);
+  DEBUG ((
+    EFI_ERROR (Status) ? DEBUG_WARN : DEBUG_INFO,
+    "SdHostDxe: PMIC VLDO -> ON: %r\n",
     Status
     ));
 

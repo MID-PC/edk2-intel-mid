@@ -301,6 +301,23 @@
 | Windows Boot       |                             | ✅    |
 | Linux Boot         |                             | ❌    |
 
+## Asus Zenfone 2 (ZE551ML)
+
+**Codename:** z00a
+
+### UEFI Status
+
+| Feature            | Description                 | State |
+|:-------------------|:----------------------------|:-----:|
+| Display            |                             | ✅    |
+| Shell              |                             | ✅    |
+| Internal Storage   |                             | ❌    |
+| SD Card            |                             | ✅    |
+| Side Buttons       |                             | ❌    |
+| USB Host Mode      | Requires external 5V VBUS   | ⚠️    |
+| Windows Boot       |                             | ❔    |
+| Linux Boot         |                             | ❔    |
+
 </details>
 
 </details>
