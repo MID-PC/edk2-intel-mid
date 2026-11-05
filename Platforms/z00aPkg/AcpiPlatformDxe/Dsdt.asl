@@ -85,25 +85,6 @@ DefinitionBlock ("Dsdt.aml", "DSDT", 0x02, "INTEL ", "MOOREFLD", 0x00000001)
             Name (_PSD, Package () { Package () { 5, 0, 0x01, 0xFE, 2 } })
         }
 
-        // System memory reservations
-        Device (SYSR)
-        {
-            Name (_HID, EisaId ("PNP0C02"))
-            Name (_UID, 0x01)
-            Name (_STA, 0x0F)
-            Name (_CRS, ResourceTemplate ()
-            {
-                Memory32Fixed (ReadWrite, 0x00000000, 0x00001000)  // IVT, BDA
-                Memory32Fixed (ReadWrite, 0x04000000, 0x01200000)  // SoC reserved
-                Memory32Fixed (ReadWrite, 0x05C00000, 0x00400000)  // SoC reserved, audio
-                Memory32Fixed (ReadWrite, 0x7F600000, 0x00A00000)  // MMCONFIG, framebuffer
-                Memory32Fixed (ReadWrite, 0xFEC04000, 0x0001C000)  // up to the I/O APIC
-                Memory32Fixed (ReadWrite, 0xFEE01000, 0x001FF000)  // above the Local APIC
-                Memory32Fixed (ReadWrite, 0xFF000000, 0x003FA000)  // up to the SDHCI block
-                Memory32Fixed (ReadWrite, 0xFF3FB000, 0x00C05000)  // above the SDHCI block
-            })
-        }
-
         // IA-PC High Precision Event Timer
         Device (HPET)
         {

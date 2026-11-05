@@ -21,6 +21,9 @@
 
 !include MoorefieldPkg/MoorefieldPkg.dsc.inc
 
+[BuildOptions]
+  CLANGPDB:*_*_*_CC_FLAGS        = -DSC_RESET_CUT_SD_POWER
+
 [PcdsFixedAtBuild]
   # Device framebuffer
   gIntelMidTokenSpaceGuid.PcdFrameBufferBase|0x7F700000
