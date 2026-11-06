@@ -27,4 +27,4 @@
   gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
   gIntelMidTokenSpaceGuid.PcdFrameBufferLogFgColor
   gIntelMidTokenSpaceGuid.PcdFrameBufferLogBgColor
-  gIntelMidTokenSpaceGuid.PcdConsoleStateBase
+  gIntelMidTokenSpaceGuid.PcdFrameBufferDelay

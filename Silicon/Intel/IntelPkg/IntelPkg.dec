@@ -22,6 +22,9 @@
   ## Framebuffer console log window
   gIntelMidTokenSpaceGuid.PcdFrameBufferLogFgColor|0x00FFFFFF|UINT32|0x00000014
   gIntelMidTokenSpaceGuid.PcdFrameBufferLogBgColor|0x00000000|UINT32|0x00000015
+  ## FrameBufferSerialPortLib's artificial delay between each printed log line
+  #  Added for easier log reading/capturing
+  gIntelMidTokenSpaceGuid.PcdFrameBufferDelay|1000000|UINT32|0x00000036
 
   ## Base address the primary bootloader jumps to (start of our FD)
   gIntelMidTokenSpaceGuid.PcdFdBaseAddress|0x01101000|UINT32|0x00000001
@@ -52,9 +55,6 @@
   gIntelMidTokenSpaceGuid.PcdLegacyReservedType|0x00000009|UINT32|0x0000000D
   gIntelMidTokenSpaceGuid.PcdLegacyTopBase|0x000A0000|UINT32|0x0000000A
   gIntelMidTokenSpaceGuid.PcdLegacyTopSize|0x00060000|UINT32|0x0000000B
-
-  ## Shared framebuffer console-state page; reserved so no phase allocates over it
-  gIntelMidTokenSpaceGuid.PcdConsoleStateBase|0x3EEFD000|UINT32|0x0000000C
 
   ## SCU IPC-1 register block
   gIntelMidTokenSpaceGuid.PcdScuIpcBase|0xFF11C000|UINT32|0x0000000E

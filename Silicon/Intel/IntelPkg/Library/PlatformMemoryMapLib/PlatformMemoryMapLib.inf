@@ -31,4 +31,3 @@
   gIntelMidTokenSpaceGuid.PcdLegacyReservedType
   gIntelMidTokenSpaceGuid.PcdLegacyTopBase
   gIntelMidTokenSpaceGuid.PcdLegacyTopSize
-  gIntelMidTokenSpaceGuid.PcdConsoleStateBase

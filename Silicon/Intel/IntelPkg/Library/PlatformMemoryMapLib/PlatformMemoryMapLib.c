@@ -550,15 +550,5 @@ CollectPlatformCarveOuts (
     EfiReservedMemoryType
     );
 
-  PlatformAppendCarveOut (
-    CarveOuts,
-    Capacity,
-    &Count,
-    "console state",
-    FixedPcdGet32 (PcdConsoleStateBase),
-    SIZE_4KB,
-    EfiReservedMemoryType
-    );
-
   return Count;
 }

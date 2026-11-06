@@ -21,14 +21,13 @@ extern CONST UINT8 gFont8x16[95][16];
 #define FB_BPP     ((UINTN)FixedPcdGet32 (PcdFrameBufferBpp))
 #define FB_STRIDE  ((UINTN)FixedPcdGet32 (PcdFrameBufferStride))
 #define FB_PITCH   (FB_STRIDE * FB_BPP)
+#define FB_STATE_OFFSET  ALIGN_VALUE (FB_STRIDE * FB_HEIGHT * FB_BPP, EFI_PAGE_SIZE)
 
 #define TEXT_COLS  (FB_WIDTH / GLYPH_WIDTH)
 #define TEXT_ROWS  (FB_HEIGHT / GLYPH_HEIGHT)
 
-#define FB_LOG_LINE_DELAY_LOOPS  1000000
-
 // Cursor state
-// Reserved as PcdConsoleStateBase, because it runs in every UEFI phase
+// Kept past the visible framebuffer so every UEFI phase shares it
 typedef struct {
   UINT32    Signature;
   UINT32    Col;
@@ -37,52 +36,47 @@ typedef struct {
 
 #define FB_CONSOLE_SIGNATURE  SIGNATURE_32 ('C', 'T', 'F', 'B')
 
+STATIC FB_CONSOLE_STATE  *mConsoleState;
+
 STATIC
 FB_CONSOLE_STATE *
 GetConsoleState (
   VOID
   )
 {
-  FB_CONSOLE_STATE  *State;
+  if (mConsoleState == NULL) {
+    mConsoleState = (FB_CONSOLE_STATE *)(FB_BASE + FB_STATE_OFFSET);
 
-  State = (FB_CONSOLE_STATE *)(UINTN)FixedPcdGet32 (PcdConsoleStateBase);
-
-  if (State->Signature != FB_CONSOLE_SIGNATURE) {
-    State->Signature = FB_CONSOLE_SIGNATURE;
-    State->Col       = 0;
-    State->Row       = 0;
+    if (mConsoleState->Signature != FB_CONSOLE_SIGNATURE) {
+      mConsoleState->Signature = FB_CONSOLE_SIGNATURE;
+      mConsoleState->Col       = 0;
+      mConsoleState->Row       = 0;
+    }
   }
 
-  return State;
+  return mConsoleState;
 }
 
 STATIC
 VOID
-FillRect (
-  IN UINTN   X,
-  IN UINTN   Y,
-  IN UINTN   Width,
-  IN UINTN   Height,
-  IN UINT32  Color
+ClearScreen (
+  VOID
   )
 {
-  UINTN   Row;
-  UINTN   Col;
-  UINT32  *Line;
+  UINT64  Fill;
+  UINTN   Size;
 
-  for (Row = 0; Row < Height; Row++) {
-    if ((Y + Row) >= FB_HEIGHT) {
-      break;
-    }
+  Fill  = (UINT64)FixedPcdGet32 (PcdFrameBufferLogBgColor);
+  Fill |= Fill << 32;
+  Size  = FB_PITCH * FB_HEIGHT;
 
-    Line = (UINT32 *)(FB_BASE + (Y + Row) * FB_PITCH);
-    for (Col = 0; Col < Width; Col++) {
-      if ((X + Col) >= FB_WIDTH) {
-        break;
-      }
-
-      Line[X + Col] = Color;
-    }
+  SetMem64 ((VOID *)FB_BASE, Size & ~(UINTN)7, Fill);
+  if ((Size & 7) != 0) {
+    SetMem32 (
+      (VOID *)(FB_BASE + (Size & ~(UINTN)7)),
+      Size & 7,
+      (UINT32)Fill
+      );
   }
 }
 
@@ -94,18 +88,12 @@ ScrollUp (
 {
   FB_CONSOLE_STATE  *State;
 
-  // Fill the log area (write-only) and restart at its first row
-  FillRect (
-    0,
-    0,
-    FB_WIDTH,
-    FB_HEIGHT,
-    FixedPcdGet32 (PcdFrameBufferLogBgColor)
-    );
+  // Clear the log area (write-only) and restart at its first row
+  ClearScreen ();
 
   // PutChar() decrements Row once after each ScrollUp() call, so set 1 here
   // to land on row 0 - the log owns the entire framebuffer now
-  State            = (FB_CONSOLE_STATE *)(UINTN)FixedPcdGet32 (PcdConsoleStateBase);
+  State            = GetConsoleState ();
   State->Signature = FB_CONSOLE_SIGNATURE;
   State->Col       = 0;
   State->Row       = 1;
@@ -120,38 +108,38 @@ DrawGlyph (
   )
 {
   CONST UINT8  *Glyph;
-  UINTN        X;
-  UINTN        Y;
   UINTN        Line;
-  UINTN        Bit;
   UINT32       *Pixels;
+  UINT8        Bits;
   UINT32       Fg;
   UINT32       Bg;
+
+  if ((Col >= TEXT_COLS) || (Row >= TEXT_ROWS)) {
+    return;
+  }
 
   if ((Char < 0x20) || ((UINT8)Char > 0x7E)) {
     Char = '?';
   }
 
-  Glyph = gFont8x16[(UINT8)Char - 0x20];
-  Fg    = FixedPcdGet32 (PcdFrameBufferLogFgColor);
-  Bg    = FixedPcdGet32 (PcdFrameBufferLogBgColor);
-
-  X = Col * GLYPH_WIDTH;
-  Y = Row * GLYPH_HEIGHT;
+  Glyph  = gFont8x16[(UINT8)Char - 0x20];
+  Fg     = FixedPcdGet32 (PcdFrameBufferLogFgColor);
+  Bg     = FixedPcdGet32 (PcdFrameBufferLogBgColor);
+  Pixels = (UINT32 *)(FB_BASE + Row * GLYPH_HEIGHT * FB_PITCH) + Col * GLYPH_WIDTH;
 
   for (Line = 0; Line < GLYPH_HEIGHT; Line++) {
-    if ((Y + Line) >= FB_HEIGHT) {
-      return;
-    }
+    Bits = Glyph[Line];
 
-    Pixels = (UINT32 *)(FB_BASE + (Y + Line) * FB_PITCH);
-    for (Bit = 0; Bit < GLYPH_WIDTH; Bit++) {
-      if ((X + Bit) >= FB_WIDTH) {
-        break;
-      }
+    Pixels[0] = (Bits & 0x80) ? Fg : Bg;
+    Pixels[1] = (Bits & 0x40) ? Fg : Bg;
+    Pixels[2] = (Bits & 0x20) ? Fg : Bg;
+    Pixels[3] = (Bits & 0x10) ? Fg : Bg;
+    Pixels[4] = (Bits & 0x08) ? Fg : Bg;
+    Pixels[5] = (Bits & 0x04) ? Fg : Bg;
+    Pixels[6] = (Bits & 0x02) ? Fg : Bg;
+    Pixels[7] = (Bits & 0x01) ? Fg : Bg;
 
-      Pixels[X + Bit] = ((Glyph[Line] & (0x80 >> Bit)) != 0) ? Fg : Bg;
-    }
+    Pixels = (UINT32 *)((UINT8 *)Pixels + FB_PITCH);
   }
 }
 
@@ -219,13 +207,7 @@ SerialPortInitialize (
 
   // Clear the framebuffer before logging anything
   if ((State->Col == 0) && (State->Row == 0)) {
-    FillRect (
-      0,
-      0,
-      FB_WIDTH,
-      FB_HEIGHT,
-      FixedPcdGet32 (PcdFrameBufferLogBgColor)
-      );
+    ClearScreen ();
   }
 
   return RETURN_SUCCESS;
@@ -250,14 +232,11 @@ SerialPortWrite (
   for (Index = 0; Index < NumberOfBytes; Index++) {
     PutChar ((CHAR8)Buffer[Index]);
 
-    // Busy-wait throttle so the log can actually be read on the panel; there
-    // is no dependable time source in every phase (SEC runs before the APIC
-    // timer is programmed, and TimerLib must not be pulled into this
-    // library). Set FB_LOG_LINE_DELAY_LOOPS to 0 for full speed.
+    // Arificial print delay between each log line, controlled by PcdFrameBufferDelay
     if ((CHAR8)Buffer[Index] == '\n') {
       volatile UINT32  Spin;
 
-      for (Spin = 0; Spin < FB_LOG_LINE_DELAY_LOOPS; Spin++) {
+      for (Spin = 0; Spin < FixedPcdGet32 (PcdFrameBufferDelay); Spin++) {
         CpuPause ();
       }
     }

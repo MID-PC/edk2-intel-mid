@@ -28,7 +28,6 @@
   gIntelMidTokenSpaceGuid.PcdFrameBufferStride|1088
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight|1920
   gIntelMidTokenSpaceGuid.PcdFrameBufferBpp|4
-  gIntelMidTokenSpaceGuid.PcdConsoleStateBase|0x11FFF000
 
   # SMBIOS
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemManufacturer|"ASUS"
