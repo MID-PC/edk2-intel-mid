@@ -23,6 +23,7 @@
   IoLib
   TimerLib
   PcdLib
+  ScuIpcLib
   NonDiscoverableDeviceRegistrationLib
 
 [Protocols]
