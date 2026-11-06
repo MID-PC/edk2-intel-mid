@@ -393,7 +393,7 @@ PlatformBootManagerAfterConsole (
     (VOID *)(UINTN)FixedPcdGet64 (PcdFrameBufferBase),
     (UINTN)FixedPcdGet32 (PcdFrameBufferStride) *
         FixedPcdGet32 (PcdFrameBufferHeight) *
-        FixedPcdGet32 (PcdFrameBufferBpp)
+        (FixedPcdGet8 (PcdFrameBufferColorDepth) / 8)
     );
 #endif
 

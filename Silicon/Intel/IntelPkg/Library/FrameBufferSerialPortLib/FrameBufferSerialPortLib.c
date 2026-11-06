@@ -18,7 +18,7 @@ extern CONST UINT8 gFont8x16[95][16];
 #define FB_BASE    ((UINTN)FixedPcdGet64 (PcdFrameBufferBase))
 #define FB_WIDTH   ((UINTN)FixedPcdGet32 (PcdFrameBufferWidth))
 #define FB_HEIGHT  ((UINTN)FixedPcdGet32 (PcdFrameBufferHeight))
-#define FB_BPP     ((UINTN)FixedPcdGet32 (PcdFrameBufferBpp))
+#define FB_BPP     ((UINTN)FixedPcdGet8 (PcdFrameBufferColorDepth) / 8)
 #define FB_STRIDE  ((UINTN)FixedPcdGet32 (PcdFrameBufferStride))
 #define FB_PITCH   (FB_STRIDE * FB_BPP)
 #define FB_STATE_OFFSET  ALIGN_VALUE (FB_STRIDE * FB_HEIGHT * FB_BPP, EFI_PAGE_SIZE)

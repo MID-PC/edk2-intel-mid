@@ -27,7 +27,7 @@
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth|540
   gIntelMidTokenSpaceGuid.PcdFrameBufferStride|544
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight|960
-  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp|4
+  gIntelMidTokenSpaceGuid.PcdFrameBufferColorDepth|32
 
   # SMBIOS
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemManufacturer|"ASUS"

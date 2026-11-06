@@ -33,7 +33,7 @@
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
   gIntelMidTokenSpaceGuid.PcdFrameBufferStride
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight
-  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
+  gIntelMidTokenSpaceGuid.PcdFrameBufferColorDepth
 
 [Depex]
   TRUE

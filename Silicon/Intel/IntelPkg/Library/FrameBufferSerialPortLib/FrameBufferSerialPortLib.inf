@@ -24,7 +24,7 @@
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
   gIntelMidTokenSpaceGuid.PcdFrameBufferStride
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight
-  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
+  gIntelMidTokenSpaceGuid.PcdFrameBufferColorDepth
   gIntelMidTokenSpaceGuid.PcdFrameBufferLogFgColor
   gIntelMidTokenSpaceGuid.PcdFrameBufferLogBgColor
   gIntelMidTokenSpaceGuid.PcdFrameBufferDelay

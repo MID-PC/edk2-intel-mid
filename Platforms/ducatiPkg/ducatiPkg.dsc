@@ -27,7 +27,7 @@
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth|768
   gIntelMidTokenSpaceGuid.PcdFrameBufferStride|768
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight|1024
-  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp|4
+  gIntelMidTokenSpaceGuid.PcdFrameBufferColorDepth|32
 
   # SMBIOS
   gIntelMidTokenSpaceGuid.PcdSmbiosSystemManufacturer|"Acer"

@@ -17,7 +17,8 @@
 #define FB_WIDTH   ((UINT32)FixedPcdGet32 (PcdFrameBufferWidth))
 #define FB_STRIDE  ((UINT32)FixedPcdGet32 (PcdFrameBufferStride))
 #define FB_HEIGHT  ((UINT32)FixedPcdGet32 (PcdFrameBufferHeight))
-#define FB_BPP     ((UINT32)FixedPcdGet32 (PcdFrameBufferBpp))
+#define FB_COLOR_DEPTH  ((UINT32)FixedPcdGet8 (PcdFrameBufferColorDepth))
+#define FB_BPP          (FB_COLOR_DEPTH / 8)
 
 #pragma pack(1)
 typedef struct {
@@ -190,7 +191,7 @@ PlatformGopDxeEntryPoint (
     FB_WIDTH,
     FB_HEIGHT,
     (UINT64)FB_BASE,
-    FB_BPP * 8
+    FB_COLOR_DEPTH
     ));
 
   Handle = NULL;

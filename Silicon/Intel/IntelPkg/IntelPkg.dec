@@ -17,7 +17,8 @@
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth|540|UINT32|0x00000011
   gIntelMidTokenSpaceGuid.PcdFrameBufferStride|544|UINT32|0x00000028
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight|960|UINT32|0x00000012
-  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp|4|UINT32|0x00000013
+  ## Framebuffer color depth in bits per pixel
+  gIntelMidTokenSpaceGuid.PcdFrameBufferColorDepth|32|UINT8|0x00000013
 
   ## Framebuffer console log window
   gIntelMidTokenSpaceGuid.PcdFrameBufferLogFgColor|0x00FFFFFF|UINT32|0x00000014

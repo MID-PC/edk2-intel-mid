@@ -49,7 +49,7 @@
   gIntelMidTokenSpaceGuid.PcdFrameBufferWidth
   gIntelMidTokenSpaceGuid.PcdFrameBufferHeight
   gIntelMidTokenSpaceGuid.PcdFrameBufferStride
-  gIntelMidTokenSpaceGuid.PcdFrameBufferBpp
+  gIntelMidTokenSpaceGuid.PcdFrameBufferColorDepth
 
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut
